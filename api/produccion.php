@@ -29,7 +29,6 @@ try {
                     SELECT 
                         p.id_produccion,
                         p.codigo_lote,
-                        p.codigo_lote as codigo_lote_turno,
                         p.fecha_produccion,
                         p.id_turno,
                         p.id_tejedor,
@@ -59,15 +58,14 @@ try {
                         dp.id_detalle,
                         dp.id_maquina,
                         dp.id_producto,
-                        dp.docenas as docenas_producidas,
-                        dp.unidades as unidades_producidas,
-                        (dp.docenas * 12 + dp.unidades) as total_unidades_calculado,
+                        dp.docenas,
+                        dp.unidades,
+                        (dp.docenas * 12 + dp.unidades) as total_unidades,
                         m.numero_maquina,
                         pt.descripcion_completa,
                         pt.codigo_producto,
                         l.nombre_linea,
-                        l.codigo_linea,
-                        '' as observaciones
+                        l.codigo_linea
                     FROM detalle_produccion_tejeduria dp
                     JOIN maquinas m ON dp.id_maquina = m.id_maquina
                     JOIN productos_tejidos pt ON dp.id_producto = pt.id_producto
@@ -96,7 +94,6 @@ try {
                 SELECT 
                     p.id_produccion,
                     p.codigo_lote,
-                    p.codigo_lote as codigo_lote_turno,
                     p.fecha_produccion,
                     p.observaciones,
                     t.nombre_turno,
@@ -105,9 +102,8 @@ try {
                     u.nombre_completo as nombre_tejedor,
                     COUNT(dp.id_detalle) as num_maquinas,
                     FLOOR(COALESCE(SUM(dp.docenas * 12 + dp.unidades), 0) / 12) as total_docenas,
-                    MOD(COALESCE(SUM(dp.docenas * 12 + dp.unidades), 0), 12) as total_unidades,
-                    COALESCE(SUM(dp.docenas * 12 + dp.unidades), 0) as total_unidades_calc,
-                    'completado' as estado
+                    COALESCE(SUM(dp.docenas * 12 + dp.unidades), 0) % 12 as total_unidades,
+                    COALESCE(SUM(dp.docenas * 12 + dp.unidades), 0) as total_unidades_calc
                 FROM produccion_tejeduria p
                 JOIN turnos t ON p.id_turno = t.id_turno
                 LEFT JOIN usuarios u ON p.id_tejedor = u.id_usuario
@@ -141,24 +137,24 @@ try {
             $stmt->execute($params);
             $producciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
-            // Obtener estadísticas - Corregido para normalizar docenas|unidades
+            // Obtener estadísticas normalizadas
             $stmt = $db->query("
                 SELECT 
                     -- Anuales normalizadas
                     FLOOR(COALESCE(SUM(dp.docenas * 12 + dp.unidades), 0) / 12) as docenas_anuales,
-                    MOD(COALESCE(SUM(dp.docenas * 12 + dp.unidades), 0), 12) as unidades_anuales,
+                    COALESCE(SUM(dp.docenas * 12 + dp.unidades), 0) % 12 as unidades_anuales,
                     
                     -- Hoy normalizadas
                     FLOOR(COALESCE(SUM(CASE WHEN DATE(p.fecha_produccion) = CURDATE() THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0) / 12) as docenas_hoy,
-                    MOD(COALESCE(SUM(CASE WHEN DATE(p.fecha_produccion) = CURDATE() THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0), 12) as unidades_hoy,
+                    COALESCE(SUM(CASE WHEN DATE(p.fecha_produccion) = CURDATE() THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0) % 12 as unidades_hoy,
                     
                     -- Semana normalizadas
                     FLOOR(COALESCE(SUM(CASE WHEN YEARWEEK(p.fecha_produccion, 1) = YEARWEEK(CURDATE(), 1) THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0) / 12) as docenas_semana,
-                    MOD(COALESCE(SUM(CASE WHEN YEARWEEK(p.fecha_produccion, 1) = YEARWEEK(CURDATE(), 1) THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0), 12) as unidades_semana,
+                    COALESCE(SUM(CASE WHEN YEARWEEK(p.fecha_produccion, 1) = YEARWEEK(CURDATE(), 1) THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0) % 12 as unidades_semana,
                     
                     -- Mes normalizadas
                     FLOOR(COALESCE(SUM(CASE WHEN YEAR(p.fecha_produccion) = YEAR(CURDATE()) AND MONTH(p.fecha_produccion) = MONTH(CURDATE()) THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0) / 12) as docenas_mes,
-                    MOD(COALESCE(SUM(CASE WHEN YEAR(p.fecha_produccion) = YEAR(CURDATE()) AND MONTH(p.fecha_produccion) = MONTH(CURDATE()) THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0), 12) as unidades_mes,
+                    COALESCE(SUM(CASE WHEN YEAR(p.fecha_produccion) = YEAR(CURDATE()) AND MONTH(p.fecha_produccion) = MONTH(CURDATE()) THEN dp.docenas * 12 + dp.unidades ELSE 0 END), 0) % 12 as unidades_mes,
                     
                     -- Contadores
                     COUNT(DISTINCT p.id_produccion) as total_registros,
@@ -260,11 +256,29 @@ try {
                     $id_produccion = $db->lastInsertId();
                 }
                 
-                // Insertar detalles
-                $stmt = $db->prepare("
+                // Insertar detalles y actualizar inventario
+                $stmt_detalle = $db->prepare("
                     INSERT INTO detalle_produccion_tejeduria (
                         id_produccion, id_maquina, id_producto, docenas, unidades
                     ) VALUES (?, ?, ?, ?, ?)
+                ");
+                
+                // Preparar statement para actualizar/crear inventario
+                $stmt_inv_check = $db->prepare("
+                    SELECT id_inventario, docenas, unidades 
+                    FROM inventario_intermedio 
+                    WHERE id_producto = ? AND tipo_inventario = 'tejido'
+                ");
+                
+                $stmt_inv_update = $db->prepare("
+                    UPDATE inventario_intermedio 
+                    SET docenas = ?, unidades = ? 
+                    WHERE id_inventario = ?
+                ");
+                
+                $stmt_inv_insert = $db->prepare("
+                    INSERT INTO inventario_intermedio (id_producto, tipo_inventario, docenas, unidades) 
+                    VALUES (?, 'tejido', ?, ?)
                 ");
                 
                 $count_inserted = 0;
@@ -274,11 +288,41 @@ try {
                     $docenas = (int)($detalle['docenas'] ?? 0);
                     $unidades = (int)($detalle['unidades'] ?? 0);
                     
+                    // Validar que unidades no excedan 11
+                    if ($unidades > 11) {
+                        throw new Exception("Las unidades no pueden ser mayores a 11. Máquina $id_maquina tiene $unidades unidades.");
+                    }
+                    
                     // Solo insertar si hay producción
                     if ($id_maquina && $id_producto && ($docenas > 0 || $unidades > 0)) {
-                        $stmt->execute([
+                        // Insertar detalle de producción
+                        $stmt_detalle->execute([
                             $id_produccion, $id_maquina, $id_producto, $docenas, $unidades
                         ]);
+                        
+                        // Actualizar inventario intermedio
+                        $stmt_inv_check->execute([$id_producto]);
+                        $inventario_actual = $stmt_inv_check->fetch(PDO::FETCH_ASSOC);
+                        
+                        if ($inventario_actual) {
+                            // Sumar a inventario existente
+                            $total_unidades_actual = ($inventario_actual['docenas'] * 12) + $inventario_actual['unidades'];
+                            $total_unidades_nuevas = ($docenas * 12) + $unidades;
+                            $total_unidades_final = $total_unidades_actual + $total_unidades_nuevas;
+                            
+                            $docenas_final = floor($total_unidades_final / 12);
+                            $unidades_final = $total_unidades_final % 12;
+                            
+                            $stmt_inv_update->execute([
+                                $docenas_final, 
+                                $unidades_final, 
+                                $inventario_actual['id_inventario']
+                            ]);
+                        } else {
+                            // Crear nuevo registro de inventario
+                            $stmt_inv_insert->execute([$id_producto, $docenas, $unidades]);
+                        }
+                        
                         $count_inserted++;
                     }
                 }
@@ -316,7 +360,49 @@ try {
             $db->beginTransaction();
             
             try {
-                // Eliminar detalles (automático por CASCADE, pero por claridad)
+                // Obtener detalles antes de eliminar para restar del inventario
+                $stmt = $db->prepare("
+                    SELECT id_producto, docenas, unidades 
+                    FROM detalle_produccion_tejeduria 
+                    WHERE id_produccion = ?
+                ");
+                $stmt->execute([$id_produccion]);
+                $detalles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Restar del inventario
+                $stmt_inv_check = $db->prepare("
+                    SELECT id_inventario, docenas, unidades 
+                    FROM inventario_intermedio 
+                    WHERE id_producto = ? AND tipo_inventario = 'tejido'
+                ");
+                
+                $stmt_inv_update = $db->prepare("
+                    UPDATE inventario_intermedio 
+                    SET docenas = ?, unidades = ? 
+                    WHERE id_inventario = ?
+                ");
+                
+                foreach ($detalles as $detalle) {
+                    $stmt_inv_check->execute([$detalle['id_producto']]);
+                    $inventario = $stmt_inv_check->fetch(PDO::FETCH_ASSOC);
+                    
+                    if ($inventario) {
+                        $total_actual = ($inventario['docenas'] * 12) + $inventario['unidades'];
+                        $total_restar = ($detalle['docenas'] * 12) + $detalle['unidades'];
+                        $total_final = max(0, $total_actual - $total_restar);
+                        
+                        $docenas_final = floor($total_final / 12);
+                        $unidades_final = $total_final % 12;
+                        
+                        $stmt_inv_update->execute([
+                            $docenas_final,
+                            $unidades_final,
+                            $inventario['id_inventario']
+                        ]);
+                    }
+                }
+                
+                // Eliminar detalles
                 $stmt = $db->prepare("DELETE FROM detalle_produccion_tejeduria WHERE id_produccion = ?");
                 $stmt->execute([$id_produccion]);
                 
@@ -345,9 +431,7 @@ try {
     ob_clean();
     echo json_encode([
         'success' => false,
-        'message' => 'Error de base de datos',
-        'error' => $e->getMessage(),
-        'sql_state' => $e->getCode()
+        'message' => 'Error de base de datos: ' . $e->getMessage()
     ]);
 } catch(Exception $e) {
     error_log("Error en produccion.php: " . $e->getMessage());

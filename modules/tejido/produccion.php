@@ -274,7 +274,7 @@ textarea.form-control {
     </div>
 </div>
 
-<!-- Modal -->
+<!-- Modal Principal -->
 <div id="modalProduccion" class="modal">
     <div class="modal-content" style="max-width: 1400px; max-height: 95vh;">
         <div class="modal-header" style="padding: 10px 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-bottom: none;">
@@ -449,6 +449,7 @@ textarea.form-control {
 const baseUrl = window.location.origin + '/mes_hermen';
 let producciones = [];
 let maquinas = [];
+let maquinasOperativas = [];
 let productos = [];
 let turnos = [];
 let tejedores = [];
@@ -465,6 +466,12 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTejedores()
     ]).then(() => {
         loadProducciones();
+        console.log('✓ Todos los datos cargados');
+        console.log(`  - Máquinas totales: ${maquinas.length}`);
+        console.log(`  - Máquinas operativas: ${maquinasOperativas.length}`);
+        console.log(`  - Productos: ${productos.length}`);
+        console.log(`  - Turnos: ${turnos.length}`);
+        console.log(`  - Tejedores: ${tejedores.length}`);
     });
 });
 
@@ -508,6 +515,9 @@ async function loadMaquinas() {
         const data = await response.json();
         if (data.success) {
             maquinas = data.maquinas || [];
+            // Filtrar solo máquinas operativas (minúsculas como está en tu BD)
+            maquinasOperativas = maquinas.filter(m => m.estado === 'operativa');
+            console.log(`✓ ${maquinasOperativas.length} máquinas operativas de ${maquinas.length} totales`);
         }
     } catch (error) {
         console.error('Error cargando máquinas:', error);
@@ -559,11 +569,10 @@ async function loadTejedores() {
         const response = await fetch(baseUrl + '/api/catalogos.php?tipo=tejedores');
         const data = await response.json();
         
-        console.log('Tejedores:', data);
+        console.log('Respuesta tejedores:', data);
 
         if (data.success) {
             tejedores = data.usuarios || [];
-
             console.log(`✓ ${tejedores.length} tejedores cargados`);
             
             const selectTejedor = document.getElementById('id_tejedor');
@@ -627,6 +636,9 @@ function renderProducciones(data) {
     `).join('');
 }
 
+// =============================================
+// FUNCIÓN renderDetalles() CORREGIDA
+// =============================================
 function renderDetalles() {
     const tbody = document.getElementById('bodyDetalles');
     
@@ -644,8 +656,15 @@ function renderDetalles() {
     }
     
     tbody.innerHTML = detalles.map((detalle, index) => {
-        const maquinaSeleccionada = maquinas.find(m => m.id_maquina == detalle.id_maquina);
-        const productoSeleccionado = productos.find(p => p.id_producto == detalle.id_producto);
+        // Generar opciones de máquinas
+        const opcionesMaquinas = maquinasOperativas.map(m => 
+            `<option value="${m.id_maquina}" ${m.id_maquina == detalle.id_maquina ? 'selected' : ''}>${m.numero_maquina}</option>`
+        ).join('');
+        
+        // Generar opciones de productos
+        const opcionesProductos = productos.map(p => 
+            `<option value="${p.id_producto}" ${p.id_producto == detalle.id_producto ? 'selected' : ''}>${p.codigo_producto} - ${p.talla}</option>`
+        ).join('');
         
         return `
             <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
@@ -653,24 +672,14 @@ function renderDetalles() {
                     <select onchange="cambiarMaquina(${index}, this.value)" required 
                             style="width: 100%; height: 30px; padding: 4px 8px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 4px;">
                         <option value="">Seleccione...</option>
-                        ${maquinas
-                            .filter(m => m.estado === 'Operativa')
-                            .map(m => `
-                                <option value="${m.id_maquina}" ${m.id_maquina == detalle.id_maquina ? 'selected' : ''}>
-                                    ${m.numero_maquina}
-                                </option>
-                            `).join('')}
+                        ${opcionesMaquinas}
                     </select>
                 </td>
                 <td style="padding: 6px;">
                     <select onchange="cambiarProducto(${index}, this.value)" required
                             style="width: 100%; height: 30px; padding: 4px 8px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 4px;">
                         <option value="">Seleccione producto...</option>
-                        ${productos.map(p => `
-                            <option value="${p.id_producto}" ${p.id_producto == detalle.id_producto ? 'selected' : ''}>
-                                ${p.codigo_producto} - ${p.talla}
-                            </option>
-                        `).join('')}
+                        ${opcionesProductos}
                     </select>
                 </td>
                 <td style="padding: 6px;">
@@ -719,7 +728,8 @@ function actualizarTotales() {
 }
 
 async function openModal() {
-    if (maquinas.length === 0 || productos.length === 0 || turnos.length === 0 || tejedores.length === 0) {
+    if (maquinasOperativas.length === 0 || productos.length === 0 || turnos.length === 0) {
+        showNotification('Cargando datos...', 'info');
         await Promise.all([
             loadMaquinas(),
             loadProductos(),
@@ -727,6 +737,7 @@ async function openModal() {
             loadTejedores()
         ]);
     }
+    
     document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Nueva Producción';
     document.getElementById('formProduccion').reset();
     document.getElementById('id_produccion').value = '';
@@ -734,8 +745,22 @@ async function openModal() {
     const hoy = new Date().toISOString().split('T')[0];
     document.getElementById('fecha_produccion').value = hoy;
     
-    detalles = [];
+    // Generar código de lote automático
+    const fecha = new Date();
+    const codigoLote = `${fecha.getDate().toString().padStart(2,'0')}${(fecha.getMonth()+1).toString().padStart(2,'0')}${fecha.getFullYear().toString().slice(-2)}-1`;
+    document.getElementById('codigo_lote').value = codigoLote;
+    
+    // Pre-cargar TODAS las máquinas operativas
+    detalles = maquinasOperativas.map(m => ({
+        id_maquina: m.id_maquina,
+        id_producto: '',
+        docenas: 0,
+        unidades: 0,
+        total_unidades: 0
+    }));
+    
     renderDetalles();
+    showNotification(`✓ ${maquinasOperativas.length} máquinas operativas cargadas`, 'success');
     
     document.getElementById('modalProduccion').classList.add('show');
 }
@@ -780,8 +805,11 @@ async function editarProduccion(id) {
 async function guardarProduccion(event) {
     event.preventDefault();
     
-    if (detalles.length === 0) {
-        showNotification('Debe agregar al menos una máquina', 'warning');
+    // Filtrar solo detalles con máquina y producto asignados
+    const detallesValidos = detalles.filter(d => d.id_maquina && d.id_producto);
+    
+    if (detallesValidos.length === 0) {
+        showNotification('Debe asignar producto a al menos una máquina', 'warning');
         return;
     }
     
@@ -793,7 +821,7 @@ async function guardarProduccion(event) {
         id_turno: parseInt(document.getElementById('id_turno').value),
         id_tejedor: document.getElementById('id_tejedor').value || null,
         observaciones: document.getElementById('observaciones').value,
-        detalles: detalles.map(d => ({
+        detalles: detallesValidos.map(d => ({
             id_maquina: parseInt(d.id_maquina),
             id_producto: parseInt(d.id_producto),
             docenas: parseInt(d.docenas) || 0,
@@ -824,7 +852,7 @@ async function guardarProduccion(event) {
 }
 
 async function eliminarProduccion(id) {
-    if (!confirm('¿Eliminar esta producción?')) {
+    if (!confirm('¿Eliminar esta producción? Esta acción también revertirá el inventario.')) {
         return;
     }
     
@@ -883,7 +911,7 @@ function cambiarUnidades(index, valor) {
     let unidades = parseInt(valor) || 0;
     
     if (unidades > 11) {
-        showNotification('Unidades máximo 11', 'warning');
+        showNotification('Unidades máximo 11 (se convierte a docenas)', 'warning');
         unidades = 11;
     }
     
@@ -900,14 +928,25 @@ function limpiarDetalles() {
     renderDetalles();
 }
 
+// =============================================
+// IMPORTAR PLAN GENÉRICO
+// =============================================
 async function importarPlanGenerico() {
     try {
+        showNotification('Buscando plan genérico vigente...', 'info');
+        
         const response = await fetch(baseUrl + '/api/plan_generico.php?vigente=true');
         const data = await response.json();
         
-        if (data.success && data.plan && data.detalles) {
-            const detallesImportados = data.detalles
-                .filter(d => d.accion === 'MANTENER')
+        console.log('Respuesta plan genérico:', data);
+        
+        if (data.success && data.plan && data.detalle && data.detalle.length > 0) {
+            const detallesImportados = data.detalle
+                .filter(d => d.accion && d.accion.toLowerCase() === 'mantener')
+                .filter(d => {
+                    const maquina = maquinasOperativas.find(m => m.id_maquina == d.id_maquina);
+                    return maquina !== undefined;
+                })
                 .map(d => ({
                     id_maquina: d.id_maquina,
                     id_producto: d.id_producto_actual,
@@ -919,16 +958,62 @@ async function importarPlanGenerico() {
             if (detallesImportados.length > 0) {
                 detalles = detallesImportados;
                 renderDetalles();
-                showNotification(`Importadas ${detallesImportados.length} máquinas`, 'success');
+                showNotification(`✓ Importadas ${detallesImportados.length} máquinas del plan "${data.plan.nombre_plan}"`, 'success');
             } else {
-                showNotification('No hay máquinas MANTENER', 'info');
+                showNotification('El plan vigente no tiene máquinas con acción MANTENER', 'warning');
             }
         } else {
-            showNotification('No hay plan vigente', 'warning');
+            showNotification('No hay plan genérico vigente o está vacío. Cree uno primero.', 'warning');
         }
     } catch (error) {
         console.error('Error:', error);
-        showNotification('Error al importar', 'error');
+        showNotification('Error al importar plan: ' + error.message, 'error');
+    }
+}
+
+// =============================================
+// IMPORTAR ÚLTIMO REGISTRO
+// =============================================
+async function importarUltimoRegistro() {
+    try {
+        showNotification('Buscando último registro...', 'info');
+        
+        const response = await fetch(baseUrl + '/api/produccion.php?ultimo=true');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Respuesta último registro:', data);
+        
+        if (data.success && data.produccion && data.detalles && data.detalles.length > 0) {
+            // Importar turno y tejedor
+            document.getElementById('id_turno').value = data.produccion.id_turno || '';
+            document.getElementById('id_tejedor').value = data.produccion.id_tejedor || '';
+            
+            // Importar detalles de máquinas (con cantidad en 0 para nuevo registro)
+            detalles = data.detalles
+                .filter(d => {
+                    const maquina = maquinasOperativas.find(m => m.id_maquina == d.id_maquina);
+                    return maquina !== undefined;
+                })
+                .map(d => ({
+                    id_maquina: d.id_maquina,
+                    id_producto: d.id_producto,
+                    docenas: 0,
+                    unidades: 0,
+                    total_unidades: 0
+                }));
+            
+            renderDetalles();
+            showNotification(`✓ Importadas ${detalles.length} máquinas del registro ${data.produccion.codigo_lote}`, 'success');
+        } else {
+            showNotification('No hay registros previos para importar', 'warning');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error al importar: ' + error.message, 'error');
     }
 }
 
@@ -1005,7 +1090,7 @@ async function verDetalle(id) {
                                 <td><span class="badge badge-info">${d.nombre_linea}</span></td>
                                 <td class="text-center">${d.docenas}</td>
                                 <td class="text-center">${d.unidades}</td>
-                                <td class="text-center"><strong>${d.total_unidades}</strong></td>
+                                <td class="text-center"><strong>${d.docenas}|${d.unidades}</strong></td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1035,7 +1120,7 @@ function imprimirDetalle() {
 function calcularTotal(detalles) {
     let totalUnidades = 0;
     detalles.forEach(d => {
-        totalUnidades += d.total_unidades;
+        totalUnidades += (d.docenas * 12) + d.unidades;
     });
     const docenas = Math.floor(totalUnidades / 12);
     const unidades = totalUnidades % 12;
@@ -1080,74 +1165,6 @@ function showNotification(message, type = 'info') {
     setTimeout(() => {
         notification.remove();
     }, 4000);
-}
-
-async function importarUltimoRegistro() {
-    try {
-        const response = await fetch(baseUrl + '/api/produccion.php?ultimo=true');
-        const data = await response.json();
-        
-        if (data.success && data.produccion && data.detalles) {
-            const ultimaProduccion = data.produccion;
-            const ultimosDetalles = data.detalles;
-            
-            // Importar datos generales (excepto código lote y fecha)
-            document.getElementById('id_turno').value = ultimaProduccion.id_turno;
-            document.getElementById('id_tejedor').value = ultimaProduccion.id_tejedor || '';
-            
-            // Importar detalles de máquinas
-            detalles = ultimosDetalles.map(d => ({
-                id_maquina: d.id_maquina,
-                id_producto: d.id_producto,
-                docenas: 0, // Empezar en 0 para nuevo registro
-                unidades: 0,
-                total_unidades: 0
-            }));
-            
-            renderDetalles();
-            showNotification(`Importadas ${detalles.length} máquinas del último registro`, 'success');
-        } else {
-            showNotification('No hay registros previos para importar', 'warning');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showNotification('Error al importar último registro', 'error');
-    }
-}
-
-async function importarUltimoRegistro() {
-    try {
-        console.log('Importando último registro...');
-        const response = await fetch(baseUrl + '/api/produccion.php?ultimo=true');
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Respuesta último:', data);
-        
-        if (data.success && data.produccion && data.detalles) {
-            document.getElementById('id_turno').value = data.produccion.id_turno || '';
-            document.getElementById('id_tejedor').value = data.produccion.id_tejedor || '';
-            
-            detalles = data.detalles.map(d => ({
-                id_maquina: d.id_maquina,
-                id_producto: d.id_producto,
-                docenas: 0,
-                unidades: 0,
-                total_unidades: 0
-            }));
-            
-            renderDetalles();
-            showNotification(`✓ Importadas ${detalles.length} máquinas del último registro`, 'success');
-        } else {
-            showNotification('No hay registros previos', 'warning');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showNotification('Error al importar: ' + error.message, 'error');
-    }
 }
 </script>
 

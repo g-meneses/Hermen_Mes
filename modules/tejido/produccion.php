@@ -276,109 +276,146 @@ textarea.form-control {
 
 <!-- Modal -->
 <div id="modalProduccion" class="modal">
-    <div class="modal-content" style="max-width: 1200px; max-height: 92vh; overflow-y: auto;">
-        <div class="modal-header" style="padding: 8px 12px; background: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-            <h3 id="modalTitle" style="margin: 0; font-size: 1rem;"><i class="fas fa-plus-circle"></i> Nueva Producción</h3>
-            <button type="button" class="close" onclick="closeModal()" style="font-size: 1.3rem;">&times;</button>
+    <div class="modal-content" style="max-width: 1400px; max-height: 95vh;">
+        <div class="modal-header" style="padding: 10px 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-bottom: none;">
+            <h3 id="modalTitle" style="margin: 0; font-size: 1.1rem; font-weight: 600;">
+                <i class="fas fa-plus-circle"></i> Nueva Producción
+            </h3>
+            <button type="button" class="close" onclick="closeModal()" style="color: white; opacity: 1; font-size: 1.5rem; text-shadow: none;">&times;</button>
         </div>
-        <div class="modal-body" style="padding: 10px;">
+        
+        <div class="modal-body" style="padding: 15px; background: #f8f9fa;">
             <form id="formProduccion" onsubmit="guardarProduccion(event)">
                 <input type="hidden" id="id_produccion">
                 
-                <!-- Datos Generales en una fila -->
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 6px;">
-                    <div>
-                        <label style="font-size: 0.75rem; margin-bottom: 2px; font-weight: 600; display: block;">Código Lote: <span class="text-danger">*</span></label>
-                        <input type="text" id="codigo_lote" required style="width: 100%; height: 28px; padding: 3px 6px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 3px;" placeholder="Ej: 231125-1">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.75rem; margin-bottom: 2px; font-weight: 600; display: block;">Fecha: <span class="text-danger">*</span></label>
-                        <input type="date" id="fecha_produccion" required style="width: 100%; height: 28px; padding: 3px 6px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 3px;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.75rem; margin-bottom: 2px; font-weight: 600; display: block;">Turno: <span class="text-danger">*</span></label>
-                        <select id="id_turno" required style="width: 100%; height: 28px; padding: 3px 6px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 3px;">
-                            <option value="">Seleccione...</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.75rem; margin-bottom: 2px; font-weight: 600; display: block;">Tejedor:</label>
-                        <select id="id_tejedor" style="width: 100%; height: 28px; padding: 3px 6px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 3px;">
-                            <option value="">Sin asignar</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 6px;">
-                    <label style="font-size: 0.75rem; margin-bottom: 2px; font-weight: 600; display: block;">Observaciones:</label>
-                    <textarea id="observaciones" rows="2" style="width: 100%; padding: 4px 6px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 3px;" placeholder="Ej: Apagón de luz a las 10:30 am"></textarea>
-                </div>
-
-                <hr style="margin: 6px 0; border-color: #ddd;">
-
-                <!-- Botones -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                    <h6 style="margin: 0; font-size: 0.9rem;">
-                        <i class="fas fa-cogs"></i> Producción por Máquina
-                        <span class="badge badge-info" id="contadorMaquinas" style="margin-left: 6px; font-size: 0.7rem; padding: 2px 5px;">0 máqs</span>
+                <!-- Datos Generales -->
+                <div style="background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);">
+                    <h6 style="margin: 0 0 10px 0; font-size: 0.9rem; color: #495057; border-bottom: 2px solid #e9ecef; padding-bottom: 5px;">
+                        <i class="fas fa-info-circle"></i> Información General
                     </h6>
-                    <div style="display: flex; gap: 4px;">
-                        <button type="button" class="btn btn-sm btn-success" onclick="agregarMaquina()" style="padding: 3px 8px; font-size: 0.75rem;">
-                            <i class="fas fa-plus"></i> Agregar
-                        </button>
-                        <button type="button" class="btn btn-sm btn-info" onclick="importarPlanGenerico()" style="padding: 3px 8px; font-size: 0.75rem;">
-                            <i class="fas fa-file-import"></i> Importar
-                        </button>
-                        <button type="button" class="btn btn-sm btn-warning" onclick="limpiarDetalles()" style="padding: 3px 8px; font-size: 0.75rem;">
-                            <i class="fas fa-trash"></i> Limpiar
-                        </button>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 600; color: #495057; display: block; margin-bottom: 3px;">
+                                Código Lote <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" id="codigo_lote" required 
+                                   style="width: 100%; height: 32px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 4px;"
+                                   placeholder="Ej: 241125-1">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 600; color: #495057; display: block; margin-bottom: 3px;">
+                                Fecha Producción <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" id="fecha_produccion" required 
+                                   style="width: 100%; height: 32px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 600; color: #495057; display: block; margin-bottom: 3px;">
+                                Turno <span class="text-danger">*</span>
+                            </label>
+                            <select id="id_turno" required 
+                                    style="width: 100%; height: 32px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 4px;">
+                                <option value="">Seleccione turno...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.75rem; font-weight: 600; color: #495057; display: block; margin-bottom: 3px;">
+                                Tejedor
+                            </label>
+                            <select id="id_tejedor" 
+                                    style="width: 100%; height: 32px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 4px;">
+                                <option value="">Sin asignar</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 10px;">
+                        <label style="font-size: 0.75rem; font-weight: 600; color: #495057; display: block; margin-bottom: 3px;">
+                            Observaciones
+                        </label>
+                        <textarea id="observaciones" rows="2" 
+                                  style="width: 100%; padding: 6px 8px; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 4px; resize: vertical;"
+                                  placeholder="Ej: Apagón de luz a las 10:30 am"></textarea>
                     </div>
                 </div>
 
-                <!-- Tabla -->
-                <div style="max-height: 360px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 6px;">
-                    <table class="table table-bordered table-sm" style="margin: 0; font-size: 0.8rem;">
-                        <thead style="background: #343a40; color: white; position: sticky; top: 0; z-index: 10;">
-                            <tr>
-                                <th style="width: 120px; padding: 5px; font-size: 0.75rem;">Máquina</th>
-                                <th style="padding: 5px; font-size: 0.75rem;">Producto</th>
-                                <th style="width: 70px; padding: 5px; font-size: 0.75rem;">Docenas</th>
-                                <th style="width: 70px; padding: 5px; font-size: 0.75rem;">Unids.</th>
-                                <th style="width: 80px; text-align: center; padding: 5px; font-size: 0.75rem;">Total</th>
-                                <th style="width: 50px; text-align: center; padding: 5px; font-size: 0.75rem;">Acc.</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bodyDetalles">
-                            <tr>
-                                <td colspan="6" class="text-center text-muted" style="padding: 12px; font-size: 0.8rem;">
-                                    No hay máquinas. Click "Agregar" para comenzar.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <!-- Sección de Producción por Máquina -->
+                <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08);">
+                    <!-- Header con botones -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">
+                        <h6 style="margin: 0; font-size: 0.9rem; color: #495057;">
+                            <i class="fas fa-cogs"></i> Producción por Máquina
+                            <span class="badge badge-primary" id="contadorMaquinas" style="margin-left: 8px; font-size: 0.75rem;">0 máqs</span>
+                        </h6>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn btn-success btn-sm" onclick="agregarMaquina()" 
+                                    style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-plus"></i> Agregar
+                            </button>
+                            <button type="button" class="btn btn-info btn-sm" onclick="importarPlanGenerico()" 
+                                    style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-file-import"></i> Importar Plan
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="importarUltimoRegistro()" 
+                                    style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-history"></i> Último Registro
+                            </button>
+                            <button type="button" class="btn btn-warning btn-sm" onclick="limpiarDetalles()" 
+                                    style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
+                                <i class="fas fa-trash"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
 
-                <!-- Nota -->
-                <div class="alert alert-info" style="padding: 5px 8px; margin-bottom: 6px; font-size: 0.7rem;">
-                    <i class="fas fa-info-circle"></i> <strong>Nota:</strong> Unidades entre 0-11. Formato: docenas|unidades (Ej: 20|11 = 251 unids)
-                </div>
+                    <!-- Tabla de detalles con scroll -->
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px;">
+                        <table class="table table-sm table-hover" style="margin: 0; font-size: 0.85rem;">
+                            <thead style="background: #495057; color: white; position: sticky; top: 0; z-index: 10;">
+                                <tr>
+                                    <th style="width: 130px; padding: 8px; font-size: 0.8rem; border: none;">Máquina</th>
+                                    <th style="padding: 8px; font-size: 0.8rem; border: none;">Producto</th>
+                                    <th style="width: 100px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Docenas</th>
+                                    <th style="width: 100px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Unidades</th>
+                                    <th style="width: 90px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Total</th>
+                                    <th style="width: 60px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bodyDetalles">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted" style="padding: 20px; font-size: 0.85rem;">
+                                        <i class="fas fa-inbox fa-2x mb-2" style="opacity: 0.3;"></i><br>
+                                        No hay máquinas agregadas. Click en "Agregar" o "Importar Plan" para comenzar.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-                <!-- Totales -->
-                <div style="text-align: right;">
-                    <span style="font-size: 0.9rem;">
-                        Total: 
-                        <span class="badge badge-success" id="totalGeneral" style="font-size: 0.85rem; padding: 4px 7px;">0|0</span>
-                        <small class="text-muted" style="font-size: 0.75rem;">(<span id="totalUnidadesGeneral">0</span> unids)</small>
-                    </span>
+                    <!-- Nota informativa -->
+                    <div style="background: #e7f3ff; border-left: 3px solid #0056b3; padding: 8px 12px; margin-top: 10px; border-radius: 4px;">
+                        <small style="font-size: 0.75rem; color: #004085;">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Formato:</strong> Unidades deben estar entre 0-11. Total se calcula automáticamente.
+                        </small>
+                    </div>
+
+                    <!-- Total general -->
+                    <div style="text-align: right; margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
+                        <span style="font-size: 1rem; font-weight: 600; color: #495057;">
+                            Total General: 
+                            <span class="badge badge-success" id="totalGeneral" style="font-size: 1rem; padding: 6px 12px; margin-left: 8px;">0|0</span>
+                        </span>
+                    </div>
                 </div>
             </form>
         </div>
-        <div class="modal-footer" style="padding: 6px 12px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
-            <button type="button" class="btn btn-sm btn-secondary" onclick="closeModal()" style="padding: 4px 10px; font-size: 0.8rem;">
+        
+        <div class="modal-footer" style="padding: 10px 15px; background: #f8f9fa; border-top: 1px solid #dee2e6;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()" style="padding: 6px 16px; font-size: 0.9rem;">
                 <i class="fas fa-times"></i> Cancelar
             </button>
-            <button type="submit" form="formProduccion" class="btn btn-sm btn-primary" style="padding: 4px 10px; font-size: 0.8rem;">
-                <i class="fas fa-save"></i> Guardar
+            <button type="submit" form="formProduccion" class="btn btn-primary" style="padding: 6px 16px; font-size: 0.9rem;">
+                <i class="fas fa-save"></i> Guardar Producción
             </button>
         </div>
     </div>
@@ -521,8 +558,13 @@ async function loadTejedores() {
     try {
         const response = await fetch(baseUrl + '/api/catalogos.php?tipo=tejedores');
         const data = await response.json();
+        
+        console.log('Tejedores:', data);
+
         if (data.success) {
             tejedores = data.usuarios || [];
+
+            console.log(`✓ ${tejedores.length} tejedores cargados`);
             
             const selectTejedor = document.getElementById('id_tejedor');
             selectTejedor.innerHTML = '<option value="">Sin asignar</option>';
@@ -566,7 +608,6 @@ function renderProducciones(data) {
             </td>
             <td style="padding: 5px 6px; font-size: 0.8rem;">
                 <strong>${prod.total_docenas}|${prod.total_unidades}</strong>
-                <small class="text-muted">(${prod.total_unidades_calc})</small>
             </td>
             <td class="text-center" style="padding: 5px 6px;">
                 <button class="btn btn-info btn-sm" onclick="verDetalle(${prod.id_produccion})" 
@@ -592,8 +633,9 @@ function renderDetalles() {
     if (detalles.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center text-muted" style="padding: 12px; font-size: 0.8rem;">
-                    No hay máquinas. Click "Agregar" para comenzar.
+                <td colspan="6" class="text-center text-muted" style="padding: 20px; font-size: 0.85rem;">
+                    <i class="fas fa-inbox fa-2x mb-2" style="opacity: 0.3;"></i><br>
+                    No hay máquinas agregadas. Click en "Agregar" o "Importar Plan" para comenzar.
                 </td>
             </tr>
         `;
@@ -602,23 +644,28 @@ function renderDetalles() {
     }
     
     tbody.innerHTML = detalles.map((detalle, index) => {
+        const maquinaSeleccionada = maquinas.find(m => m.id_maquina == detalle.id_maquina);
+        const productoSeleccionado = productos.find(p => p.id_producto == detalle.id_producto);
+        
         return `
-            <tr>
-                <td style="padding: 3px;">
+            <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'};">
+                <td style="padding: 6px;">
                     <select onchange="cambiarMaquina(${index}, this.value)" required 
-                            style="width: 100%; height: 26px; padding: 2px 4px; font-size: 0.75rem; border: 1px solid #ced4da;">
-                        <option value="">Sel...</option>
-                        ${maquinas.map(m => `
-                            <option value="${m.id_maquina}" ${m.id_maquina == detalle.id_maquina ? 'selected' : ''}>
-                                ${m.numero_maquina}
-                            </option>
-                        `).join('')}
+                            style="width: 100%; height: 30px; padding: 4px 8px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 4px;">
+                        <option value="">Seleccione...</option>
+                        ${maquinas
+                            .filter(m => m.estado === 'Operativa')
+                            .map(m => `
+                                <option value="${m.id_maquina}" ${m.id_maquina == detalle.id_maquina ? 'selected' : ''}>
+                                    ${m.numero_maquina}
+                                </option>
+                            `).join('')}
                     </select>
                 </td>
-                <td style="padding: 3px;">
+                <td style="padding: 6px;">
                     <select onchange="cambiarProducto(${index}, this.value)" required
-                            style="width: 100%; height: 26px; padding: 2px 4px; font-size: 0.75rem; border: 1px solid #ced4da;">
-                        <option value="">Seleccione...</option>
+                            style="width: 100%; height: 30px; padding: 4px 8px; font-size: 0.8rem; border: 1px solid #ced4da; border-radius: 4px;">
+                        <option value="">Seleccione producto...</option>
                         ${productos.map(p => `
                             <option value="${p.id_producto}" ${p.id_producto == detalle.id_producto ? 'selected' : ''}>
                                 ${p.codigo_producto} - ${p.talla}
@@ -626,24 +673,28 @@ function renderDetalles() {
                         `).join('')}
                     </select>
                 </td>
-                <td style="padding: 3px;">
+                <td style="padding: 6px;">
                     <input type="number" min="0" 
                            value="${detalle.docenas}" 
-                           onchange="cambiarDocenas(${index}, this.value)" required
-                           style="width: 100%; height: 26px; padding: 2px 4px; font-size: 0.75rem; border: 1px solid #ced4da;">
+                           onchange="cambiarDocenas(${index}, this.value)" 
+                           required
+                           style="width: 100%; height: 30px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 4px; text-align: center;">
                 </td>
-                <td style="padding: 3px;">
+                <td style="padding: 6px;">
                     <input type="number" min="0" max="11" 
                            value="${detalle.unidades}" 
-                           onchange="cambiarUnidades(${index}, this.value)" required
-                           style="width: 100%; height: 26px; padding: 2px 4px; font-size: 0.75rem; border: 1px solid #ced4da;">
+                           onchange="cambiarUnidades(${index}, this.value)" 
+                           required
+                           style="width: 100%; height: 30px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 4px; text-align: center;">
                 </td>
-                <td class="text-center" style="padding: 3px;">
-                    <small><strong>${detalle.total_unidades || 0}</strong></small>
+                <td class="text-center" style="padding: 6px;">
+                    <span class="badge badge-info" style="font-size: 0.85rem; padding: 4px 8px;">
+                        ${detalle.docenas}|${detalle.unidades}
+                    </span>
                 </td>
-                <td class="text-center" style="padding: 3px;">
+                <td class="text-center" style="padding: 6px;">
                     <button type="button" class="btn btn-danger btn-sm" onclick="eliminarDetalle(${index})" 
-                            title="X" style="padding: 2px 4px; font-size: 0.7rem;">
+                            title="Eliminar" style="padding: 4px 8px; font-size: 0.75rem;">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -664,11 +715,18 @@ function actualizarTotales() {
     const unidades = totalUnidades % 12;
     
     document.getElementById('totalGeneral').textContent = `${docenas}|${unidades}`;
-    document.getElementById('totalUnidadesGeneral').textContent = totalUnidades;
     document.getElementById('contadorMaquinas').textContent = `${detalles.length} máqs`;
 }
 
-function openModal() {
+async function openModal() {
+    if (maquinas.length === 0 || productos.length === 0 || turnos.length === 0 || tejedores.length === 0) {
+        await Promise.all([
+            loadMaquinas(),
+            loadProductos(),
+            loadTurnos(),
+            loadTejedores()
+        ]);
+    }
     document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Nueva Producción';
     document.getElementById('formProduccion').reset();
     document.getElementById('id_produccion').value = '';
@@ -1022,6 +1080,74 @@ function showNotification(message, type = 'info') {
     setTimeout(() => {
         notification.remove();
     }, 4000);
+}
+
+async function importarUltimoRegistro() {
+    try {
+        const response = await fetch(baseUrl + '/api/produccion.php?ultimo=true');
+        const data = await response.json();
+        
+        if (data.success && data.produccion && data.detalles) {
+            const ultimaProduccion = data.produccion;
+            const ultimosDetalles = data.detalles;
+            
+            // Importar datos generales (excepto código lote y fecha)
+            document.getElementById('id_turno').value = ultimaProduccion.id_turno;
+            document.getElementById('id_tejedor').value = ultimaProduccion.id_tejedor || '';
+            
+            // Importar detalles de máquinas
+            detalles = ultimosDetalles.map(d => ({
+                id_maquina: d.id_maquina,
+                id_producto: d.id_producto,
+                docenas: 0, // Empezar en 0 para nuevo registro
+                unidades: 0,
+                total_unidades: 0
+            }));
+            
+            renderDetalles();
+            showNotification(`Importadas ${detalles.length} máquinas del último registro`, 'success');
+        } else {
+            showNotification('No hay registros previos para importar', 'warning');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error al importar último registro', 'error');
+    }
+}
+
+async function importarUltimoRegistro() {
+    try {
+        console.log('Importando último registro...');
+        const response = await fetch(baseUrl + '/api/produccion.php?ultimo=true');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Respuesta último:', data);
+        
+        if (data.success && data.produccion && data.detalles) {
+            document.getElementById('id_turno').value = data.produccion.id_turno || '';
+            document.getElementById('id_tejedor').value = data.produccion.id_tejedor || '';
+            
+            detalles = data.detalles.map(d => ({
+                id_maquina: d.id_maquina,
+                id_producto: d.id_producto,
+                docenas: 0,
+                unidades: 0,
+                total_unidades: 0
+            }));
+            
+            renderDetalles();
+            showNotification(`✓ Importadas ${detalles.length} máquinas del último registro`, 'success');
+        } else {
+            showNotification('No hay registros previos', 'warning');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        showNotification('Error al importar: ' + error.message, 'error');
+    }
 }
 </script>
 

@@ -91,6 +91,25 @@ try {
             ]);
             break;
             
+
+        case 'tejedores':
+            // Usuarios con rol tejedor
+            $stmt = $db->query("
+                SELECT id_usuario, usuario, nombre_completo, rol 
+                FROM usuarios 
+                WHERE rol = 'tejedor' AND estado = 'activo' 
+                ORDER BY nombre_completo
+            ");
+            $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            ob_clean();
+            echo json_encode([
+                'success' => true,
+                'usuarios' => $usuarios
+            ]);
+            break;
+            
+            
         case 'all':
         default:
             // Todos los catálogos (comportamiento original)

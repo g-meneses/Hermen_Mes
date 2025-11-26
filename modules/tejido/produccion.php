@@ -276,7 +276,7 @@ textarea.form-control {
 
 <!-- Modal Principal -->
 <div id="modalProduccion" class="modal">
-    <div class="modal-content" style="max-width: 1400px; max-height: 95vh;">
+    <div class="modal-content" style="max-width: 950px; max-height: 95vh;">
         <div class="modal-header" style="padding: 10px 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-bottom: none;">
             <h3 id="modalTitle" style="margin: 0; font-size: 1.1rem; font-weight: 600;">
                 <i class="fas fa-plus-circle"></i> Nueva Producción
@@ -352,10 +352,12 @@ textarea.form-control {
                                     style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
                                 <i class="fas fa-plus"></i> Agregar
                             </button>
-                            <button type="button" class="btn btn-info btn-sm" onclick="importarPlanGenerico()" 
+                            <!-- desabilitamos el boton de importar plan generico por el momento 
+                             <button type="button" class="btn btn-info btn-sm" onclick="importarPlanGenerico()" 
                                     style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
                                 <i class="fas fa-file-import"></i> Importar Plan
                             </button>
+                            -->
                             <button type="button" class="btn btn-secondary btn-sm" onclick="importarUltimoRegistro()" 
                                     style="padding: 4px 10px; font-size: 0.8rem; display: flex; align-items: center; gap: 4px;">
                                 <i class="fas fa-history"></i> Último Registro
@@ -376,8 +378,8 @@ textarea.form-control {
                                     <th style="padding: 8px; font-size: 0.8rem; border: none;">Producto</th>
                                     <th style="width: 100px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Docenas</th>
                                     <th style="width: 100px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Unidades</th>
-                                    <th style="width: 90px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Total</th>
-                                    <th style="width: 60px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Acción</th>
+                                    <th style="width: 100px; padding: 8px; font-size: 0.8rem; text-align: center; border: none;">Acción</th>
+                                    
                                 </tr>
                             </thead>
                             <tbody id="bodyDetalles">
@@ -400,11 +402,11 @@ textarea.form-control {
                     </div>
 
                     <!-- Total general -->
-                    <div style="text-align: right; margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 4px;">
-                        <span style="font-size: 1rem; font-weight: 600; color: #495057;">
+                    <div style="display: flex; justify-content: flex-end; align-items: center; margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 4px; padding-right: 180px;">
+                        <span style="font-size: 1.4rem; font-weight: 600; color: #495057;">
                             Total General: 
-                            <span class="badge badge-success" id="totalGeneral" style="font-size: 1rem; padding: 6px 12px; margin-left: 8px;">0|0</span>
                         </span>
+                        <span class="badge badge-success" id="totalGeneral" style="font-size: 1.4rem !important; padding: 10px 20px !important; margin-left: 10px; font-weight: bold;">0|0</span>
                     </div>
                 </div>
             </form>
@@ -645,7 +647,7 @@ function renderDetalles() {
     if (detalles.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center text-muted" style="padding: 20px; font-size: 0.85rem;">
+                <td colspan="5" class="text-center text-muted" style="padding: 20px; font-size: 0.85rem;">
                     <i class="fas fa-inbox fa-2x mb-2" style="opacity: 0.3;"></i><br>
                     No hay máquinas agregadas. Click en "Agregar" o "Importar Plan" para comenzar.
                 </td>
@@ -696,12 +698,8 @@ function renderDetalles() {
                            required
                            style="width: 100%; height: 30px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #ced4da; border-radius: 4px; text-align: center;">
                 </td>
-                <td class="text-center" style="padding: 6px;">
-                    <span class="badge badge-info" style="font-size: 0.85rem; padding: 4px 8px;">
-                        ${detalle.docenas}|${detalle.unidades}
-                    </span>
-                </td>
-                <td class="text-center" style="padding: 6px;">
+                
+                <td style="padding: 6px; text-align: center; vertical-align: middle;">
                     <button type="button" class="btn btn-danger btn-sm" onclick="eliminarDetalle(${index})" 
                             title="Eliminar" style="padding: 4px 8px; font-size: 0.75rem;">
                         <i class="fas fa-trash"></i>
@@ -928,48 +926,6 @@ function limpiarDetalles() {
     renderDetalles();
 }
 
-// =============================================
-// IMPORTAR PLAN GENÉRICO
-// =============================================
-async function importarPlanGenerico() {
-    try {
-        showNotification('Buscando plan genérico vigente...', 'info');
-        
-        const response = await fetch(baseUrl + '/api/plan_generico.php?vigente=true');
-        const data = await response.json();
-        
-        console.log('Respuesta plan genérico:', data);
-        
-        if (data.success && data.plan && data.detalle && data.detalle.length > 0) {
-            const detallesImportados = data.detalle
-                .filter(d => d.accion && d.accion.toLowerCase() === 'mantener')
-                .filter(d => {
-                    const maquina = maquinasOperativas.find(m => m.id_maquina == d.id_maquina);
-                    return maquina !== undefined;
-                })
-                .map(d => ({
-                    id_maquina: d.id_maquina,
-                    id_producto: d.id_producto_actual,
-                    docenas: 0,
-                    unidades: 0,
-                    total_unidades: 0
-                }));
-            
-            if (detallesImportados.length > 0) {
-                detalles = detallesImportados;
-                renderDetalles();
-                showNotification(`✓ Importadas ${detallesImportados.length} máquinas del plan "${data.plan.nombre_plan}"`, 'success');
-            } else {
-                showNotification('El plan vigente no tiene máquinas con acción MANTENER', 'warning');
-            }
-        } else {
-            showNotification('No hay plan genérico vigente o está vacío. Cree uno primero.', 'warning');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showNotification('Error al importar plan: ' + error.message, 'error');
-    }
-}
 
 // =============================================
 // IMPORTAR ÚLTIMO REGISTRO
@@ -1020,9 +976,9 @@ async function importarUltimoRegistro() {
 async function verDetalle(id) {
     document.getElementById('modalDetalle').classList.add('show');
     document.getElementById('detalleContenido').innerHTML = `
-        <div class="text-center">
-            <i class="fas fa-spinner fa-spin fa-3x"></i>
-            <p>Cargando...</p>
+        <div class="text-center" style="padding: 40px;">
+            <i class="fas fa-spinner fa-spin fa-3x" style="color: #667eea;"></i>
+            <p style="margin-top: 15px; color: #666;">Cargando detalle...</p>
         </div>
     `;
     
@@ -1034,79 +990,544 @@ async function verDetalle(id) {
             const prod = data.produccion;
             const det = data.detalles;
             
+            // Calcular totales
+            let totalUnidades = 0;
+            det.forEach(d => {
+                totalUnidades += (d.docenas * 12) + d.unidades;
+            });
+            const totalDocenas = Math.floor(totalUnidades / 12);
+            const totalUnidadesResto = totalUnidades % 12;
+            
             let html = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <h5>Información General</h5>
-                        <table class="table table-bordered table-sm">
-                            <tr>
-                                <th width="120">Código:</th>
-                                <td><strong>${prod.codigo_lote}</strong></td>
-                            </tr>
-                            <tr>
-                                <th>Fecha:</th>
-                                <td>${formatDate(prod.fecha_produccion)}</td>
-                            </tr>
-                            <tr>
-                                <th>Turno:</th>
-                                <td><span class="badge badge-info">${prod.nombre_turno}</span></td>
-                            </tr>
-                            <tr>
-                                <th>Tejedor:</th>
-                                <td>${prod.nombre_tejedor || '<em>Sin asignar</em>'}</td>
-                            </tr>
-                            <tr>
-                                <th>Observ.:</th>
-                                <td>${prod.observaciones || '<em>Ninguna</em>'}</td>
-                            </tr>
+                <div id="contenidoImprimible">
+                    <!-- Header para impresión -->
+                    <div class="solo-impresion" style="display: none; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px;">
+                        <h2 style="margin: 0; font-size: 18px;">HERMEN LTDA.</h2>
+                        <p style="margin: 5px 0; font-size: 12px;">Sistema MES de Producción</p>
+                        <h3 style="margin: 10px 0 0 0; font-size: 16px;">REGISTRO DE PRODUCCIÓN DE TEJEDURÍA</h3>
+                    </div>
+                    
+                    <!-- Card Principal con 2 columnas -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        
+                        <!-- Columna Izquierda: Información General -->
+                        <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; border: 1px solid #e0e0e0;">
+                            <h6 style="margin: 0 0 12px 0; font-size: 0.9rem; color: #495057; border-bottom: 2px solid #667eea; padding-bottom: 8px;">
+                                <i class="fas fa-info-circle" style="color: #667eea;"></i> Información General
+                            </h6>
+                            <table style="width: 100%; font-size: 0.85rem;">
+                                <tr>
+                                    <td style="padding: 6px 0; font-weight: 600; color: #666; width: 100px;">Código:</td>
+                                    <td style="padding: 6px 0;"><strong style="font-size: 1rem; color: #333;">${prod.codigo_lote}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; font-weight: 600; color: #666;">Fecha:</td>
+                                    <td style="padding: 6px 0;">${formatDate(prod.fecha_produccion)}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; font-weight: 600; color: #666;">Turno:</td>
+                                    <td style="padding: 6px 0;">
+                                        <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 4px 12px; font-size: 0.8rem;">
+                                            ${prod.nombre_turno}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 6px 0; font-weight: 600; color: #666;">Tejedor:</td>
+                                    <td style="padding: 6px 0;">${prod.nombre_tejedor || '<em style="color: #999;">Sin asignar</em>'}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <!-- Columna Derecha: Resumen -->
+                        <div style="background: linear-gradient(135deg, #585958ff 0%, #929393ff 100%); border-radius: 8px; padding: 15px; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                            <h6 style="margin: 0 0 10px 0; font-size: 0.85rem; opacity: 0.9;">
+                                <i class="fas fa-chart-bar"></i> PRODUCCIÓN TOTAL
+                            </h6>
+                            <div style="font-size: 2.5rem; font-weight: bold; line-height: 1;">
+                                ${totalDocenas}|${totalUnidadesResto}
+                            </div>
+                            <div style="font-size: 0.9rem; opacity: 0.9; margin-top: 5px;">
+                                ${totalUnidades} unidades
+                            </div>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); width: 100%; text-align: center;">
+                                <i class="fas fa-cogs"></i> ${det.length} máquinas registradas
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Observaciones (debajo del card) -->
+                    <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; padding: 10px 15px; margin-bottom: 15px; ${!prod.observaciones ? 'display: none;' : ''}">
+                        <strong style="color: #856404;"><i class="fas fa-sticky-note"></i> Observaciones:</strong>
+                        <span style="color: #856404; margin-left: 8px;">${prod.observaciones || ''}</span>
+                    </div>
+                    
+                    <!-- Tabla de Detalle -->
+                    <div style="border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden;">
+                        <div style="background: #495057; color: white; padding: 10px 15px; font-size: 0.9rem; font-weight: 600;">
+                            <i class="fas fa-list"></i> Detalle por Máquina
+                        </div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="background: #f1f3f4;">
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6; width: 70px;">Máq.</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #dee2e6;">Producto</th>
+                                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6; width: 90px;">Línea</th>
+                                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6; width: 70px;">Doc.</th>
+                                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #dee2e6; width: 70px;">Unids.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${det.map((d, index) => `
+                                    <tr style="background: ${index % 2 === 0 ? '#ffffff' : '#f8f9fa'}; border-bottom: 1px solid #eee;">
+                                        <td style="padding: 8px 10px; font-weight: bold; color: #333;">${d.numero_maquina}</td>
+                                        <td style="padding: 8px 10px;">
+                                            <span style="color: #666; font-size: 0.8rem;">${d.codigo_producto}</span><br>
+                                            <span style="color: #333;">${d.descripcion_completa}</span>
+                                        </td>
+                                        <td style="padding: 8px 10px; text-align: center;">
+                                            <span class="badge" style="background: ${getColorLinea(d.codigo_linea)}; color: white; padding: 3px 8px; font-size: 0.75rem;">
+                                                ${d.nombre_linea}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 8px 10px; text-align: center; font-weight: 600; font-size: 0.95rem;">${d.docenas}</td>
+                                        <td style="padding: 8px 10px; text-align: center; font-weight: 600; font-size: 0.95rem;">${d.unidades}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background: #e9ecef; font-weight: bold;">
+                                    <td colspan="3" style="padding: 10px; text-align: right;">TOTAL:</td>
+                                    <td style="padding: 10px; text-align: center; font-size: 1rem; color: #28a745;">${totalDocenas}</td>
+                                    <td style="padding: 10px; text-align: center; font-size: 1rem; color: #28a745;">${totalUnidadesResto}</td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
-                    <div class="col-md-6">
-                        <h5>Resumen</h5>
-                        <div class="alert alert-success">
-                            <h4>Total: ${calcularTotal(det)}</h4>
-                            <p class="mb-0">Máquinas: ${det.length}</p>
+                    
+                    <!-- Footer para impresión -->
+                    <div class="solo-impresion" style="display: none; margin-top: 30px; padding-top: 15px; border-top: 1px solid #ccc;">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #666;">
+                            <div>Impreso: ${new Date().toLocaleString('es-BO')}</div>
+                            <div>Sistema MES Hermen v1.5.1</div>
+                        </div>
+                        <div style="margin-top: 40px; display: flex; justify-content: space-around;">
+                            <div style="text-align: center;">
+                                <div style="border-top: 1px solid #333; width: 150px; margin: 0 auto;"></div>
+                                <div style="font-size: 11px; margin-top: 5px;">Tejedor</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="border-top: 1px solid #333; width: 150px; margin: 0 auto;"></div>
+                                <div style="font-size: 11px; margin-top: 5px;">Supervisor</div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                
-                <h5 class="mt-3">Detalle por Máquina</h5>
-                <table class="table table-bordered table-striped table-sm">
-                    <thead class="thead-dark">
-                        <tr>
-                            <th>Máq.</th>
-                            <th>Producto</th>
-                            <th>Línea</th>
-                            <th>Doc.</th>
-                            <th>Unids.</th>
-                            <th>Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${det.map(d => `
-                            <tr>
-                                <td><strong>${d.numero_maquina}</strong></td>
-                                <td><small>${d.codigo_producto} - ${d.descripcion_completa}</small></td>
-                                <td><span class="badge badge-info">${d.nombre_linea}</span></td>
-                                <td class="text-center">${d.docenas}</td>
-                                <td class="text-center">${d.unidades}</td>
-                                <td class="text-center"><strong>${d.docenas}|${d.unidades}</strong></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
             `;
             
             document.getElementById('detalleContenido').innerHTML = html;
+        } else {
+            document.getElementById('detalleContenido').innerHTML = `
+                <div class="alert alert-danger" style="margin: 20px;">
+                    <i class="fas fa-exclamation-circle"></i> Error al cargar el detalle
+                </div>
+            `;
         }
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('detalleContenido').innerHTML = `
-            <div class="alert alert-danger">
-                Error al cargar detalle
+            <div class="alert alert-danger" style="margin: 20px;">
+                <i class="fas fa-exclamation-circle"></i> Error de conexión
             </div>
         `;
     }
+}
+
+// Función auxiliar para colores de línea
+function getColorLinea(codigoLinea) {
+    const colores = {
+        'LUJO': '#6f42c1',
+        'LY20': '#007bff',
+        'LY40': '#17a2b8',
+        'STRETCH': '#28a745',
+        'CAM': '#fd7e14'
+    };
+    return colores[codigoLinea] || '#6c757d';
+}
+
+// =============================================
+// REEMPLAZAR LA FUNCIÓN imprimirDetalle()
+// =============================================
+
+function imprimirDetalle() {
+    const contenido = document.getElementById('contenidoImprimible');
+    if (!contenido) {
+        showNotification('No hay contenido para imprimir', 'error');
+        return;
+    }
+    
+    // Crear ventana de impresión
+    const ventanaImpresion = window.open('', '_blank', 'width=800,height=600');
+    
+    ventanaImpresion.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Registro de Producción - Hermen Ltda.</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    line-height: 1.4;
+                    color: #333;
+                    padding: 15px;
+                }
+                
+                .header-empresa {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 15px;
+                    border-bottom: 2px solid #333;
+                }
+                
+                .header-empresa h1 {
+                    font-size: 20px;
+                    margin-bottom: 5px;
+                }
+                
+                .header-empresa p {
+                    font-size: 11px;
+                    color: #666;
+                }
+                
+                .header-empresa h2 {
+                    font-size: 16px;
+                    margin-top: 10px;
+                    color: #444;
+                }
+                
+                .info-grid {
+                    display: flex;
+                    gap: 20px;
+                    margin-bottom: 15px;
+                }
+                
+                .info-general {
+                    flex: 1;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    padding: 12px;
+                }
+                
+                .info-general h3 {
+                    font-size: 12px;
+                    border-bottom: 1px solid #ccc;
+                    padding-bottom: 5px;
+                    margin-bottom: 10px;
+                }
+                
+                .info-general table {
+                    width: 100%;
+                }
+                
+                .info-general td {
+                    padding: 4px 0;
+                }
+                
+                .info-general td:first-child {
+                    font-weight: bold;
+                    width: 80px;
+                    color: #666;
+                }
+                
+                .resumen {
+                    flex: 1;
+                    border: 2px solid #28a745;
+                    border-radius: 5px;
+                    padding: 12px;
+                    text-align: center;
+                    background: #f8fff8;
+                }
+                
+                .resumen h3 {
+                    font-size: 11px;
+                    color: #28a745;
+                    margin-bottom: 8px;
+                }
+                
+                .resumen .total-grande {
+                    font-size: 32px;
+                    font-weight: bold;
+                    color: #28a745;
+                }
+                
+                .resumen .total-unidades {
+                    font-size: 12px;
+                    color: #666;
+                }
+                
+                .resumen .maquinas {
+                    font-size: 11px;
+                    margin-top: 8px;
+                    padding-top: 8px;
+                    border-top: 1px solid #ccc;
+                }
+                
+                .observaciones {
+                    background: #fff9e6;
+                    border: 1px solid #ffc107;
+                    border-radius: 5px;
+                    padding: 10px;
+                    margin-bottom: 15px;
+                    font-size: 11px;
+                }
+                
+                .tabla-detalle {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                
+                .tabla-detalle th {
+                    background: #495057;
+                    color: white;
+                    padding: 8px;
+                    text-align: left;
+                    font-size: 11px;
+                }
+                
+                .tabla-detalle th:nth-child(4),
+                .tabla-detalle th:nth-child(5) {
+                    text-align: center;
+                }
+                
+                .tabla-detalle td {
+                    padding: 6px 8px;
+                    border-bottom: 1px solid #ddd;
+                }
+                
+                .tabla-detalle td:nth-child(4),
+                .tabla-detalle td:nth-child(5) {
+                    text-align: center;
+                    font-weight: bold;
+                }
+                
+                .tabla-detalle tr:nth-child(even) {
+                    background: #f9f9f9;
+                }
+                
+                .tabla-detalle tfoot td {
+                    background: #e9ecef;
+                    font-weight: bold;
+                    padding: 10px 8px;
+                }
+                
+                .badge-linea {
+                    display: inline-block;
+                    padding: 2px 8px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    color: white;
+                    background: #6c757d;
+                }
+                
+                .footer-impresion {
+                    margin-top: 30px;
+                    padding-top: 15px;
+                    border-top: 1px solid #ccc;
+                }
+                
+                .footer-info {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 10px;
+                    color: #666;
+                    margin-bottom: 30px;
+                }
+                
+                .firmas {
+                    display: flex;
+                    justify-content: space-around;
+                    margin-top: 40px;
+                }
+                
+                .firma {
+                    text-align: center;
+                }
+                
+                .firma .linea {
+                    border-top: 1px solid #333;
+                    width: 150px;
+                    margin: 0 auto;
+                }
+                
+                .firma .cargo {
+                    font-size: 10px;
+                    margin-top: 5px;
+                }
+                
+                @media print {
+                    body {
+                        padding: 0;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            ${generarContenidoImpresion()}
+        </body>
+        </html>
+    `);
+    
+    ventanaImpresion.document.close();
+    
+    // Esperar a que cargue y luego imprimir
+    setTimeout(() => {
+        ventanaImpresion.print();
+    }, 250);
+}
+
+// Función auxiliar para generar contenido de impresión
+function generarContenidoImpresion() {
+    const contenido = document.getElementById('contenidoImprimible');
+    if (!contenido) return '';
+    
+    // Obtener datos del DOM actual
+    const codigo = contenido.querySelector('strong[style*="font-size: 1rem"]')?.textContent || '';
+    const filas = contenido.querySelectorAll('tbody tr');
+    const totalText = contenido.querySelector('div[style*="font-size: 2.5rem"]')?.textContent || '0|0';
+    const unidadesText = contenido.querySelector('div[style*="font-size: 0.9rem"]')?.textContent || '0 unidades';
+    const maquinasText = contenido.querySelector('div[style*="border-top: 1px solid rgba"]')?.textContent || '0 máquinas';
+    
+    // Obtener info general
+    const infoTable = contenido.querySelector('table[style*="width: 100%"]');
+    const infoRows = infoTable?.querySelectorAll('tr') || [];
+    
+    let fecha = '', turno = '', tejedor = '';
+    infoRows.forEach(row => {
+        const label = row.querySelector('td:first-child')?.textContent || '';
+        const value = row.querySelector('td:last-child')?.textContent || '';
+        if (label.includes('Fecha')) fecha = value;
+        if (label.includes('Turno')) turno = value.trim();
+        if (label.includes('Tejedor')) tejedor = value;
+    });
+    
+    // Obtener observaciones
+    const obsDiv = contenido.querySelector('div[style*="background: #fff3cd"]');
+    const observaciones = obsDiv ? obsDiv.querySelector('span')?.textContent || '' : '';
+    
+    // Construir filas de tabla
+    let filasHTML = '';
+    filas.forEach(fila => {
+        const celdas = fila.querySelectorAll('td');
+        if (celdas.length >= 5) {
+            const maquina = celdas[0]?.textContent || '';
+            const producto = celdas[1]?.textContent?.trim().replace(/\s+/g, ' ') || '';
+            const linea = celdas[2]?.textContent?.trim() || '';
+            const docenas = celdas[3]?.textContent || '0';
+            const unidades = celdas[4]?.textContent || '0';
+            
+            filasHTML += `
+                <tr>
+                    <td>${maquina}</td>
+                    <td>${producto}</td>
+                    <td><span class="badge-linea">${linea}</span></td>
+                    <td>${docenas}</td>
+                    <td>${unidades}</td>
+                </tr>
+            `;
+        }
+    });
+    
+    // Obtener totales del footer
+    const footerCeldas = contenido.querySelectorAll('tfoot td');
+    const totalDoc = footerCeldas[1]?.textContent || '0';
+    const totalUni = footerCeldas[2]?.textContent || '0';
+    
+    return `
+        <div class="header-empresa">
+            <h1>HERMEN LTDA.</h1>
+            <p>Textiles de Poliamida - La Paz, Bolivia</p>
+            <h2>REGISTRO DE PRODUCCIÓN DE TEJEDURÍA</h2>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-general">
+                <h3>📋 Información General</h3>
+                <table>
+                    <tr><td>Código:</td><td><strong>${codigo}</strong></td></tr>
+                    <tr><td>Fecha:</td><td>${fecha}</td></tr>
+                    <tr><td>Turno:</td><td>${turno}</td></tr>
+                    <tr><td>Tejedor:</td><td>${tejedor}</td></tr>
+                </table>
+            </div>
+            <div class="resumen">
+                <h3>📊 PRODUCCIÓN TOTAL</h3>
+                <div class="total-grande">${totalText}</div>
+                <div class="total-unidades">${unidadesText}</div>
+                <div class="maquinas">${maquinasText}</div>
+            </div>
+        </div>
+        
+        ${observaciones ? `<div class="observaciones"><strong>📝 Observaciones:</strong> ${observaciones}</div>` : ''}
+        
+        <table class="tabla-detalle">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">Máq.</th>
+                    <th>Producto</th>
+                    <th style="width: 80px; text-align: center;">Línea</th>
+                    <th style="width: 60px;">Doc.</th>
+                    <th style="width: 60px;">Unids.</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filasHTML}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align: right;">TOTAL:</td>
+                    <td style="text-align: center;">${totalDoc}</td>
+                    <td style="text-align: center;">${totalUni}</td>
+                </tr>
+            </tfoot>
+        </table>
+        
+        <div class="footer-impresion">
+            <div class="footer-info">
+                <div>Impreso: ${new Date().toLocaleString('es-BO')}</div>
+                <div>Sistema MES Hermen v1.5.1</div>
+            </div>
+            <div class="firmas">
+                <div class="firma">
+                    <div class="linea"></div>
+                    <div class="cargo">Tejedor</div>
+                </div>
+                <div class="firma">
+                    <div class="linea"></div>
+                    <div class="cargo">Supervisor</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Función auxiliar para colores de línea
+function getColorLinea(codigoLinea) {
+    const colores = {
+        'LUJO': '#6f42c1',
+        'LY20': '#007bff',
+        'LY40': '#17a2b8',
+        'STRETCH': '#28a745',
+        'CAM': '#fd7e14'
+    };
+    return colores[codigoLinea] || '#6c757d';
 }
 
 function closeModalDetalle() {
@@ -1114,7 +1535,237 @@ function closeModalDetalle() {
 }
 
 function imprimirDetalle() {
-    window.print();
+    const contenido = document.getElementById('contenidoImprimible');
+    if (!contenido) {
+        showNotification('No hay contenido para imprimir', 'error');
+        return;
+    }
+    
+    // Crear ventana de impresión
+    const ventanaImpresion = window.open('', '_blank', 'width=800,height=600');
+    
+    ventanaImpresion.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Registro de Producción - Hermen Ltda.</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    line-height: 1.4;
+                    color: #333;
+                    padding: 15px;
+                }
+                
+                .header-empresa {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 15px;
+                    border-bottom: 2px solid #333;
+                }
+                
+                .header-empresa h1 {
+                    font-size: 20px;
+                    margin-bottom: 5px;
+                }
+                
+                .header-empresa p {
+                    font-size: 11px;
+                    color: #666;
+                }
+                
+                .header-empresa h2 {
+                    font-size: 16px;
+                    margin-top: 10px;
+                    color: #444;
+                }
+                
+                .info-grid {
+                    display: flex;
+                    gap: 20px;
+                    margin-bottom: 15px;
+                }
+                
+                .info-general {
+                    flex: 1;
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    padding: 12px;
+                }
+                
+                .info-general h3 {
+                    font-size: 12px;
+                    border-bottom: 1px solid #ccc;
+                    padding-bottom: 5px;
+                    margin-bottom: 10px;
+                }
+                
+                .info-general table {
+                    width: 100%;
+                }
+                
+                .info-general td {
+                    padding: 4px 0;
+                }
+                
+                .info-general td:first-child {
+                    font-weight: bold;
+                    width: 80px;
+                    color: #666;
+                }
+                
+                .resumen {
+                    flex: 1;
+                    border: 2px solid #28a745;
+                    border-radius: 5px;
+                    padding: 12px;
+                    text-align: center;
+                    background: #f8fff8;
+                }
+                
+                .resumen h3 {
+                    font-size: 11px;
+                    color: #28a745;
+                    margin-bottom: 8px;
+                }
+                
+                .resumen .total-grande {
+                    font-size: 32px;
+                    font-weight: bold;
+                    color: #28a745;
+                }
+                
+                .resumen .total-unidades {
+                    font-size: 12px;
+                    color: #666;
+                }
+                
+                .resumen .maquinas {
+                    font-size: 11px;
+                    margin-top: 8px;
+                    padding-top: 8px;
+                    border-top: 1px solid #ccc;
+                }
+                
+                .observaciones {
+                    background: #fff9e6;
+                    border: 1px solid #ffc107;
+                    border-radius: 5px;
+                    padding: 10px;
+                    margin-bottom: 15px;
+                    font-size: 11px;
+                }
+                
+                .tabla-detalle {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                
+                .tabla-detalle th {
+                    background: #495057;
+                    color: white;
+                    padding: 8px;
+                    text-align: left;
+                    font-size: 11px;
+                }
+                
+                .tabla-detalle th:nth-child(4),
+                .tabla-detalle th:nth-child(5) {
+                    text-align: center;
+                }
+                
+                .tabla-detalle td {
+                    padding: 6px 8px;
+                    border-bottom: 1px solid #ddd;
+                }
+                
+                .tabla-detalle td:nth-child(4),
+                .tabla-detalle td:nth-child(5) {
+                    text-align: center;
+                    font-weight: bold;
+                }
+                
+                .tabla-detalle tr:nth-child(even) {
+                    background: #f9f9f9;
+                }
+                
+                .tabla-detalle tfoot td {
+                    background: #e9ecef;
+                    font-weight: bold;
+                    padding: 10px 8px;
+                }
+                
+                .badge-linea {
+                    display: inline-block;
+                    padding: 2px 8px;
+                    border-radius: 3px;
+                    font-size: 10px;
+                    color: white;
+                    background: #6c757d;
+                }
+                
+                .footer-impresion {
+                    margin-top: 30px;
+                    padding-top: 15px;
+                    border-top: 1px solid #ccc;
+                }
+                
+                .footer-info {
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 10px;
+                    color: #666;
+                    margin-bottom: 30px;
+                }
+                
+                .firmas {
+                    display: flex;
+                    justify-content: space-around;
+                    margin-top: 40px;
+                }
+                
+                .firma {
+                    text-align: center;
+                }
+                
+                .firma .linea {
+                    border-top: 1px solid #333;
+                    width: 150px;
+                    margin: 0 auto;
+                }
+                
+                .firma .cargo {
+                    font-size: 10px;
+                    margin-top: 5px;
+                }
+                
+                @media print {
+                    body {
+                        padding: 0;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            ${generarContenidoImpresion()}
+        </body>
+        </html>
+    `);
+    
+    ventanaImpresion.document.close();
+    
+    // Esperar a que cargue y luego imprimir
+    setTimeout(() => {
+        ventanaImpresion.print();
+    }, 250);
 }
 
 function calcularTotal(detalles) {

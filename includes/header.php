@@ -41,6 +41,13 @@ if (!isLoggedIn()) {
                             <span>Dashboard</span>
                         </a>
                     </li>
+    
+                    <li class="<?php echo ($currentPage == 'inventarios') ? 'active' : ''; ?>">
+                        <a href="<?php echo SITE_URL; ?>/modules/inventarios/">
+                            <i class="fas fa-warehouse"></i>
+                            <span>Inventarios</span>
+                        </a>
+                    </li>
                     
                     <?php if (hasRole(['admin', 'coordinador', 'gerencia', 'tejedor'])): ?>
                     <li class="menu-section">

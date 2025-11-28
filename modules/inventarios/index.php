@@ -1188,6 +1188,9 @@ function renderTabla(items) {
                 <td class="valor-numerico costo">Bs. ${parseFloat(item.costo_unitario).toFixed(4)}</td>
                 <td class="valor-numerico">Bs. ${parseFloat(item.valor_total).toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
                 <td class="acciones">
+                    <button class="btn-accion ver" title="Ver Kardex" onclick="verKardex(${item.id_inventario})">
+                        <i class="fas fa-book"></i>
+                    </button>
                     <button class="btn-accion movimiento" title="Registrar Movimiento" onclick="openModalMovimiento(${item.id_inventario})">
                         <i class="fas fa-exchange-alt"></i>
                     </button>
@@ -1505,6 +1508,358 @@ function showNotification(message, type = 'info') {
         notif.style.opacity = '0';
         setTimeout(() => notif.remove(), 300);
     }, 3000);
+}
+
+// =============================================
+// KARDEX FÍSICO-VALORADO
+// Método: Costo Promedio Ponderado (CPP)
+// =============================================
+
+let kardexData = {
+    inventario: null,
+    movimientos: []
+};
+
+function crearModalKardex() {
+    if (document.getElementById('modalKardex')) return;
+    
+    const modalHTML = `
+    <div class="modal-inventario" id="modalKardex">
+        <div class="modal-content" style="max-width: 1200px;">
+            <div class="modal-header">
+                <h3 id="kardexTitulo"><i class="fas fa-book"></i> Kardex Físico-Valorado</h3>
+                <button class="modal-close" onclick="closeModalKardex()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 0;">
+                <div id="kardexProductoInfo" style="padding: 16px 24px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                        <div>
+                            <small style="opacity: 0.7;">Código</small>
+                            <div id="kardexCodigo" style="font-weight: 600; font-size: 1.1rem;">-</div>
+                        </div>
+                        <div>
+                            <small style="opacity: 0.7;">Producto</small>
+                            <div id="kardexNombre" style="font-weight: 600; font-size: 1.1rem;">-</div>
+                        </div>
+                        <div>
+                            <small style="opacity: 0.7;">Stock Actual</small>
+                            <div id="kardexStock" style="font-weight: 600; font-size: 1.1rem; color: #28a745;">-</div>
+                        </div>
+                        <div>
+                            <small style="opacity: 0.7;">Costo Promedio</small>
+                            <div id="kardexCPP" style="font-weight: 600; font-size: 1.1rem; color: #ffc107;">-</div>
+                        </div>
+                        <div>
+                            <small style="opacity: 0.7;">Valor Total</small>
+                            <div id="kardexValorTotal" style="font-weight: 600; font-size: 1.1rem; color: #17a2b8;">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="padding: 16px 24px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                    <div>
+                        <label style="font-size: 0.85rem; color: #666;">Desde:</label>
+                        <input type="date" id="kardexFechaDesde" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: #666;">Hasta:</label>
+                        <input type="date" id="kardexFechaHasta" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    </div>
+                    <button onclick="filtrarKardex()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                    <button onclick="imprimirKardex()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+                
+                <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
+                    <table id="tablaKardex" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead style="position: sticky; top: 0; z-index: 5;">
+                            <tr style="background: #343a40; color: white;">
+                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle;">FECHA</th>
+                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle;">DOCUMENTO</th>
+                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle; min-width: 150px;">CONCEPTO</th>
+                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #28a745;">ENTRADAS</th>
+                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #dc3545;">SALIDAS</th>
+                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #007bff;">SALDO</th>
+                            </tr>
+                            <tr style="background: #495057; color: white;">
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838;">Cant.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838;">C.Unit.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838;">Total Bs.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333;">Cant.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333;">C.Unit.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333;">Total Bs.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9;">Cant.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9;">C.Prom.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9;">Total Bs.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kardexBody">
+                            <tr>
+                                <td colspan="12" style="text-align: center; padding: 40px; color: #888;">
+                                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
+                                    <p>Cargando movimientos...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+async function verKardex(idInventario) {
+    crearModalKardex();
+    
+    const item = inventarios.find(i => i.id_inventario == idInventario);
+    if (!item) {
+        alert('Producto no encontrado');
+        return;
+    }
+    
+    kardexData.inventario = item;
+    
+    document.getElementById('kardexCodigo').textContent = item.codigo;
+    document.getElementById('kardexNombre').textContent = item.nombre;
+    document.getElementById('kardexStock').textContent = parseFloat(item.stock_actual).toLocaleString('es-BO') + ' ' + item.unidad;
+    document.getElementById('kardexCPP').textContent = 'Bs. ' + parseFloat(item.costo_unitario).toFixed(4);
+    document.getElementById('kardexValorTotal').textContent = 'Bs. ' + parseFloat(item.valor_total).toLocaleString('es-BO', {minimumFractionDigits: 2});
+    
+    const hoy = new Date();
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hace30Dias.getDate() - 30);
+    
+    document.getElementById('kardexFechaHasta').value = hoy.toISOString().split('T')[0];
+    document.getElementById('kardexFechaDesde').value = hace30Dias.toISOString().split('T')[0];
+    
+    await cargarMovimientosKardex(idInventario);
+    
+    document.getElementById('modalKardex').classList.add('show');
+}
+
+async function cargarMovimientosKardex(idInventario) {
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php?action=kardex&id=${idInventario}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            kardexData.movimientos = data.movimientos;
+            renderKardex(data.movimientos);
+        } else {
+            document.getElementById('kardexBody').innerHTML = `
+                <tr><td colspan="12" style="text-align: center; padding: 40px; color: #dc3545;">
+                    Error al cargar movimientos
+                </td></tr>
+            `;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
+function renderKardex(movimientos) {
+    const tbody = document.getElementById('kardexBody');
+    
+    if (!movimientos || movimientos.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="12" style="text-align: center; padding: 40px; color: #888;">
+                <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                No hay movimientos registrados.<br>
+                <small>Registre una entrada o salida para ver el kardex.</small>
+            </td></tr>
+        `;
+        return;
+    }
+    
+    const movsOrdenados = [...movimientos].sort((a, b) => 
+        new Date(a.fecha_movimiento) - new Date(b.fecha_movimiento)
+    );
+    
+    let saldoCantidad = parseFloat(movsOrdenados[0].stock_anterior);
+    let costoProm = parseFloat(movsOrdenados[0].costo_unitario);
+    let saldoValor = saldoCantidad * costoProm;
+    
+    let filas = [];
+    
+    // Saldo inicial
+    if (saldoCantidad > 0) {
+        filas.push(`
+            <tr style="background: #f8f9fa; font-style: italic;">
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center;">-</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center;">-</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>SALDO INICIAL</strong></td>
+                <td colspan="3" style="padding: 8px; border: 1px solid #dee2e6; background: #e8f5e9;"></td>
+                <td colspan="3" style="padding: 8px; border: 1px solid #dee2e6; background: #ffebee;"></td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${saldoCantidad.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${costoProm.toFixed(4)}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${saldoValor.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
+            </tr>
+        `);
+    }
+    
+    movsOrdenados.forEach((mov, index) => {
+        const fecha = new Date(mov.fecha_movimiento);
+        const fechaStr = fecha.toLocaleDateString('es-BO');
+        const horaStr = fecha.toLocaleTimeString('es-BO', {hour: '2-digit', minute: '2-digit'});
+        
+        const esEntrada = mov.tipo_movimiento.includes('ENTRADA') || mov.tipo_movimiento === 'TRANSFERENCIA_ENTRADA';
+        const cantidad = parseFloat(mov.cantidad);
+        const costoUnit = parseFloat(mov.costo_unitario);
+        const valorMov = parseFloat(mov.costo_total);
+        const stockNuevo = parseFloat(mov.stock_nuevo);
+        
+        if (esEntrada && stockNuevo > 0) {
+            saldoValor = saldoValor + valorMov;
+            costoProm = saldoValor / stockNuevo;
+        } else if (!esEntrada) {
+            saldoValor = saldoValor - valorMov;
+        }
+        saldoCantidad = stockNuevo;
+        
+        const conceptos = {
+            'ENTRADA_COMPRA': 'Compra',
+            'ENTRADA_PRODUCCION': 'Producción (Entrada)',
+            'ENTRADA_DEVOLUCION': 'Devolución',
+            'ENTRADA_AJUSTE': 'Ajuste (+)',
+            'ENTRADA_INICIAL': 'Inventario Inicial',
+            'SALIDA_PRODUCCION': 'Producción (Salida)',
+            'SALIDA_VENTA': 'Venta',
+            'SALIDA_MERMA': 'Merma',
+            'SALIDA_MUESTRA': 'Muestra',
+            'SALIDA_AJUSTE': 'Ajuste (-)',
+            'TRANSFERENCIA_ENTRADA': 'Transferencia (+)',
+            'TRANSFERENCIA_SALIDA': 'Transferencia (-)'
+        };
+        const concepto = conceptos[mov.tipo_movimiento] || mov.tipo_movimiento;
+        const documento = mov.documento_numero ? `${mov.documento_tipo || ''} ${mov.documento_numero}`.trim() : '-';
+        
+        filas.push(`
+            <tr style="${index % 2 === 0 ? '' : 'background: #f8f9fa;'}">
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center; white-space: nowrap;">
+                    ${fechaStr}<br><small style="color: #888;">${horaStr}</small>
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center; font-size: 0.8rem;">${documento}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6;">
+                    ${concepto}
+                    ${mov.observaciones ? `<br><small style="color: #888;">${mov.observaciones}</small>` : ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e8f5e9;">
+                    ${esEntrada ? cantidad.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e8f5e9;">
+                    ${esEntrada ? costoUnit.toFixed(4) : ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e8f5e9; font-weight: 500;">
+                    ${esEntrada ? valorMov.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #ffebee;">
+                    ${!esEntrada ? cantidad.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #ffebee;">
+                    ${!esEntrada ? costoUnit.toFixed(4) : ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #ffebee; font-weight: 500;">
+                    ${!esEntrada ? valorMov.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
+                    ${saldoCantidad.toLocaleString('es-BO', {minimumFractionDigits: 2})}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
+                    ${costoProm.toFixed(4)}
+                </td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
+                    ${(saldoCantidad * costoProm).toLocaleString('es-BO', {minimumFractionDigits: 2})}
+                </td>
+            </tr>
+        `);
+    });
+    
+    tbody.innerHTML = filas.join('');
+}
+
+function filtrarKardex() {
+    const desde = document.getElementById('kardexFechaDesde').value;
+    const hasta = document.getElementById('kardexFechaHasta').value;
+    
+    let movsFiltrados = kardexData.movimientos;
+    
+    if (desde) {
+        const fechaDesde = new Date(desde);
+        movsFiltrados = movsFiltrados.filter(m => new Date(m.fecha_movimiento) >= fechaDesde);
+    }
+    
+    if (hasta) {
+        const fechaHasta = new Date(hasta + 'T23:59:59');
+        movsFiltrados = movsFiltrados.filter(m => new Date(m.fecha_movimiento) <= fechaHasta);
+    }
+    
+    renderKardex(movsFiltrados);
+}
+
+function closeModalKardex() {
+    document.getElementById('modalKardex').classList.remove('show');
+}
+
+function imprimirKardex() {
+    const item = kardexData.inventario;
+    if (!item) return;
+    
+    const tabla = document.getElementById('tablaKardex').outerHTML;
+    
+    const ventana = window.open('', '_blank');
+    ventana.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Kardex - ${item.codigo}</title>
+            <style>
+                @page { size: landscape; margin: 1cm; }
+                body { font-family: Arial, sans-serif; font-size: 10px; }
+                .header { text-align: center; margin-bottom: 20px; }
+                .header h1 { margin: 0; font-size: 18px; }
+                .header h2 { margin: 5px 0; font-size: 14px; font-weight: normal; }
+                .info { display: flex; justify-content: space-between; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border: 1px solid #ddd; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #333; padding: 4px 6px; }
+                th { background: #333; color: white; font-size: 9px; }
+                .text-right { text-align: right; }
+                .footer { margin-top: 30px; display: flex; justify-content: space-around; }
+                .firma { text-align: center; padding-top: 40px; border-top: 1px solid #333; width: 200px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>HERMEN LTDA.</h1>
+                <h2>KARDEX FÍSICO-VALORADO</h2>
+                <p>Método: Costo Promedio Ponderado (CPP)</p>
+            </div>
+            
+            <div class="info">
+                <div><strong>Código:</strong> ${item.codigo}</div>
+                <div><strong>Producto:</strong> ${item.nombre}</div>
+                <div><strong>Unidad:</strong> ${item.unidad}</div>
+                <div><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-BO')}</div>
+            </div>
+            
+            ${tabla}
+            
+            <div class="footer">
+                <div class="firma">Elaborado por</div>
+                <div class="firma">Revisado por</div>
+                <div class="firma">Aprobado por</div>
+            </div>
+            
+            <scr` + `ipt>window.onload = function() { window.print(); }<\/scr` + `ipt>
+        </body>
+        </html>
+    `);
+    ventana.document.close();
 }
 </script>
 

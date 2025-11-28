@@ -329,11 +329,13 @@ try {
             $action = $data['action'] ?? 'save';
             
             if ($action === 'movimiento') {
-                // Registrar movimiento de inventario
+                // Registrar movimiento de inventario con COSTO PROMEDIO PONDERADO
                 $idInventario = $data['id_inventario'] ?? null;
                 $tipoMovimiento = $data['tipo_movimiento'] ?? null;
                 $cantidad = floatval($data['cantidad'] ?? 0);
-                $costoUnitario = floatval($data['costo_unitario'] ?? 0);
+                $costoUnitarioEntrada = floatval($data['costo_unitario'] ?? 0);
+                $documentoTipo = $data['documento_tipo'] ?? null;
+                $documentoNumero = $data['documento_numero'] ?? null;
                 $observaciones = $data['observaciones'] ?? null;
                 
                 if (!$idInventario || !$tipoMovimiento || $cantidad <= 0) {
@@ -342,8 +344,13 @@ try {
                     exit();
                 }
                 
-                // Obtener stock actual
-                $stmt = $db->prepare("SELECT stock_actual, costo_unitario FROM inventarios WHERE id_inventario = ?");
+                // Obtener stock actual y costo promedio
+                $stmt = $db->prepare("
+                    SELECT stock_actual, costo_unitario, costo_promedio, 
+                           (stock_actual * costo_promedio) AS valor_inventario
+                    FROM inventarios 
+                    WHERE id_inventario = ?
+                ");
                 $stmt->execute([$idInventario]);
                 $item = $stmt->fetch(PDO::FETCH_ASSOC);
                 
@@ -353,34 +360,72 @@ try {
                     exit();
                 }
                 
-                $stockAnterior = $item['stock_actual'];
+                $stockAnterior = floatval($item['stock_actual']);
+                $costoPromedioAnterior = floatval($item['costo_promedio']) ?: floatval($item['costo_unitario']);
+                $valorInventarioAnterior = floatval($item['valor_inventario']) ?: ($stockAnterior * $costoPromedioAnterior);
+                
                 $esEntrada = strpos($tipoMovimiento, 'ENTRADA') !== false || $tipoMovimiento === 'TRANSFERENCIA_ENTRADA';
                 
+                // Variables para el movimiento
+                $stockNuevo = 0;
+                $costoUnitarioMovimiento = 0;
+                $costoPromedioNuevo = $costoPromedioAnterior;
+                $valorTotalMovimiento = 0;
+                $valorInventarioNuevo = 0;
+                
                 if ($esEntrada) {
+                    // ========== ENTRADA: Calcular Costo Promedio Ponderado ==========
                     $stockNuevo = $stockAnterior + $cantidad;
+                    
+                    // Si no se proporciona costo, usar el costo promedio actual
+                    if ($costoUnitarioEntrada <= 0) {
+                        $costoUnitarioEntrada = $costoPromedioAnterior;
+                    }
+                    
+                    $costoUnitarioMovimiento = $costoUnitarioEntrada;
+                    $valorTotalMovimiento = $cantidad * $costoUnitarioEntrada;
+                    
+                    // Calcular nuevo Costo Promedio Ponderado
+                    // CPP = (Valor Inventario Anterior + Valor Entrada) / (Stock Anterior + Cantidad Entrada)
+                    if ($stockNuevo > 0) {
+                        $costoPromedioNuevo = ($valorInventarioAnterior + $valorTotalMovimiento) / $stockNuevo;
+                    } else {
+                        $costoPromedioNuevo = $costoUnitarioEntrada;
+                    }
+                    
+                    $valorInventarioNuevo = $stockNuevo * $costoPromedioNuevo;
+                    
                 } else {
+                    // ========== SALIDA: Usar Costo Promedio Actual ==========
                     if ($stockAnterior < $cantidad) {
                         ob_clean();
-                        echo json_encode(['success' => false, 'message' => 'Stock insuficiente. Disponible: ' . $stockAnterior]);
+                        echo json_encode(['success' => false, 'message' => 'Stock insuficiente. Disponible: ' . number_format($stockAnterior, 2)]);
                         exit();
                     }
+                    
                     $stockNuevo = $stockAnterior - $cantidad;
-                }
-                
-                if ($costoUnitario <= 0) {
-                    $costoUnitario = $item['costo_unitario'];
+                    
+                    // Las salidas SIEMPRE se valoran al Costo Promedio actual
+                    $costoUnitarioMovimiento = $costoPromedioAnterior;
+                    $valorTotalMovimiento = $cantidad * $costoPromedioAnterior;
+                    
+                    // El costo promedio NO cambia en las salidas
+                    $costoPromedioNuevo = $costoPromedioAnterior;
+                    $valorInventarioNuevo = $stockNuevo * $costoPromedioNuevo;
                 }
                 
                 $db->beginTransaction();
                 
                 try {
-                    // Insertar movimiento
+                    // Insertar movimiento con datos completos para Kardex Físico-Valorado
                     $stmt = $db->prepare("
                         INSERT INTO movimientos_inventario_erp (
                             id_inventario, tipo_movimiento, cantidad,
-                            stock_anterior, stock_nuevo, costo_unitario, costo_total,
+                            stock_anterior, stock_nuevo, 
+                            costo_unitario, costo_total,
+                            documento_tipo, documento_numero,
                             id_usuario, observaciones
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     $stmt->execute([
                         $idInventario,
@@ -388,24 +433,26 @@ try {
                         $cantidad,
                         $stockAnterior,
                         $stockNuevo,
-                        $costoUnitario,
-                        $cantidad * $costoUnitario,
+                        $costoUnitarioMovimiento,
+                        $valorTotalMovimiento,
+                        $documentoTipo,
+                        $documentoNumero,
                         $_SESSION['user_id'],
                         $observaciones
                     ]);
                     
-                    // Actualizar stock
+                    // Actualizar inventario con nuevo stock y costo promedio
                     $stmt = $db->prepare("
                         UPDATE inventarios 
                         SET stock_actual = ?,
-                            costo_unitario = CASE WHEN ? > 0 AND ? THEN ? ELSE costo_unitario END
+                            costo_promedio = ?,
+                            costo_unitario = ?
                         WHERE id_inventario = ?
                     ");
                     $stmt->execute([
                         $stockNuevo,
-                        $costoUnitario,
-                        $esEntrada,
-                        $costoUnitario,
+                        $costoPromedioNuevo,
+                        $costoPromedioNuevo, // Mantener sincronizado
                         $idInventario
                     ]);
                     
@@ -415,7 +462,15 @@ try {
                     echo json_encode([
                         'success' => true,
                         'message' => 'Movimiento registrado exitosamente',
-                        'stock_nuevo' => $stockNuevo
+                        'datos' => [
+                            'stock_anterior' => $stockAnterior,
+                            'stock_nuevo' => $stockNuevo,
+                            'costo_unitario' => $costoUnitarioMovimiento,
+                            'valor_movimiento' => $valorTotalMovimiento,
+                            'costo_promedio_anterior' => $costoPromedioAnterior,
+                            'costo_promedio_nuevo' => $costoPromedioNuevo,
+                            'valor_inventario' => $valorInventarioNuevo
+                        ]
                     ]);
                 } catch (Exception $e) {
                     $db->rollBack();

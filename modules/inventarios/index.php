@@ -716,6 +716,163 @@ require_once '../../includes/header.php';
     margin-bottom: 8px;
     color: #555;
 }
+
+/* ========== MODAL MULTIPRODUCTO ========== */
+.multi-cabecera {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #dee2e6;
+}
+
+.multi-detalle {
+    margin-bottom: 20px;
+}
+
+.multi-detalle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.multi-detalle-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: #495057;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+.tabla-multi {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+}
+
+.tabla-multi th {
+    background: #495057;
+    color: white;
+    padding: 12px;
+    text-align: left;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.tabla-multi td {
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    vertical-align: middle;
+}
+
+.tabla-multi tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.tabla-multi select,
+.tabla-multi input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.tabla-multi select:focus,
+.tabla-multi input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
+}
+
+.tabla-multi .costo-calculado {
+    background: #e8f5e9;
+    font-weight: 600;
+    color: #2e7d32;
+    text-align: right;
+}
+
+.tabla-multi .btn-eliminar-linea {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #ffebee;
+    color: #c62828;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.tabla-multi .btn-eliminar-linea:hover {
+    background: #ef5350;
+    color: white;
+}
+
+/* Totales */
+.multi-totales {
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 20px;
+    color: white;
+}
+
+.totales-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.total-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.total-item:not(:last-child) {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.total-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.total-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.iva-row {
+    color: #ffc107;
+}
+
+.iva-valor {
+    color: #ffc107;
+}
+
+.total-final {
+    padding-top: 16px !important;
+}
+
+.total-final .total-label {
+    font-size: 1rem;
+    font-weight: 600;
+    opacity: 1;
+}
+
+.total-final .total-value {
+    font-size: 1.6rem;
+    color: #4caf50;
+}
+
 </style>
 
 <!-- Contenido Principal -->
@@ -724,6 +881,9 @@ require_once '../../includes/header.php';
         <h2><i class="fas fa-warehouse"></i> Inventarios</h2>
         <button class="btn btn-nuevo" onclick="openModal()">
             <i class="fas fa-plus"></i> Nuevo Item
+        </button>
+        <button class="btn btn-success" onclick="openModalMulti()" style="margin-left: 10px;">
+            <i class="fas fa-file-invoice"></i> Ingreso Múltiple
         </button>
     </div>
     
@@ -1576,24 +1736,24 @@ function crearModalKardex() {
                 <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
                     <table id="tablaKardex" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
                         <thead style="position: sticky; top: 0; z-index: 5;">
-                            <tr style="background: #343a40; color: white;">
-                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle;">FECHA</th>
-                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle;">DOCUMENTO</th>
-                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle; min-width: 150px;">CONCEPTO</th>
-                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #28a745;">ENTRADAS</th>
-                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #dc3545;">SALIDAS</th>
-                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #007bff;">SALDO</th>
+                            <tr style="background: #343a40; color: yellow;">
+                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle; color: white;">FECHA</th>
+                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle; color: white;">DOCUMENTO</th>
+                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle; min-width: 150px; color: white;">CONCEPTO</th>
+                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #28a745; color: white;">ENTRADAS</th>
+                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #dc3545; color: white;">SALIDAS</th>
+                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #007bff; color: white;">SALDO</th>
                             </tr>
-                            <tr style="background: #495057; color: white;">
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838;">Cant.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838;">C.Unit.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838;">Total Bs.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333;">Cant.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333;">C.Unit.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333;">Total Bs.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9;">Cant.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9;">C.Prom.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9;">Total Bs.</th>
+                            <tr style="background: #495057; color: yellow;">
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838; color: white;">Cant.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838; color: white;">C.Unit.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838; color: white;">Total Bs.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333; color: white;">Cant.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333; color: white;">C.Unit.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333; color: white;">Total Bs.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9; color: white;">Cant.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9; color: white;">C.Prom.</th>
+                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9; color: white;">Total Bs.</th>
                             </tr>
                         </thead>
                         <tbody id="kardexBody">
@@ -1677,18 +1837,24 @@ function renderKardex(movimientos) {
         return;
     }
     
+    // Ordenar por fecha ASCENDENTE para mostrar cronológicamente
     const movsOrdenados = [...movimientos].sort((a, b) => 
         new Date(a.fecha_movimiento) - new Date(b.fecha_movimiento)
     );
     
-    let saldoCantidad = parseFloat(movsOrdenados[0].stock_anterior);
-    let costoProm = parseFloat(movsOrdenados[0].costo_unitario);
-    let saldoValor = saldoCantidad * costoProm;
-    
     let filas = [];
     
-    // Saldo inicial
-    if (saldoCantidad > 0) {
+    // Obtener el saldo inicial (antes del primer movimiento)
+    const primerMov = movsOrdenados[0];
+    const saldoInicial = parseFloat(primerMov.stock_anterior);
+    
+    // El CPP inicial: si hay costo_promedio_resultado, usamos el del movimiento anterior
+    // Si no, usamos el costo_unitario del primer movimiento como aproximación
+    let cppInicial = parseFloat(primerMov.costo_unitario);
+    
+    // Mostrar saldo inicial solo si hay stock previo
+    if (saldoInicial > 0) {
+        const valorInicial = saldoInicial * cppInicial;
         filas.push(`
             <tr style="background: #f8f9fa; font-style: italic;">
                 <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center;">-</td>
@@ -1696,13 +1862,14 @@ function renderKardex(movimientos) {
                 <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>SALDO INICIAL</strong></td>
                 <td colspan="3" style="padding: 8px; border: 1px solid #dee2e6; background: #e8f5e9;"></td>
                 <td colspan="3" style="padding: 8px; border: 1px solid #dee2e6; background: #ffebee;"></td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${saldoCantidad.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${costoProm.toFixed(4)}</td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${saldoValor.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${saldoInicial.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${cppInicial.toFixed(4)}</td>
+                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${valorInicial.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
             </tr>
         `);
     }
     
+    // Procesar cada movimiento
     movsOrdenados.forEach((mov, index) => {
         const fecha = new Date(mov.fecha_movimiento);
         const fechaStr = fecha.toLocaleDateString('es-BO');
@@ -1714,13 +1881,17 @@ function renderKardex(movimientos) {
         const valorMov = parseFloat(mov.costo_total);
         const stockNuevo = parseFloat(mov.stock_nuevo);
         
-        if (esEntrada && stockNuevo > 0) {
-            saldoValor = saldoValor + valorMov;
-            costoProm = saldoValor / stockNuevo;
-        } else if (!esEntrada) {
-            saldoValor = saldoValor - valorMov;
+        // CORRECCIÓN DEL BUG: Usar el CPP resultado guardado en la BD
+        // Si existe costo_promedio_resultado, usarlo; si no, calcular
+        let cppResultado;
+        if (mov.costo_promedio_resultado !== null && mov.costo_promedio_resultado !== undefined) {
+            cppResultado = parseFloat(mov.costo_promedio_resultado);
+        } else {
+            // Fallback: para movimientos antiguos sin el campo
+            cppResultado = costoUnit;
         }
-        saldoCantidad = stockNuevo;
+        
+        const valorSaldo = stockNuevo * cppResultado;
         
         const conceptos = {
             'ENTRADA_COMPRA': 'Compra',
@@ -1768,13 +1939,13 @@ function renderKardex(movimientos) {
                     ${!esEntrada ? valorMov.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
                 </td>
                 <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
-                    ${saldoCantidad.toLocaleString('es-BO', {minimumFractionDigits: 2})}
+                    ${stockNuevo.toLocaleString('es-BO', {minimumFractionDigits: 2})}
                 </td>
                 <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
-                    ${costoProm.toFixed(4)}
+                    ${cppResultado.toFixed(4)}
                 </td>
                 <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
-                    ${(saldoCantidad * costoProm).toLocaleString('es-BO', {minimumFractionDigits: 2})}
+                    ${valorSaldo.toLocaleString('es-BO', {minimumFractionDigits: 2})}
                 </td>
             </tr>
         `);
@@ -1861,6 +2032,488 @@ function imprimirKardex() {
     `);
     ventana.document.close();
 }
+
+
+// ========== MODAL MULTIPRODUCTO ==========
+let multiLineas = [];
+let multiLineaCounter = 0;
+
+function openModalMulti(tipo = 'ENTRADA_COMPRA') {
+    const modal = document.getElementById('modalMultiproducto');
+    
+    document.getElementById('multiTipoMov').value = tipo;
+    document.getElementById('multiProveedor').value = '';
+    document.getElementById('multiDocNumero').value = '';
+    document.getElementById('multiFecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('multiConFactura').checked = false;
+    document.getElementById('multiObservaciones').value = '';
+    
+    multiLineas = [];
+    multiLineaCounter = 0;
+    document.getElementById('tbodyMultiDetalle').innerHTML = '';
+    
+    cambiarTipoMovMulti();
+    agregarLineaMulti();
+    calcularTotalesMulti();
+    document.getElementById('ivaRow').style.display = 'none';
+    
+    modal.classList.add('show');
+}
+
+function closeModalMulti() {
+    document.getElementById('modalMultiproducto').classList.remove('show');
+}
+
+function cambiarTipoMovMulti() {
+    const tipo = document.getElementById('multiTipoMov').value;
+    const titulo = document.getElementById('modalMultiTitulo');
+    
+    const titulos = {
+        'ENTRADA_COMPRA': '📥 Ingreso de Compra / Factura',
+        'ENTRADA_PRODUCCION': '📥 Ingreso por Producción',
+        'ENTRADA_DEVOLUCION': '📥 Registro de Devolución',
+        'ENTRADA_AJUSTE': '📥 Ajuste Positivo de Inventario',
+        'SALIDA_PRODUCCION': '📤 Salida a Producción',
+        'SALIDA_VENTA': '📤 Salida por Venta',
+        'SALIDA_MERMA': '📤 Registro de Mermas',
+        'SALIDA_AJUSTE': '📤 Ajuste Negativo de Inventario'
+    };
+    
+    titulo.innerHTML = `<i class="fas fa-file-invoice"></i> ${titulos[tipo] || 'Movimiento Múltiple'}`;
+    
+    const checkboxContainer = document.getElementById('multiConFactura').parentElement;
+    if (tipo === 'ENTRADA_COMPRA') {
+        checkboxContainer.style.display = 'flex';
+    } else {
+        checkboxContainer.style.display = 'none';
+        document.getElementById('multiConFactura').checked = false;
+        toggleIVA();
+    }
+}
+
+function toggleIVA() {
+    const conFactura = document.getElementById('multiConFactura').checked;
+    document.getElementById('ivaRow').style.display = conFactura ? 'flex' : 'none';
+    calcularTotalesMulti();
+}
+
+function agregarLineaMulti() {
+    multiLineaCounter++;
+    const lineaId = multiLineaCounter;
+    
+    const tipo = document.getElementById('multiTipoMov').value;
+    const esEntrada = tipo.includes('ENTRADA');
+    
+    const tbody = document.getElementById('tbodyMultiDetalle');
+    
+    let opcionesProductos = '<option value="">Seleccione producto...</option>';
+    inventarios.forEach(inv => {
+        const stockInfo = esEntrada ? '' : ` (Stock: ${parseFloat(inv.stock_actual).toFixed(2)})`;
+        opcionesProductos += `<option value="${inv.id_inventario}" 
+            data-stock="${inv.stock_actual}" 
+            data-costo="${inv.costo_unitario}"
+            data-unidad="${inv.unidad}"
+            data-nombre="${inv.nombre}">
+            ${inv.codigo} - ${inv.nombre}${stockInfo}
+        </option>`;
+    });
+    
+    const nuevaFila = document.createElement('tr');
+    nuevaFila.id = `lineaMulti_${lineaId}`;
+    nuevaFila.innerHTML = `
+        <td>
+            <select id="multiProd_${lineaId}" onchange="seleccionarProductoMulti(${lineaId})">
+                ${opcionesProductos}
+            </select>
+        </td>
+        <td>
+            <input type="number" id="multiCant_${lineaId}" 
+                   step="0.01" min="0.01" placeholder="0.00"
+                   onchange="calcularCostoLinea(${lineaId})"
+                   onkeyup="calcularCostoLinea(${lineaId})">
+        </td>
+        <td>
+            <input type="number" id="multiValor_${lineaId}" 
+                   step="0.01" min="0" placeholder="0.00"
+                   onchange="calcularCostoLinea(${lineaId})"
+                   onkeyup="calcularCostoLinea(${lineaId})">
+        </td>
+        <td class="costo-calculado" id="multiCostoUnit_${lineaId}">
+            0.0000
+        </td>
+        <td style="text-align: center;">
+            <button type="button" class="btn-eliminar-linea" onclick="eliminarLineaMulti(${lineaId})" title="Eliminar línea">
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    `;
+    
+    tbody.appendChild(nuevaFila);
+    
+    multiLineas.push({
+        id: lineaId,
+        idInventario: null,
+        cantidad: 0,
+        valorTotal: 0,
+        costoUnitario: 0
+    });
+}
+
+function seleccionarProductoMulti(lineaId) {
+    const select = document.getElementById(`multiProd_${lineaId}`);
+    const option = select.options[select.selectedIndex];
+    
+    const linea = multiLineas.find(l => l.id === lineaId);
+    if (linea) {
+        linea.idInventario = select.value ? parseInt(select.value) : null;
+        linea.stockDisponible = parseFloat(option.dataset.stock) || 0;
+        linea.costoActual = parseFloat(option.dataset.costo) || 0;
+        linea.unidad = option.dataset.unidad || '';
+        linea.nombreProducto = option.dataset.nombre || '';
+    }
+    
+    calcularCostoLinea(lineaId);
+}
+
+function calcularCostoLinea(lineaId) {
+    const cantidad = parseFloat(document.getElementById(`multiCant_${lineaId}`).value) || 0;
+    const valorTotal = parseFloat(document.getElementById(`multiValor_${lineaId}`).value) || 0;
+    
+    let costoUnitario = 0;
+    if (cantidad > 0 && valorTotal > 0) {
+        costoUnitario = valorTotal / cantidad;
+    }
+    
+    document.getElementById(`multiCostoUnit_${lineaId}`).textContent = costoUnitario.toFixed(4);
+    
+    const linea = multiLineas.find(l => l.id === lineaId);
+    if (linea) {
+        linea.cantidad = cantidad;
+        linea.valorTotal = valorTotal;
+        linea.costoUnitario = costoUnitario;
+    }
+    
+    calcularTotalesMulti();
+}
+
+function eliminarLineaMulti(lineaId) {
+    const fila = document.getElementById(`lineaMulti_${lineaId}`);
+    if (fila) {
+        fila.remove();
+    }
+    
+    multiLineas = multiLineas.filter(l => l.id !== lineaId);
+    
+    if (multiLineas.length === 0) {
+        agregarLineaMulti();
+    }
+    
+    calcularTotalesMulti();
+}
+
+function calcularTotalesMulti() {
+    let subtotal = 0;
+    
+    multiLineas.forEach(linea => {
+        subtotal += linea.valorTotal || 0;
+    });
+    
+    const conFactura = document.getElementById('multiConFactura').checked;
+    let iva = 0;
+    let total = subtotal;
+    
+    if (conFactura && subtotal > 0) {
+        iva = subtotal * 13 / 113;
+    }
+    
+    document.getElementById('multiSubtotal').textContent = 'Bs. ' + subtotal.toLocaleString('es-BO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('multiIVA').textContent = 'Bs. ' + iva.toLocaleString('es-BO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('multiTotal').textContent = 'Bs. ' + total.toLocaleString('es-BO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+async function guardarMultiproducto() {
+    const tipoMov = document.getElementById('multiTipoMov').value;
+    const docNumero = document.getElementById('multiDocNumero').value.trim();
+    const proveedor = document.getElementById('multiProveedor').value.trim();
+    const fecha = document.getElementById('multiFecha').value;
+    const observaciones = document.getElementById('multiObservaciones').value.trim();
+    const conFactura = document.getElementById('multiConFactura').checked;
+    
+    if (!docNumero) {
+        alert('Ingrese el número de documento');
+        document.getElementById('multiDocNumero').focus();
+        return;
+    }
+    
+    const lineasValidas = multiLineas.filter(l => l.idInventario && l.cantidad > 0 && l.valorTotal > 0);
+    
+    if (lineasValidas.length === 0) {
+        alert('Agregue al menos un producto con cantidad y valor');
+        return;
+    }
+    
+    const esSalida = tipoMov.includes('SALIDA');
+    if (esSalida) {
+        for (const linea of lineasValidas) {
+            if (linea.cantidad > linea.stockDisponible) {
+                alert(`Stock insuficiente para ${linea.nombreProducto}. Disponible: ${linea.stockDisponible.toFixed(2)}`);
+                return;
+            }
+        }
+    }
+    
+    let subtotal = lineasValidas.reduce((sum, l) => sum + l.valorTotal, 0);
+    let ivaCredito = 0;
+    if (conFactura && tipoMov === 'ENTRADA_COMPRA') {
+        ivaCredito = subtotal * 13 / 113;
+    }
+    
+    const payload = {
+        action: 'multiproducto',
+        tipo_movimiento: tipoMov,
+        documento_tipo: conFactura ? 'FACTURA' : 'NOTA',
+        documento_numero: docNumero,
+        proveedor: proveedor,
+        fecha: fecha,
+        observaciones: observaciones,
+        con_factura: conFactura,
+        iva_credito: ivaCredito,
+        subtotal: subtotal,
+        lineas: lineasValidas.map(l => ({
+            id_inventario: l.idInventario,
+            cantidad: l.cantidad,
+            valor_total: l.valorTotal,
+            costo_unitario: l.costoUnitario
+        }))
+    };
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            closeModalMulti();
+            cargarDashboard();
+            cargarInventario();
+        } else {
+            alert('❌ ' + (data.message || 'Error al registrar'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error de conexión');
+    }
+}
+
+
+
 </script>
+<!-- Modal Multiproducto -->
+<div class="modal-inventario" id="modalMultiproducto">
+    <div class="modal-content" style="max-width: 1000px;">
+        <div class="modal-header">
+            <h3 id="modalMultiTitulo"><i class="fas fa-file-invoice"></i> Ingreso de Compra / Múltiples Productos</h3>
+            <button class="modal-close" onclick="closeModalMulti()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Cabecera del Documento -->
+            <div class="multi-cabecera">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tipo de Movimiento <span class="required">*</span></label>
+                        <select id="multiTipoMov" onchange="cambiarTipoMovMulti()">
+                            <option value="ENTRADA_COMPRA">📥 Ingreso por Compra</option>
+                            <option value="ENTRADA_PRODUCCION">📥 Ingreso por Producción</option>
+                            <option value="ENTRADA_DEVOLUCION">📥 Devolución</option>
+                            <option value="ENTRADA_AJUSTE">📥 Ajuste Positivo</option>
+                            <option value="SALIDA_PRODUCCION">📤 Salida a Producción</option>
+                            <option value="SALIDA_VENTA">📤 Salida por Venta</option>
+                            <option value="SALIDA_MERMA">📤 Merma/Desperdicio</option>
+                            <option value="SALIDA_AJUSTE">📤 Ajuste Negativo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Proveedor / Origen</label>
+                        <input type="text" id="multiProveedor" placeholder="Nombre del proveedor o referencia">
+                    </div>
+                    <div class="form-group">
+                        <label>N° Documento <span class="required">*</span></label>
+                        <input type="text" id="multiDocNumero" placeholder="Ej: FAC-001234">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="multiFecha" value="">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="multiConFactura" onchange="toggleIVA()" style="width: auto;">
+                            <span>¿Con Factura? (deduce IVA 13%)</span>
+                        </label>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Observaciones Generales</label>
+                        <input type="text" id="multiObservaciones" placeholder="Observaciones del documento">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detalle de Productos -->
+            <div class="multi-detalle">
+                <div class="multi-detalle-header">
+                    <h4><i class="fas fa-list"></i> Detalle de Productos</h4>
+                    <button type="button" class="btn btn-success btn-sm" onclick="agregarLineaMulti()">
+                        <i class="fas fa-plus"></i> Agregar Línea
+                    </button>
+                </div>
+                
+                <table class="tabla-multi" id="tablaMultiDetalle">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Producto</th>
+                            <th style="width: 15%;">Cantidad</th>
+                            <th style="width: 18%;">Valor Total (Bs.)</th>
+                            <th style="width: 18%;">Costo Unit.</th>
+                            <th style="width: 9%;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyMultiDetalle">
+                        <!-- Las líneas se agregan dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Totales -->
+            <div class="multi-totales">
+                <div class="totales-grid">
+                    <div class="total-item">
+                        <span class="total-label">Subtotal:</span>
+                        <span class="total-value" id="multiSubtotal">Bs. 0.00</span>
+                    </div>
+                    <div class="total-item iva-row" id="ivaRow" style="display: none;">
+                        <span class="total-label">Crédito Fiscal IVA (13%):</span>
+                        <span class="total-value iva-valor" id="multiIVA">Bs. 0.00</span>
+                    </div>
+                    <div class="total-item total-final">
+                        <span class="total-label">TOTAL DOCUMENTO:</span>
+                        <span class="total-value" id="multiTotal">Bs. 0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalMulti()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="guardarMultiproducto()">
+                <i class="fas fa-save"></i> Registrar Movimientos
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal Multiproducto -->
+<div class="modal-inventario" id="modalMultiproducto">
+    <div class="modal-content" style="max-width: 1000px;">
+        <div class="modal-header">
+            <h3 id="modalMultiTitulo"><i class="fas fa-file-invoice"></i> Ingreso de Compra / Múltiples Productos</h3>
+            <button class="modal-close" onclick="closeModalMulti()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Cabecera del Documento -->
+            <div class="multi-cabecera">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Tipo de Movimiento <span class="required">*</span></label>
+                        <select id="multiTipoMov" onchange="cambiarTipoMovMulti()">
+                            <option value="ENTRADA_COMPRA">📥 Ingreso por Compra</option>
+                            <option value="ENTRADA_PRODUCCION">📥 Ingreso por Producción</option>
+                            <option value="ENTRADA_DEVOLUCION">📥 Devolución</option>
+                            <option value="ENTRADA_AJUSTE">📥 Ajuste Positivo</option>
+                            <option value="SALIDA_PRODUCCION">📤 Salida a Producción</option>
+                            <option value="SALIDA_VENTA">📤 Salida por Venta</option>
+                            <option value="SALIDA_MERMA">📤 Merma/Desperdicio</option>
+                            <option value="SALIDA_AJUSTE">📤 Ajuste Negativo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Proveedor / Origen</label>
+                        <input type="text" id="multiProveedor" placeholder="Nombre del proveedor o referencia">
+                    </div>
+                    <div class="form-group">
+                        <label>N° Documento <span class="required">*</span></label>
+                        <input type="text" id="multiDocNumero" placeholder="Ej: FAC-001234">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="multiFecha" value="">
+                    </div>
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="multiConFactura" onchange="toggleIVA()" style="width: auto;">
+                            <span>¿Con Factura? (deduce IVA 13%)</span>
+                        </label>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Observaciones Generales</label>
+                        <input type="text" id="multiObservaciones" placeholder="Observaciones del documento">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detalle de Productos -->
+            <div class="multi-detalle">
+                <div class="multi-detalle-header">
+                    <h4><i class="fas fa-list"></i> Detalle de Productos</h4>
+                    <button type="button" class="btn btn-success btn-sm" onclick="agregarLineaMulti()">
+                        <i class="fas fa-plus"></i> Agregar Línea
+                    </button>
+                </div>
+                
+                <table class="tabla-multi" id="tablaMultiDetalle">
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Producto</th>
+                            <th style="width: 15%;">Cantidad</th>
+                            <th style="width: 18%;">Valor Total (Bs.)</th>
+                            <th style="width: 18%;">Costo Unit.</th>
+                            <th style="width: 9%;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyMultiDetalle">
+                        <!-- Las líneas se agregan dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Totales -->
+            <div class="multi-totales">
+                <div class="totales-grid">
+                    <div class="total-item">
+                        <span class="total-label">Subtotal:</span>
+                        <span class="total-value" id="multiSubtotal">Bs. 0.00</span>
+                    </div>
+                    <div class="total-item iva-row" id="ivaRow" style="display: none;">
+                        <span class="total-label">Crédito Fiscal IVA (13%):</span>
+                        <span class="total-value iva-valor" id="multiIVA">Bs. 0.00</span>
+                    </div>
+                    <div class="total-item total-final">
+                        <span class="total-label">TOTAL DOCUMENTO:</span>
+                        <span class="total-value" id="multiTotal">Bs. 0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalMulti()">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="guardarMultiproducto()">
+                <i class="fas fa-save"></i> Registrar Movimientos
+            </button>
+        </div>
+    </div>
+</div>
 
 <?php require_once '../../includes/footer.php'; ?>

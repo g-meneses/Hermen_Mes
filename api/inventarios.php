@@ -182,6 +182,7 @@ try {
                             m.stock_nuevo,
                             m.costo_unitario,
                             m.costo_total,
+                            m.costo_promedio_resultado,
                             m.documento_tipo,
                             m.documento_numero,
                             m.numero_lote,
@@ -422,10 +423,10 @@ try {
                         INSERT INTO movimientos_inventario_erp (
                             id_inventario, tipo_movimiento, cantidad,
                             stock_anterior, stock_nuevo, 
-                            costo_unitario, costo_total,
+                            costo_unitario, costo_total, costo_promedio_resultado,
                             documento_tipo, documento_numero,
                             id_usuario, observaciones
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     $stmt->execute([
                         $idInventario,
@@ -435,6 +436,7 @@ try {
                         $stockNuevo,
                         $costoUnitarioMovimiento,
                         $valorTotalMovimiento,
+                        $costoPromedioNuevo,  // CPP después del movimiento
                         $documentoTipo,
                         $documentoNumero,
                         $_SESSION['user_id'],
@@ -477,6 +479,189 @@ try {
                     throw $e;
                 }
                 
+                } elseif ($action === 'multiproducto') {
+                // ========== MOVIMIENTO MULTIPRODUCTO ==========
+                // Registrar múltiples movimientos en una sola transacción
+                
+                $tipoMovimiento = $data['tipo_movimiento'] ?? null;
+                $documentoTipo = $data['documento_tipo'] ?? 'NOTA';
+                $documentoNumero = $data['documento_numero'] ?? null;
+                $proveedor = $data['proveedor'] ?? '';
+                $fecha = $data['fecha'] ?? date('Y-m-d');
+                $observaciones = $data['observaciones'] ?? '';
+                $conFactura = $data['con_factura'] ?? false;
+                $ivaCredito = floatval($data['iva_credito'] ?? 0);
+                $subtotal = floatval($data['subtotal'] ?? 0);
+                $lineas = $data['lineas'] ?? [];
+                
+                // Validaciones
+                if (!$tipoMovimiento || !$documentoNumero || empty($lineas)) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Datos incompletos. Verifique tipo de movimiento, documento y líneas.']);
+                    exit();
+                }
+                
+                $esEntrada = strpos($tipoMovimiento, 'ENTRADA') !== false || $tipoMovimiento === 'TRANSFERENCIA_ENTRADA';
+                
+                $db->beginTransaction();
+                
+                try {
+                    $movimientosRegistrados = 0;
+                    $errores = [];
+                    
+                    foreach ($lineas as $linea) {
+                        $idInventario = intval($linea['id_inventario']);
+                        $cantidad = floatval($linea['cantidad']);
+                        $valorTotal = floatval($linea['valor_total']);
+                        $costoUnitarioLinea = floatval($linea['costo_unitario']);
+                        
+                        if ($idInventario <= 0 || $cantidad <= 0) {
+                            continue; // Saltar líneas inválidas
+                        }
+                        
+                        // Obtener datos actuales del producto
+                        $stmt = $db->prepare("
+                            SELECT id_inventario, codigo, nombre, stock_actual, costo_unitario, costo_promedio,
+                                   (stock_actual * COALESCE(costo_promedio, costo_unitario)) AS valor_inventario
+                            FROM inventarios 
+                            WHERE id_inventario = ? AND activo = 1
+                        ");
+                        $stmt->execute([$idInventario]);
+                        $producto = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if (!$producto) {
+                            $errores[] = "Producto ID {$idInventario} no encontrado";
+                            continue;
+                        }
+                        
+                        $stockAnterior = floatval($producto['stock_actual']);
+                        $costoPromedioAnterior = floatval($producto['costo_promedio']) ?: floatval($producto['costo_unitario']);
+                        $valorInventarioAnterior = floatval($producto['valor_inventario']) ?: ($stockAnterior * $costoPromedioAnterior);
+                        
+                        // Variables para el movimiento
+                        $stockNuevo = 0;
+                        $costoUnitarioMovimiento = $costoUnitarioLinea;
+                        $costoPromedioNuevo = $costoPromedioAnterior;
+                        $valorTotalMovimiento = $valorTotal;
+                        
+                        if ($esEntrada) {
+                            // ========== ENTRADA: Calcular CPP ==========
+                            $stockNuevo = $stockAnterior + $cantidad;
+                            
+                            if ($costoUnitarioLinea <= 0) {
+                                $costoUnitarioLinea = $costoPromedioAnterior;
+                                $costoUnitarioMovimiento = $costoUnitarioLinea;
+                                $valorTotalMovimiento = $cantidad * $costoUnitarioLinea;
+                            }
+                            
+                            // Calcular nuevo CPP
+                            if ($stockNuevo > 0) {
+                                $costoPromedioNuevo = ($valorInventarioAnterior + $valorTotalMovimiento) / $stockNuevo;
+                            } else {
+                                $costoPromedioNuevo = $costoUnitarioLinea;
+                            }
+                            
+                        } else {
+                            // ========== SALIDA: Validar stock y usar CPP actual ==========
+                            if ($stockAnterior < $cantidad) {
+                                $errores[] = "Stock insuficiente para {$producto['nombre']}. Disponible: " . number_format($stockAnterior, 2);
+                                continue;
+                            }
+                            
+                            $stockNuevo = $stockAnterior - $cantidad;
+                            $costoUnitarioMovimiento = $costoPromedioAnterior;
+                            $valorTotalMovimiento = $cantidad * $costoPromedioAnterior;
+                            $costoPromedioNuevo = $costoPromedioAnterior; // No cambia en salidas
+                        }
+                        
+                        // Construir observaciones con referencia al proveedor
+                        $obsCompleta = trim($observaciones);
+                        if ($proveedor) {
+                            $obsCompleta = "Prov: {$proveedor}" . ($obsCompleta ? " | {$obsCompleta}" : "");
+                        }
+                        if ($conFactura) {
+                            $obsCompleta .= " [CON FACTURA]";
+                        }
+                        
+                        // Insertar movimiento
+                        $stmt = $db->prepare("
+                            INSERT INTO movimientos_inventario_erp (
+                                id_inventario, tipo_movimiento, cantidad,
+                                stock_anterior, stock_nuevo, 
+                                costo_unitario, costo_total, costo_promedio_resultado,
+                                documento_tipo, documento_numero,
+                                id_usuario, observaciones, fecha_movimiento
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ");
+                        
+                        $fechaMovimiento = $fecha . ' ' . date('H:i:s');
+                        
+                        $stmt->execute([
+                            $idInventario,
+                            $tipoMovimiento,
+                            $cantidad,
+                            $stockAnterior,
+                            $stockNuevo,
+                            $costoUnitarioMovimiento,
+                            $valorTotalMovimiento,
+                            $costoPromedioNuevo,
+                            $documentoTipo,
+                            $documentoNumero,
+                            $_SESSION['user_id'],
+                            $obsCompleta,
+                            $fechaMovimiento
+                        ]);
+                        
+                        // Actualizar inventario
+                        $stmt = $db->prepare("
+                            UPDATE inventarios 
+                            SET stock_actual = ?,
+                                costo_promedio = ?,
+                                costo_unitario = ?
+                            WHERE id_inventario = ?
+                        ");
+                        $stmt->execute([
+                            $stockNuevo,
+                            $costoPromedioNuevo,
+                            $costoPromedioNuevo,
+                            $idInventario
+                        ]);
+                        
+                        $movimientosRegistrados++;
+                    }
+                    
+                    if ($movimientosRegistrados === 0) {
+                        $db->rollBack();
+                        ob_clean();
+                        echo json_encode([
+                            'success' => false, 
+                            'message' => 'No se registró ningún movimiento',
+                            'errores' => $errores
+                        ]);
+                        exit();
+                    }
+                    
+                    $db->commit();
+                    
+                    $mensaje = "Se registraron {$movimientosRegistrados} movimiento(s) exitosamente";
+                    if (count($errores) > 0) {
+                        $mensaje .= ". Advertencias: " . implode("; ", $errores);
+                    }
+                    
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'message' => $mensaje,
+                        'movimientos_registrados' => $movimientosRegistrados,
+                        'documento' => $documentoNumero,
+                        'errores' => $errores
+                    ]);
+                    
+                } catch (Exception $e) {
+                    $db->rollBack();
+                    throw $e;
+                }
+
             } else {
                 // Crear o actualizar inventario
                 $idInventario = $data['id_inventario'] ?? null;

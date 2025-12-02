@@ -117,6 +117,47 @@ try {
                         'categorias' => $stmt->fetchAll(PDO::FETCH_ASSOC)
                     ]);
                     break;
+                
+                case 'categorias_resumen':
+                    // Lista de categorías con totales (items, valor, alertas)
+                    $tipoId = $_GET['tipo_id'] ?? null;
+                    
+                    $sql = "
+                        SELECT 
+                            c.id_categoria, 
+                            c.codigo, 
+                            c.nombre, 
+                            c.id_tipo_inventario,
+                            COUNT(i.id_inventario) AS total_items,
+                            COALESCE(SUM(i.stock_actual * i.costo_unitario), 0) AS valor_total,
+                            SUM(CASE WHEN i.stock_actual <= 0 THEN 1 ELSE 0 END) AS sin_stock,
+                            SUM(CASE WHEN i.stock_actual > 0 AND i.stock_actual <= i.stock_minimo THEN 1 ELSE 0 END) AS stock_critico
+                        FROM categorias_inventario c
+                        LEFT JOIN inventarios i ON c.id_categoria = i.id_categoria AND i.activo = 1
+                        WHERE c.activo = 1
+                    ";
+                    
+                    if ($tipoId) {
+                        $sql .= " AND c.id_tipo_inventario = " . intval($tipoId);
+                    }
+                    
+                    $sql .= " GROUP BY c.id_categoria, c.codigo, c.nombre, c.id_tipo_inventario
+                              ORDER BY c.orden, c.nombre";
+                    
+                    $stmt = $db->query($sql);
+                    $categorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    // Calcular alertas totales
+                    foreach ($categorias as &$cat) {
+                        $cat['alertas'] = intval($cat['sin_stock']) + intval($cat['stock_critico']);
+                    }
+                    
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'categorias' => $categorias
+                    ]);
+                    break;
                     
                 case 'unidades':
                     // Lista de unidades de medida
@@ -200,6 +241,144 @@ try {
                     echo json_encode([
                         'success' => true,
                         'movimientos' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+                    ]);
+                    break;
+                
+                case 'documentos':
+                    // Lista de documentos agrupados (para histórico)
+                    $tipoMov = $_GET['tipo_mov'] ?? null;
+                    $fechaDesde = $_GET['fecha_desde'] ?? null;
+                    $fechaHasta = $_GET['fecha_hasta'] ?? null;
+                    $buscar = $_GET['buscar'] ?? null;
+                    
+                    $sql = "
+                        SELECT 
+                            documento_numero,
+                            documento_tipo,
+                            tipo_movimiento,
+                            MIN(fecha_movimiento) AS fecha,
+                            COUNT(*) AS total_lineas,
+                            SUM(cantidad) AS total_cantidad,
+                            SUM(costo_total) AS total_valor,
+                            MAX(observaciones) AS observaciones,
+                            u.nombre_completo AS usuario,
+                            CASE 
+                                WHEN tipo_movimiento LIKE 'ENTRADA%' THEN 'ENTRADA'
+                                ELSE 'SALIDA'
+                            END AS categoria,
+                            MAX(m.estado) AS estado
+                        FROM movimientos_inventario_erp m
+                        LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
+                        WHERE 1=1
+                    ";
+                    
+                    $params = [];
+                    
+                    if ($tipoMov) {
+                        if ($tipoMov === 'ENTRADA') {
+                            $sql .= " AND tipo_movimiento LIKE 'ENTRADA%'";
+                        } elseif ($tipoMov === 'SALIDA') {
+                            $sql .= " AND tipo_movimiento LIKE 'SALIDA%'";
+                        } else {
+                            $sql .= " AND tipo_movimiento = ?";
+                            $params[] = $tipoMov;
+                        }
+                    }
+                    
+                    if ($fechaDesde) {
+                        $sql .= " AND DATE(fecha_movimiento) >= ?";
+                        $params[] = $fechaDesde;
+                    }
+                    
+                    if ($fechaHasta) {
+                        $sql .= " AND DATE(fecha_movimiento) <= ?";
+                        $params[] = $fechaHasta;
+                    }
+                    
+                    if ($buscar) {
+                        $sql .= " AND (documento_numero LIKE ? OR observaciones LIKE ?)";
+                        $params[] = "%$buscar%";
+                        $params[] = "%$buscar%";
+                    }
+                    
+                    $sql .= " GROUP BY documento_numero, documento_tipo, tipo_movimiento
+                              ORDER BY fecha DESC
+                              LIMIT 100";
+                    
+                    $stmt = $db->prepare($sql);
+                    $stmt->execute($params);
+                    
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'documentos' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+                    ]);
+                    break;
+                
+                case 'documento_detalle':
+                    // Detalle de un documento específico
+                    $docNumero = $_GET['documento'] ?? null;
+                    
+                    if (!$docNumero) {
+                        ob_clean();
+                        echo json_encode(['success' => false, 'message' => 'Número de documento requerido']);
+                        exit();
+                    }
+                    
+                    // Obtener cabecera (datos generales del documento)
+                    $stmt = $db->prepare("
+                        SELECT 
+                            documento_numero,
+                            documento_tipo,
+                            tipo_movimiento,
+                            MIN(fecha_movimiento) AS fecha,
+                            MAX(observaciones) AS observaciones,
+                            MAX(m.estado) AS estado,
+                            u.nombre_completo AS usuario,
+                            SUM(costo_total) AS total_documento
+                        FROM movimientos_inventario_erp m
+                        LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
+                        WHERE documento_numero = ?
+                        GROUP BY documento_numero, documento_tipo, tipo_movimiento, u.nombre_completo
+                    ");
+                    $stmt->execute([$docNumero]);
+                    $cabecera = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$cabecera) {
+                        ob_clean();
+                        echo json_encode(['success' => false, 'message' => 'Documento no encontrado']);
+                        exit();
+                    }
+                    
+                    // Obtener detalle (líneas del documento)
+                    $stmt = $db->prepare("
+                        SELECT 
+                            m.id_movimiento,
+                            m.id_inventario,
+                            i.codigo AS producto_codigo,
+                            i.nombre AS producto_nombre,
+                            um.abreviatura AS unidad,
+                            m.cantidad,
+                            m.costo_unitario,
+                            m.costo_total,
+                            m.stock_anterior,
+                            m.stock_nuevo,
+                            m.costo_promedio_resultado AS cpp_resultante,
+                            m.estado
+                        FROM movimientos_inventario_erp m
+                        JOIN inventarios i ON m.id_inventario = i.id_inventario
+                        JOIN unidades_medida um ON i.id_unidad = um.id_unidad
+                        WHERE m.documento_numero = ?
+                        ORDER BY m.id_movimiento
+                    ");
+                    $stmt->execute([$docNumero]);
+                    $lineas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'cabecera' => $cabecera,
+                        'lineas' => $lineas
                     ]);
                     break;
                     
@@ -479,9 +658,9 @@ try {
                     throw $e;
                 }
                 
-                } elseif ($action === 'multiproducto') {
-                // ========== MOVIMIENTO MULTIPRODUCTO ==========
-                // Registrar múltiples movimientos en una sola transacción
+            } elseif ($action === 'multiproducto') {
+                // ========== MOVIMIENTO MULTIPRODUCTO v2.0 ==========
+                // Con descuento de IVA 13% en el costo para compras con factura
                 
                 $tipoMovimiento = $data['tipo_movimiento'] ?? null;
                 $documentoTipo = $data['documento_tipo'] ?? 'NOTA';
@@ -490,33 +669,36 @@ try {
                 $fecha = $data['fecha'] ?? date('Y-m-d');
                 $observaciones = $data['observaciones'] ?? '';
                 $conFactura = $data['con_factura'] ?? false;
-                $ivaCredito = floatval($data['iva_credito'] ?? 0);
-                $subtotal = floatval($data['subtotal'] ?? 0);
                 $lineas = $data['lineas'] ?? [];
                 
                 // Validaciones
                 if (!$tipoMovimiento || !$documentoNumero || empty($lineas)) {
                     ob_clean();
-                    echo json_encode(['success' => false, 'message' => 'Datos incompletos. Verifique tipo de movimiento, documento y líneas.']);
+                    echo json_encode(['success' => false, 'message' => 'Datos incompletos. Verifique tipo, documento y líneas.']);
                     exit();
                 }
                 
-                $esEntrada = strpos($tipoMovimiento, 'ENTRADA') !== false || $tipoMovimiento === 'TRANSFERENCIA_ENTRADA';
+                $esEntrada = strpos($tipoMovimiento, 'ENTRADA') !== false;
                 
                 $db->beginTransaction();
                 
                 try {
                     $movimientosRegistrados = 0;
                     $errores = [];
+                    $totalValorNeto = 0;
+                    $totalIVA = 0;
                     
                     foreach ($lineas as $linea) {
                         $idInventario = intval($linea['id_inventario']);
                         $cantidad = floatval($linea['cantidad']);
-                        $valorTotal = floatval($linea['valor_total']);
-                        $costoUnitarioLinea = floatval($linea['costo_unitario']);
+                        
+                        // El costo_unitario que llega ya viene con el descuento de IVA aplicado desde el frontend
+                        $costoUnitarioNeto = floatval($linea['costo_unitario']);
+                        $costoBruto = floatval($linea['costo_bruto'] ?? $costoUnitarioNeto);
+                        $valorTotalBruto = floatval($linea['valor_total_bruto'] ?? ($cantidad * $costoBruto));
                         
                         if ($idInventario <= 0 || $cantidad <= 0) {
-                            continue; // Saltar líneas inválidas
+                            continue;
                         }
                         
                         // Obtener datos actuales del producto
@@ -536,51 +718,59 @@ try {
                         
                         $stockAnterior = floatval($producto['stock_actual']);
                         $costoPromedioAnterior = floatval($producto['costo_promedio']) ?: floatval($producto['costo_unitario']);
-                        $valorInventarioAnterior = floatval($producto['valor_inventario']) ?: ($stockAnterior * $costoPromedioAnterior);
+                        $valorInventarioAnterior = $stockAnterior * $costoPromedioAnterior;
                         
                         // Variables para el movimiento
                         $stockNuevo = 0;
-                        $costoUnitarioMovimiento = $costoUnitarioLinea;
+                        $costoUnitarioMovimiento = $costoUnitarioNeto; // Usar costo NETO
                         $costoPromedioNuevo = $costoPromedioAnterior;
-                        $valorTotalMovimiento = $valorTotal;
+                        $valorTotalMovimiento = $cantidad * $costoUnitarioNeto;
                         
                         if ($esEntrada) {
-                            // ========== ENTRADA: Calcular CPP ==========
+                            // ========== ENTRADA ==========
                             $stockNuevo = $stockAnterior + $cantidad;
                             
-                            if ($costoUnitarioLinea <= 0) {
-                                $costoUnitarioLinea = $costoPromedioAnterior;
-                                $costoUnitarioMovimiento = $costoUnitarioLinea;
-                                $valorTotalMovimiento = $cantidad * $costoUnitarioLinea;
+                            // Si no viene costo, usar el promedio actual
+                            if ($costoUnitarioNeto <= 0) {
+                                $costoUnitarioNeto = $costoPromedioAnterior;
+                                $costoUnitarioMovimiento = $costoUnitarioNeto;
+                                $valorTotalMovimiento = $cantidad * $costoUnitarioNeto;
                             }
                             
-                            // Calcular nuevo CPP
+                            // Calcular nuevo CPP con el COSTO NETO (sin IVA)
                             if ($stockNuevo > 0) {
                                 $costoPromedioNuevo = ($valorInventarioAnterior + $valorTotalMovimiento) / $stockNuevo;
                             } else {
-                                $costoPromedioNuevo = $costoUnitarioLinea;
+                                $costoPromedioNuevo = $costoUnitarioNeto;
                             }
                             
+                            // Calcular IVA para el registro
+                            if ($conFactura) {
+                                $ivaLinea = $valorTotalBruto - $valorTotalMovimiento;
+                                $totalIVA += $ivaLinea;
+                            }
+                            $totalValorNeto += $valorTotalMovimiento;
+                            
                         } else {
-                            // ========== SALIDA: Validar stock y usar CPP actual ==========
+                            // ========== SALIDA ==========
                             if ($stockAnterior < $cantidad) {
-                                $errores[] = "Stock insuficiente para {$producto['nombre']}. Disponible: " . number_format($stockAnterior, 2);
+                                $errores[] = "Stock insuficiente para {$producto['codigo']}. Disponible: " . number_format($stockAnterior, 2);
                                 continue;
                             }
                             
                             $stockNuevo = $stockAnterior - $cantidad;
-                            $costoUnitarioMovimiento = $costoPromedioAnterior;
+                            $costoUnitarioMovimiento = $costoPromedioAnterior; // Salidas al CPP
                             $valorTotalMovimiento = $cantidad * $costoPromedioAnterior;
-                            $costoPromedioNuevo = $costoPromedioAnterior; // No cambia en salidas
+                            $costoPromedioNuevo = $costoPromedioAnterior; // No cambia
                         }
                         
-                        // Construir observaciones con referencia al proveedor
+                        // Construir observaciones
                         $obsCompleta = trim($observaciones);
                         if ($proveedor) {
-                            $obsCompleta = "Prov: {$proveedor}" . ($obsCompleta ? " | {$obsCompleta}" : "");
+                            $obsCompleta = ($esEntrada ? "Prov: " : "Dest: ") . $proveedor . ($obsCompleta ? " | {$obsCompleta}" : "");
                         }
-                        if ($conFactura) {
-                            $obsCompleta .= " [CON FACTURA]";
+                        if ($conFactura && $esEntrada) {
+                            $obsCompleta .= " [FACTURA - IVA 13% descontado del costo]";
                         }
                         
                         // Insertar movimiento
@@ -612,7 +802,7 @@ try {
                             $fechaMovimiento
                         ]);
                         
-                        // Actualizar inventario
+                        // Actualizar inventario con el nuevo CPP
                         $stmt = $db->prepare("
                             UPDATE inventarios 
                             SET stock_actual = ?,
@@ -643,7 +833,14 @@ try {
                     
                     $db->commit();
                     
-                    $mensaje = "Se registraron {$movimientosRegistrados} movimiento(s) exitosamente";
+                    // Construir mensaje de respuesta
+                    $tipoTexto = $esEntrada ? 'ingreso(s)' : 'salida(s)';
+                    $mensaje = "Se registraron {$movimientosRegistrados} {$tipoTexto} exitosamente";
+                    
+                    if ($conFactura && $esEntrada && $totalIVA > 0) {
+                        $mensaje .= ". Crédito Fiscal IVA: Bs. " . number_format($totalIVA, 2);
+                    }
+                    
                     if (count($errores) > 0) {
                         $mensaje .= ". Advertencias: " . implode("; ", $errores);
                     }
@@ -654,12 +851,181 @@ try {
                         'message' => $mensaje,
                         'movimientos_registrados' => $movimientosRegistrados,
                         'documento' => $documentoNumero,
+                        'valor_neto' => $totalValorNeto,
+                        'iva_credito' => $totalIVA,
                         'errores' => $errores
                     ]);
                     
                 } catch (Exception $e) {
                     $db->rollBack();
                     throw $e;
+                }
+
+            } elseif ($action === 'anular_documento') {
+                // ========== ANULAR DOCUMENTO ==========
+                // Crea movimientos inversos para revertir el documento original
+                $documentoNumero = $data['documento_numero'] ?? null;
+                $motivo = trim($data['motivo'] ?? 'Anulación de documento');
+                
+                if (!$documentoNumero) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Número de documento requerido']);
+                    exit();
+                }
+                
+                // Verificar que el documento existe y no está ya anulado
+                $stmt = $db->prepare("
+                    SELECT documento_numero, tipo_movimiento, estado
+                    FROM movimientos_inventario_erp 
+                    WHERE documento_numero = ?
+                    LIMIT 1
+                ");
+                $stmt->execute([$documentoNumero]);
+                $docOriginal = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if (!$docOriginal) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Documento no encontrado']);
+                    exit();
+                }
+                
+                if ($docOriginal['estado'] === 'ANULADO') {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Este documento ya fue anulado']);
+                    exit();
+                }
+                
+                // Obtener todos los movimientos del documento original
+                $stmt = $db->prepare("
+                    SELECT m.*, i.stock_actual, i.costo_promedio
+                    FROM movimientos_inventario_erp m
+                    JOIN inventarios i ON m.id_inventario = i.id_inventario
+                    WHERE m.documento_numero = ? AND m.estado = 'ACTIVO'
+                ");
+                $stmt->execute([$documentoNumero]);
+                $movimientosOriginales = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (count($movimientosOriginales) === 0) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'No hay movimientos activos para anular']);
+                    exit();
+                }
+                
+                try {
+                    $db->beginTransaction();
+                    
+                    $docAnulacion = 'ANUL-' . $documentoNumero;
+                    $fechaAnulacion = date('Y-m-d H:i:s');
+                    $movimientosAnulados = 0;
+                    
+                    foreach ($movimientosOriginales as $movOrig) {
+                        $idInventario = $movOrig['id_inventario'];
+                        $cantidadOriginal = floatval($movOrig['cantidad']);
+                        $costoOriginal = floatval($movOrig['costo_unitario']);
+                        $stockActual = floatval($movOrig['stock_actual']);
+                        $cppActual = floatval($movOrig['costo_promedio']);
+                        
+                        $tipoOriginal = $movOrig['tipo_movimiento'];
+                        $esEntradaOriginal = strpos($tipoOriginal, 'ENTRADA') !== false;
+                        
+                        // Calcular movimiento inverso
+                        if ($esEntradaOriginal) {
+                            // Original fue ENTRADA, anulación es SALIDA
+                            $tipoAnulacion = 'SALIDA_ANULACION';
+                            $stockNuevo = $stockActual - $cantidadOriginal;
+                            
+                            // Para salidas, el CPP no cambia
+                            $cppNuevo = $cppActual;
+                            $costoTotalAnulacion = $cantidadOriginal * $cppActual;
+                        } else {
+                            // Original fue SALIDA, anulación es ENTRADA
+                            $tipoAnulacion = 'ENTRADA_ANULACION';
+                            $stockNuevo = $stockActual + $cantidadOriginal;
+                            
+                            // Recalcular CPP con la entrada de anulación
+                            $valorActual = $stockActual * $cppActual;
+                            $valorAnulacion = $cantidadOriginal * $costoOriginal;
+                            $cppNuevo = ($valorActual + $valorAnulacion) / $stockNuevo;
+                            $costoTotalAnulacion = $cantidadOriginal * $costoOriginal;
+                        }
+                        
+                        // Validar que no quede stock negativo
+                        if ($stockNuevo < 0) {
+                            throw new Exception("No se puede anular: el producto {$movOrig['id_inventario']} quedaría con stock negativo");
+                        }
+                        
+                        // Insertar movimiento de anulación
+                        $stmt = $db->prepare("
+                            INSERT INTO movimientos_inventario_erp (
+                                id_inventario, tipo_movimiento, cantidad,
+                                stock_anterior, stock_nuevo, 
+                                costo_unitario, costo_total, costo_promedio_resultado,
+                                documento_tipo, documento_numero,
+                                id_usuario, observaciones, fecha_movimiento, estado
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ANULACION', ?, ?, ?, ?, 'ACTIVO')
+                        ");
+                        
+                        $obsAnulacion = "ANULACIÓN: {$motivo} (Doc. original: {$documentoNumero})";
+                        
+                        $stmt->execute([
+                            $idInventario,
+                            $tipoAnulacion,
+                            $cantidadOriginal,
+                            $stockActual,
+                            $stockNuevo,
+                            $costoOriginal,
+                            $costoTotalAnulacion,
+                            $cppNuevo,
+                            $docAnulacion,
+                            $_SESSION['user_id'],
+                            $obsAnulacion,
+                            $fechaAnulacion
+                        ]);
+                        
+                        // Actualizar inventario
+                        $stmt = $db->prepare("
+                            UPDATE inventarios 
+                            SET stock_actual = ?,
+                                costo_promedio = ?,
+                                costo_unitario = ?
+                            WHERE id_inventario = ?
+                        ");
+                        $stmt->execute([
+                            $stockNuevo,
+                            $cppNuevo,
+                            $cppNuevo,
+                            $idInventario
+                        ]);
+                        
+                        // Marcar movimiento original como anulado
+                        $stmt = $db->prepare("
+                            UPDATE movimientos_inventario_erp 
+                            SET estado = 'ANULADO'
+                            WHERE id_movimiento = ?
+                        ");
+                        $stmt->execute([$movOrig['id_movimiento']]);
+                        
+                        $movimientosAnulados++;
+                    }
+                    
+                    $db->commit();
+                    
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'message' => "Documento {$documentoNumero} anulado exitosamente. Se revirtieron {$movimientosAnulados} movimiento(s).",
+                        'documento_anulacion' => $docAnulacion,
+                        'movimientos_anulados' => $movimientosAnulados
+                    ]);
+                    
+                } catch (Exception $e) {
+                    $db->rollBack();
+                    ob_clean();
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Error al anular: ' . $e->getMessage()
+                    ]);
+                    exit();
                 }
 
             } else {

@@ -1,9 +1,16 @@
 <?php
 /**
- * Módulo de Inventarios Centralizado
- * Sistema ERP Hermen Ltda.
- * Versión: 1.0
+ * Módulo de Inventarios - Dashboard Profesional
+ * Sistema MES Hermen Ltda.
+ * Versión: 2.0
+ * 
+ * Características:
+ * - Dashboard con KPIs por tipo de inventario
+ * - Vista por categorías con valores
+ * - Control de acceso por tipo (preparado)
+ * - Movimientos contextuales
  */
+
 require_once '../../config/database.php';
 
 if (!isLoggedIn()) {
@@ -12,374 +19,512 @@ if (!isLoggedIn()) {
 
 $pageTitle = 'Inventarios';
 $currentPage = 'inventarios';
-
 require_once '../../includes/header.php';
 ?>
 
-<!-- Estilos específicos del módulo -->
 <style>
-/* ========== VARIABLES ========== */
+/* ========== VARIABLES CSS ========== */
 :root {
-    --inv-mp: #007bff;
-    --inv-caq: #6f42c1;
-    --inv-emp: #fd7e14;
-    --inv-acc: #e83e8c;
-    --inv-wip: #17a2b8;
-    --inv-pt: #28a745;
-    --inv-rep: #6c757d;
+    --color-mp: #007bff;      /* Materias Primas - Azul */
+    --color-caq: #6f42c1;     /* Colorantes - Púrpura */
+    --color-emp: #fd7e14;     /* Empaque - Naranja */
+    --color-acc: #e83e8c;     /* Accesorios - Rosa */
+    --color-wip: #17a2b8;     /* En Proceso - Cyan */
+    --color-pt: #28a745;      /* Terminados - Verde */
+    --color-rep: #6c757d;     /* Repuestos - Gris */
 }
 
-/* ========== DASHBOARD CARDS ========== */
-.inv-dashboard {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-}
-
-.inv-card {
-    background: white;
-    border-radius: 12px;
+/* ========== LAYOUT PRINCIPAL ========== */
+.inv-module {
     padding: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    background: #f4f6f9;
+    min-height: calc(100vh - 60px);
+}
+
+.inv-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.inv-header h1 {
+    font-size: 1.8rem;
+    color: #1a1a2e;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+}
+
+.inv-header h1 i {
+    color: #007bff;
+}
+
+/* ========== RESUMEN GENERAL (KPIs) ========== */
+.inv-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.kpi-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px 25px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+.kpi-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.kpi-icon.items { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+.kpi-icon.valor { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+.kpi-icon.alertas { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
+.kpi-icon.tipos { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+
+.kpi-info {
+    flex: 1;
+}
+
+.kpi-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-bottom: 4px;
+}
+
+.kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.kpi-value.success { color: #28a745; }
+.kpi-value.warning { color: #ffc107; }
+.kpi-value.danger { color: #dc3545; }
+
+/* ========== TIPOS DE INVENTARIO (Cards principales) ========== */
+.inv-tipos-section {
+    margin-bottom: 30px;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    color: #495057;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-title i {
+    color: #007bff;
+}
+
+.inv-tipos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.tipo-card {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
     cursor: pointer;
     transition: all 0.3s ease;
-    border-left: 4px solid var(--card-color, #6c757d);
+    border: 3px solid transparent;
     position: relative;
     overflow: hidden;
 }
 
-.inv-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+.tipo-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--tipo-color);
 }
 
-.inv-card.active {
-    background: linear-gradient(135deg, var(--card-color) 0%, color-mix(in srgb, var(--card-color) 80%, black) 100%);
-    color: white;
+.tipo-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.15);
 }
 
-.inv-card.active .inv-card-title,
-.inv-card.active .inv-card-value,
-.inv-card.active .inv-card-subtitle {
-    color: white;
+.tipo-card.active {
+    border-color: var(--tipo-color);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
 
-.inv-card-icon {
-    width: 48px;
-    height: 48px;
+.tipo-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.tipo-icon {
+    width: 45px;
+    height: 45px;
     border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+    background: var(--tipo-color);
+}
+
+.tipo-nombre {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    line-height: 1.2;
+}
+
+.tipo-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.tipo-stat {
+    text-align: center;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.tipo-stat-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.tipo-stat-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+.tipo-valor-total {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e9ecef;
+    text-align: center;
+}
+
+.tipo-valor-total .valor {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--tipo-color);
+}
+
+.tipo-valor-total .label {
+    font-size: 0.7rem;
+    color: #6c757d;
+}
+
+/* ========== ÁREA DE TRABAJO (Tipo Seleccionado) ========== */
+.inv-workspace {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+    display: none;
+}
+
+.inv-workspace.active {
+    display: block;
+}
+
+.workspace-header {
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.workspace-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.workspace-title .icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.4rem;
-    margin-bottom: 12px;
-    background: color-mix(in srgb, var(--card-color) 15%, white);
-    color: var(--card-color);
-}
-
-.inv-card.active .inv-card-icon {
-    background: rgba(255,255,255,0.2);
     color: white;
 }
 
-.inv-card-title {
-    font-size: 0.85rem;
-    color: #666;
-    margin-bottom: 4px;
-    font-weight: 500;
-}
-
-.inv-card-value {
-    font-size: 1.8rem;
-    font-weight: 700;
+.workspace-title h2 {
+    margin: 0;
+    font-size: 1.3rem;
     color: #1a1a2e;
-    margin-bottom: 8px;
 }
 
-.inv-card-subtitle {
-    font-size: 0.75rem;
-    color: #888;
+.workspace-title .subtitle {
+    font-size: 0.85rem;
+    color: #6c757d;
 }
 
-.inv-card-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
-.badge-critico {
-    background: #dc3545;
-    color: white;
-}
-
-.badge-ok {
-    background: #28a745;
-    color: white;
-}
-
-/* ========== RESUMEN TOTAL ========== */
-.inv-resumen-total {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 24px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 24px;
-    color: white;
-}
-
-.inv-resumen-item {
-    text-align: center;
-}
-
-.inv-resumen-item .label {
-    font-size: 0.8rem;
-    opacity: 0.7;
-    margin-bottom: 4px;
-}
-
-.inv-resumen-item .value {
-    font-size: 1.6rem;
-    font-weight: 700;
-}
-
-.inv-resumen-item .value.warning {
-    color: #ffc107;
-}
-
-.inv-resumen-item .value.success {
-    color: #28a745;
-}
-
-/* ========== FILTROS ========== */
-.inv-filtros {
-    background: white;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin-bottom: 20px;
+.workspace-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    gap: 10px;
 }
 
-.inv-filtros .filtro-grupo {
+.workspace-actions .btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-.inv-filtros label {
-    font-size: 0.85rem;
-    color: #666;
-    white-space: nowrap;
-}
-
-.inv-filtros select,
-.inv-filtros input {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    min-width: 160px;
-}
-
-.inv-filtros select:focus,
-.inv-filtros input:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
-}
-
-.inv-filtros .btn-limpiar {
-    padding: 8px 16px;
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    border: none;
     cursor: pointer;
-    font-size: 0.85rem;
     transition: all 0.2s;
 }
 
-.inv-filtros .btn-limpiar:hover {
-    background: #e9ecef;
+.workspace-actions .btn-ingreso {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
 }
 
-.inv-filtros .search-box {
-    flex: 1;
-    min-width: 200px;
-    position: relative;
+.workspace-actions .btn-salida {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
 }
 
-.inv-filtros .search-box input {
-    width: 100%;
-    padding-left: 36px;
+.workspace-actions .btn-historial {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
 }
 
-.inv-filtros .search-box i {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #aaa;
+.workspace-actions .btn-nuevo {
+    background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+    color: white;
 }
 
-/* ========== TABLA ========== */
-.inv-tabla-container {
+.workspace-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* ========== CATEGORÍAS DEL TIPO ========== */
+.workspace-body {
+    padding: 25px;
+}
+
+.categorias-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.categoria-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 16px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.categoria-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    border-color: var(--tipo-color);
+}
+
+.categoria-card.active {
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    overflow: hidden;
+    border-color: var(--tipo-color);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
 }
 
-.inv-tabla-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid #eee;
+.categoria-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    margin-bottom: 15px;
 }
 
-.inv-tabla-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
+.categoria-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 1rem;
     color: #1a1a2e;
 }
 
-.inv-tabla-header .total-registros {
-    font-size: 0.85rem;
-    color: #666;
-    background: #f0f0f0;
-    padding: 4px 12px;
-    border-radius: 20px;
+.categoria-info .codigo {
+    font-size: 0.75rem;
+    color: #6c757d;
+    font-family: 'Consolas', monospace;
 }
 
-.inv-tabla {
+.categoria-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--tipo-color);
+    color: white;
+}
+
+.categoria-stats {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
+}
+
+.categoria-stat {
+    text-align: center;
+}
+
+.categoria-stat .value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1a1a2e;
+}
+
+.categoria-stat .label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+.categoria-stat .value.money {
+    color: #28a745;
+}
+
+/* ========== TABLA DE PRODUCTOS ========== */
+.productos-section {
+    margin-top: 25px;
+    display: none;
+}
+
+.productos-section.active {
+    display: block;
+}
+
+.productos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.productos-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.productos-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.productos-search input {
+    padding: 8px 15px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    width: 250px;
+}
+
+.productos-tabla {
     width: 100%;
     border-collapse: collapse;
 }
 
-.inv-tabla th {
-    background: #f8f9fa;
-    padding: 12px 16px;
+.productos-tabla th {
+    background: #1a1a2e;
+    color: white;
+    padding: 14px 12px;
     text-align: left;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #666;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid #eee;
+    font-size: 0.85rem;
+    font-weight: 500;
 }
 
-.inv-tabla td {
-    padding: 14px 16px;
-    border-bottom: 1px solid #f0f0f0;
+.productos-tabla td {
+    padding: 12px;
+    border-bottom: 1px solid #e9ecef;
     font-size: 0.9rem;
-    vertical-align: middle;
 }
 
-.inv-tabla tr:hover {
+.productos-tabla tr:hover {
     background: #f8f9fa;
 }
 
-.inv-tabla .codigo {
+.productos-tabla .codigo {
     font-family: 'Consolas', monospace;
     font-size: 0.85rem;
-    color: #555;
+    color: #495057;
 }
 
-.inv-tabla .nombre {
+.productos-tabla .nombre {
     font-weight: 500;
     color: #1a1a2e;
 }
 
-.inv-tabla .descripcion {
-    font-size: 0.8rem;
-    color: #888;
-    max-width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Badges de tipo */
-.tipo-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.tipo-badge i {
-    font-size: 0.7rem;
-}
-
-/* Badges de estado de stock */
-.stock-badge {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.75rem;
+.productos-tabla .stock {
     font-weight: 600;
 }
 
-.stock-badge.sin-stock {
-    background: #f8d7da;
-    color: #721c24;
-}
+.productos-tabla .stock.ok { color: #28a745; }
+.productos-tabla .stock.bajo { color: #ffc107; }
+.productos-tabla .stock.critico { color: #dc3545; }
 
-.stock-badge.critico {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.stock-badge.bajo {
-    background: #d4edda;
-    color: #155724;
-}
-
-.stock-badge.ok {
-    background: #d1ecf1;
-    color: #0c5460;
-}
-
-/* Valores numéricos */
-.inv-tabla .valor-numerico {
+.productos-tabla .valor {
     text-align: right;
-    font-family: 'Consolas', monospace;
-}
-
-.inv-tabla .stock-actual {
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-.inv-tabla .costo {
     color: #28a745;
+    font-weight: 500;
 }
 
-/* Acciones */
-.inv-tabla .acciones {
+.productos-tabla .acciones {
     display: flex;
     gap: 8px;
     justify-content: center;
 }
 
-.inv-tabla .btn-accion {
+.productos-tabla .btn-accion {
     width: 32px;
     height: 32px;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -387,310 +532,101 @@ require_once '../../includes/header.php';
     transition: all 0.2s;
 }
 
-.btn-accion.ver {
-    background: #e3f2fd;
-    color: #1976d2;
-}
-
-.btn-accion.editar {
-    background: #fff3e0;
-    color: #f57c00;
-}
-
-.btn-accion.movimiento {
-    background: #e8f5e9;
-    color: #388e3c;
-}
-
-.btn-accion.eliminar {
-    background: #ffebee;
-    color: #d32f2f;
-}
+.btn-accion.ver { background: #e3f2fd; color: #1976d2; }
+.btn-accion.editar { background: #fff3e0; color: #f57c00; }
+.btn-accion.movimiento { background: #e8f5e9; color: #388e3c; }
+.btn-accion.kardex { background: #f3e5f5; color: #7b1fa2; }
 
 .btn-accion:hover {
     transform: scale(1.1);
 }
 
-/* ========== MODAL ========== */
-.modal-inventario {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.5);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-.modal-inventario.show {
-    display: flex;
-}
-
-.modal-content {
-    background: white;
-    border-radius: 16px;
-    width: 100%;
-    max-width: 700px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-}
-
-.modal-header {
-    padding: 20px 24px;
-    border-bottom: 1px solid #eee;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    position: sticky;
-    top: 0;
-    background: white;
-    z-index: 10;
-}
-
-.modal-header h3 {
-    margin: 0;
-    font-size: 1.2rem;
-    color: #1a1a2e;
-}
-
-.modal-close {
-    width: 36px;
-    height: 36px;
-    border: none;
-    background: #f0f0f0;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.modal-close:hover {
-    background: #e0e0e0;
-}
-
-.modal-body {
-    padding: 24px;
-}
-
-.modal-footer {
-    padding: 16px 24px;
-    border-top: 1px solid #eee;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    position: sticky;
-    bottom: 0;
-    background: white;
-}
-
-/* Formulario en grid */
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-}
-
-.form-grid .full-width {
-    grid-column: 1 / -1;
-}
-
-.form-group {
-    margin-bottom: 0;
-}
-
-.form-group label {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: #555;
-    margin-bottom: 6px;
-}
-
-.form-group label .required {
-    color: #dc3545;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    transition: all 0.2s;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-/* Botones */
-.btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.2s;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,123,255,0.3);
-}
-
-.btn-secondary {
-    background: #f0f0f0;
-    color: #333;
-}
-
-.btn-secondary:hover {
-    background: #e0e0e0;
-}
-
-.btn-success {
-    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
-    color: white;
-}
-
-.btn-nuevo {
-    background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
-    color: white;
-    padding: 10px 20px;
-}
-
-/* ========== MODAL MOVIMIENTO ========== */
-.mov-tipo-btns {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
-}
-
-.mov-tipo-btn {
-    flex: 1;
-    padding: 16px;
-    border: 2px solid #ddd;
-    border-radius: 12px;
-    background: white;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
-}
-
-.mov-tipo-btn:hover {
-    border-color: #007bff;
-}
-
-.mov-tipo-btn.active.entrada {
-    border-color: #28a745;
-    background: #e8f5e9;
-}
-
-.mov-tipo-btn.active.salida {
-    border-color: #dc3545;
-    background: #ffebee;
-}
-
-.mov-tipo-btn i {
-    font-size: 1.5rem;
-    display: block;
-    margin-bottom: 8px;
-}
-
-.mov-tipo-btn.entrada i {
-    color: #28a745;
-}
-
-.mov-tipo-btn.salida i {
-    color: #dc3545;
-}
-
-.mov-tipo-btn span {
+/* Estado badges */
+.estado-badge {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
     font-weight: 600;
-    font-size: 0.9rem;
+}
+
+.estado-badge.ok { background: #d4edda; color: #155724; }
+.estado-badge.bajo { background: #fff3cd; color: #856404; }
+.estado-badge.critico { background: #f8d7da; color: #721c24; }
+.estado-badge.sin-stock { background: #6c757d; color: white; }
+
+/* ========== MENSAJE INICIAL ========== */
+.workspace-placeholder {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+.workspace-placeholder i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.3;
+}
+
+.workspace-placeholder h3 {
+    margin: 0 0 10px 0;
+    color: #495057;
+}
+
+.workspace-placeholder p {
+    margin: 0;
+    font-size: 0.95rem;
 }
 
 /* ========== RESPONSIVE ========== */
-@media (max-width: 768px) {
-    .inv-dashboard {
+@media (max-width: 1200px) {
+    .inv-kpis {
         grid-template-columns: repeat(2, 1fr);
     }
-    
-    .inv-filtros {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .inv-filtros .filtro-grupo {
-        width: 100%;
-    }
-    
-    .inv-filtros select,
-    .inv-filtros input {
-        width: 100%;
-    }
-    
-    .form-grid {
+}
+
+@media (max-width: 768px) {
+    .inv-kpis {
         grid-template-columns: 1fr;
     }
     
-    .inv-tabla {
-        font-size: 0.8rem;
+    .inv-tipos-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
     
-    .inv-tabla th,
-    .inv-tabla td {
-        padding: 10px 8px;
+    .workspace-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .workspace-actions {
+        flex-wrap: wrap;
+        justify-content: center;
     }
 }
 
 /* ========== ANIMACIONES ========== */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-.modal-inventario.show .modal-content {
+.fade-in {
     animation: fadeIn 0.3s ease;
 }
 
 /* ========== LOADING ========== */
-.loading {
-    text-align: center;
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     padding: 40px;
-    color: #888;
+    color: #6c757d;
 }
 
-.loading i {
+.loading-spinner i {
     font-size: 2rem;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     animation: spin 1s linear infinite;
 }
 
@@ -699,283 +635,162 @@ require_once '../../includes/header.php';
     to { transform: rotate(360deg); }
 }
 
-/* ========== EMPTY STATE ========== */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #888;
-}
-
-.empty-state i {
-    font-size: 4rem;
-    margin-bottom: 16px;
-    opacity: 0.3;
-}
-
-.empty-state h4 {
-    margin-bottom: 8px;
-    color: #555;
-}
-
-/* ========== MODAL MULTIPRODUCTO ========== */
-.multi-cabecera {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 20px;
-    border: 1px solid #dee2e6;
-}
-
-.multi-detalle {
-    margin-bottom: 20px;
-}
-
-.multi-detalle-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.multi-detalle-header h4 {
-    margin: 0;
-    font-size: 1rem;
-    color: #495057;
-}
-
-.btn-sm {
-    padding: 6px 12px;
-    font-size: 0.85rem;
-}
-
-.tabla-multi {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 16px;
-}
-
-.tabla-multi th {
-    background: #495057;
-    color: white;
-    padding: 12px;
-    text-align: left;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.tabla-multi td {
-    padding: 8px 12px;
-    border: 1px solid #dee2e6;
-    vertical-align: middle;
-}
-
-.tabla-multi tr:nth-child(even) {
+/* ========== BOTÓN VOLVER ========== */
+.btn-volver {
     background: #f8f9fa;
-}
-
-.tabla-multi select,
-.tabla-multi input {
-    width: 100%;
-    padding: 8px 10px;
     border: 1px solid #ced4da;
-    border-radius: 6px;
-    font-size: 0.9rem;
-}
-
-.tabla-multi select:focus,
-.tabla-multi input:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
-}
-
-.tabla-multi .costo-calculado {
-    background: #e8f5e9;
-    font-weight: 600;
-    color: #2e7d32;
-    text-align: right;
-}
-
-.tabla-multi .btn-eliminar-linea {
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: #ffebee;
-    color: #c62828;
-    border-radius: 6px;
+    color: #495057;
+    padding: 8px 15px;
+    border-radius: 8px;
     cursor: pointer;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
+    font-size: 0.85rem;
     transition: all 0.2s;
 }
 
-.tabla-multi .btn-eliminar-linea:hover {
-    background: #ef5350;
-    color: white;
+.btn-volver:hover {
+    background: #e9ecef;
 }
-
-/* Totales */
-.multi-totales {
-    background: #1a1a2e;
-    border-radius: 12px;
-    padding: 20px;
-    color: white;
-}
-
-.totales-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.total-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-}
-
-.total-item:not(:last-child) {
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.total-label {
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-.total-value {
-    font-size: 1.2rem;
-    font-weight: 600;
-}
-
-.iva-row {
-    color: #ffc107;
-}
-
-.iva-valor {
-    color: #ffc107;
-}
-
-.total-final {
-    padding-top: 16px !important;
-}
-
-.total-final .total-label {
-    font-size: 1rem;
-    font-weight: 600;
-    opacity: 1;
-}
-
-.total-final .total-value {
-    font-size: 1.6rem;
-    color: #4caf50;
-}
-
 </style>
 
-<!-- Contenido Principal -->
-<div class="content-wrapper">
-    <div class="page-header">
-        <h2><i class="fas fa-warehouse"></i> Inventarios</h2>
-        <button class="btn btn-nuevo" onclick="openModal()">
-            <i class="fas fa-plus"></i> Nuevo Item
-        </button>
-        <button class="btn btn-success" onclick="openModalMulti()" style="margin-left: 10px;">
-            <i class="fas fa-file-invoice"></i> Ingreso Múltiple
-        </button>
+<!-- ========== HTML PRINCIPAL ========== -->
+<div class="inv-module">
+    <!-- Header -->
+    <div class="inv-header">
+        <h1><i class="fas fa-warehouse"></i> Centro de Inventarios</h1>
     </div>
     
-    <!-- Resumen Total -->
-    <div class="inv-resumen-total">
-        <div class="inv-resumen-item">
-            <div class="label">Total Items</div>
-            <div class="value" id="totalItems">--</div>
+    <!-- KPIs Generales -->
+    <div class="inv-kpis">
+        <div class="kpi-card">
+            <div class="kpi-icon items">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="kpi-info">
+                <div class="kpi-label">Total de Items</div>
+                <div class="kpi-value" id="kpiTotalItems">--</div>
+            </div>
         </div>
-        <div class="inv-resumen-item">
-            <div class="label">Valor Total Inventario</div>
-            <div class="value success" id="totalValor">--</div>
+        <div class="kpi-card">
+            <div class="kpi-icon valor">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="kpi-info">
+                <div class="kpi-label">Valor Total Inventario</div>
+                <div class="kpi-value success" id="kpiValorTotal">--</div>
+            </div>
         </div>
-        <div class="inv-resumen-item">
-            <div class="label">Alertas de Stock</div>
-            <div class="value warning" id="totalAlertas">--</div>
+        <div class="kpi-card">
+            <div class="kpi-icon alertas">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="kpi-info">
+                <div class="kpi-label">Alertas de Stock</div>
+                <div class="kpi-value" id="kpiAlertas">--</div>
+            </div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon tipos">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div class="kpi-info">
+                <div class="kpi-label">Tipos de Inventario</div>
+                <div class="kpi-value" id="kpiTipos">--</div>
+            </div>
         </div>
     </div>
     
-    <!-- Dashboard Cards -->
-    <div class="inv-dashboard" id="dashboardCards">
-        <div class="loading">
-            <i class="fas fa-spinner"></i>
-            <p>Cargando...</p>
+    <!-- Tipos de Inventario -->
+    <div class="inv-tipos-section">
+        <div class="section-title">
+            <i class="fas fa-th-large"></i>
+            <span>Seleccione un tipo de inventario para gestionar</span>
+        </div>
+        <div class="inv-tipos-grid" id="tiposGrid">
+            <div class="loading-spinner">
+                <i class="fas fa-spinner"></i>
+                <span>Cargando tipos...</span>
+            </div>
         </div>
     </div>
     
-    <!-- Filtros -->
-    <div class="inv-filtros">
-        <div class="filtro-grupo">
-            <label>Tipo:</label>
-            <select id="filtroTipo" onchange="filtrarInventario()">
-                <option value="">Todos los tipos</option>
-            </select>
+    <!-- Área de Trabajo (se muestra al seleccionar un tipo) -->
+    <div class="inv-workspace" id="workspace">
+        <div class="workspace-header">
+            <div class="workspace-title">
+                <div class="icon" id="workspaceIcon">
+                    <i class="fas fa-box"></i>
+                </div>
+                <div>
+                    <h2 id="workspaceTitulo">Tipo de Inventario</h2>
+                    <div class="subtitle" id="workspaceSubtitulo">Seleccione una categoría</div>
+                </div>
+            </div>
+            <div class="workspace-actions">
+                <button class="btn btn-volver" onclick="volverATipos()">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </button>
+                <button class="btn btn-ingreso" onclick="abrirIngreso()">
+                    <i class="fas fa-arrow-down"></i> Ingreso
+                </button>
+                <button class="btn btn-salida" onclick="abrirSalida()">
+                    <i class="fas fa-arrow-up"></i> Salida
+                </button>
+                <button class="btn btn-historial" onclick="abrirHistorial()">
+                    <i class="fas fa-history"></i> Historial
+                </button>
+                <button class="btn btn-nuevo" onclick="abrirNuevoItem()">
+                    <i class="fas fa-plus"></i> Nuevo Item
+                </button>
+            </div>
         </div>
-        <div class="filtro-grupo">
-            <label>Categoría:</label>
-            <select id="filtroCategoria" onchange="filtrarInventario()">
-                <option value="">Todas las categorías</option>
-            </select>
+        
+        <div class="workspace-body">
+            <!-- Categorías del tipo seleccionado -->
+            <div class="categorias-grid" id="categoriasGrid">
+                <!-- Se llena dinámicamente -->
+            </div>
+            
+            <!-- Tabla de productos (se muestra al seleccionar categoría) -->
+            <div class="productos-section" id="productosSection">
+                <div class="productos-header">
+                    <h3>
+                        <i class="fas fa-list"></i>
+                        <span id="productosTitulo">Productos</span>
+                        <span class="categoria-badge" id="productosCategoria">CAT</span>
+                    </h3>
+                    <div class="productos-search">
+                        <input type="text" id="buscarProducto" placeholder="Buscar por código o nombre..." onkeyup="filtrarProductos()">
+                        <span id="totalProductos">0 items</span>
+                    </div>
+                </div>
+                <table class="productos-tabla">
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th class="text-right">Stock</th>
+                            <th>Unidad</th>
+                            <th>Estado</th>
+                            <th class="text-right">Costo Unit.</th>
+                            <th class="text-right">Valor Total</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productosBody">
+                        <!-- Se llena dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <div class="filtro-grupo">
-            <label>Estado:</label>
-            <select id="filtroEstado" onchange="filtrarInventario()">
-                <option value="">Todos</option>
-                <option value="SIN_STOCK">Sin Stock</option>
-                <option value="CRITICO">Crítico</option>
-                <option value="BAJO">Bajo</option>
-                <option value="OK">OK</option>
-            </select>
-        </div>
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" id="buscarInput" placeholder="Buscar por código o nombre..." onkeyup="buscarInventario()">
-        </div>
-        <button class="btn-limpiar" onclick="limpiarFiltros()">
-            <i class="fas fa-times"></i> Limpiar
-        </button>
-    </div>
-    
-    <!-- Tabla de Inventarios -->
-    <div class="inv-tabla-container">
-        <div class="inv-tabla-header">
-            <h3><i class="fas fa-list"></i> Listado de Inventario</h3>
-            <span class="total-registros" id="totalRegistros">0 registros</span>
-        </div>
-        <table class="inv-tabla">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nombre</th>
-                    <th>Tipo / Categoría</th>
-                    <th class="text-right">Stock</th>
-                    <th>Estado</th>
-                    <th class="text-right">Costo Unit.</th>
-                    <th class="text-right">Valor Total</th>
-                    <th class="text-center">Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="tablaBody">
-                <tr>
-                    <td colspan="8" class="loading">
-                        <i class="fas fa-spinner"></i>
-                        <p>Cargando inventario...</p>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
     </div>
 </div>
 
-<!-- Modal Crear/Editar -->
+<!-- ========== MODALES ========== -->
+
+<!-- Modal Crear/Editar Item -->
 <div class="modal-inventario" id="modalInventario">
     <div class="modal-content">
         <div class="modal-header">
@@ -985,6 +800,7 @@ require_once '../../includes/header.php';
         <div class="modal-body">
             <form id="formInventario">
                 <input type="hidden" id="idInventario" name="id_inventario">
+                <input type="hidden" id="tipoInventarioHidden" name="tipo_inventario_hidden">
                 
                 <div class="form-grid">
                     <div class="form-group">
@@ -996,15 +812,13 @@ require_once '../../includes/header.php';
                         <input type="text" id="nombre" name="nombre" required maxlength="150">
                     </div>
                     <div class="form-group">
-                        <label>Tipo de Inventario <span class="required">*</span></label>
-                        <select id="idTipoInventario" name="id_tipo_inventario" required onchange="cargarCategoriasPorTipo()">
-                            <option value="">Seleccione...</option>
-                        </select>
+                        <label>Tipo de Inventario</label>
+                        <input type="text" id="tipoInventarioDisplay" readonly class="readonly-input">
                     </div>
                     <div class="form-group">
                         <label>Categoría <span class="required">*</span></label>
                         <select id="idCategoria" name="id_categoria" required>
-                            <option value="">Seleccione tipo primero...</option>
+                            <option value="">Seleccione...</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1016,28 +830,22 @@ require_once '../../includes/header.php';
                     <div class="form-group">
                         <label>Ubicación</label>
                         <select id="idUbicacion" name="id_ubicacion">
-                            <option value="">Sin asignar</option>
+                            <option value="">Sin ubicación específica</option>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Stock Actual</label>
-                        <input type="number" id="stockActual" name="stock_actual" step="0.01" min="0" value="0">
                     </div>
                     <div class="form-group">
                         <label>Stock Mínimo</label>
-                        <input type="number" id="stockMinimo" name="stock_minimo" step="0.01" min="0" value="0">
+                        <input type="number" id="stockMinimo" name="stock_minimo" step="0.01" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Stock Actual</label>
+                        <input type="number" id="stockActual" name="stock_actual" step="0.01" value="0">
                     </div>
                     <div class="form-group">
                         <label>Costo Unitario (Bs.)</label>
-                        <input type="number" id="costoUnitario" name="costo_unitario" step="0.0001" min="0" value="0">
+                        <input type="number" id="costoUnitario" name="costo_unitario" step="0.0001" value="0">
                     </div>
                     <div class="form-group">
-                        <label>Línea de Producción</label>
-                        <select id="idLineaProduccion" name="id_linea_produccion">
-                            <option value="">Todas las líneas</option>
-                        </select>
-                    </div>
-                    <div class="form-group full-width">
                         <label>Proveedor Principal</label>
                         <input type="text" id="proveedorPrincipal" name="proveedor_principal" maxlength="100">
                     </div>
@@ -1057,308 +865,527 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
-<!-- Modal Movimiento -->
-<div class="modal-inventario" id="modalMovimiento">
-    <div class="modal-content" style="max-width: 500px;">
-        <div class="modal-header">
-            <h3 id="modalMovTitulo"><i class="fas fa-exchange-alt"></i> Registrar Movimiento</h3>
-            <button class="modal-close" onclick="closeModalMovimiento()">&times;</button>
+<!-- Modal Kardex -->
+<div class="modal-inventario" id="modalKardex">
+    <div class="modal-content" style="max-width: 1100px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%); color: white;">
+            <h3><i class="fas fa-book"></i> <span id="kardexTitulo">Kardex del Producto</span></h3>
+            <button class="modal-close" onclick="closeModalKardex()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
-        <div class="modal-body">
-            <input type="hidden" id="movIdInventario">
-            
-            <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
-                <strong id="movProductoNombre">Producto</strong>
-                <div style="font-size: 0.85rem; color: #666;">
-                    Stock actual: <strong id="movStockActual">0</strong> <span id="movUnidad">kg</span>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <div id="kardexContent">
+                <div class="loading-spinner">
+                    <i class="fas fa-spinner"></i>
+                    <span>Cargando kardex...</span>
                 </div>
-            </div>
-            
-            <div class="mov-tipo-btns">
-                <button type="button" class="mov-tipo-btn entrada" onclick="selectTipoMov('entrada')">
-                    <i class="fas fa-arrow-down"></i>
-                    <span>Entrada</span>
-                </button>
-                <button type="button" class="mov-tipo-btn salida" onclick="selectTipoMov('salida')">
-                    <i class="fas fa-arrow-up"></i>
-                    <span>Salida</span>
-                </button>
-            </div>
-            
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label>Tipo de Movimiento <span class="required">*</span></label>
-                <select id="movTipoMovimiento" required>
-                    <option value="">Seleccione tipo de movimiento...</option>
-                </select>
-            </div>
-            
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label>Cantidad <span class="required">*</span></label>
-                <input type="number" id="movCantidad" step="0.01" min="0.01" required>
-            </div>
-            
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label>Costo Unitario (Bs.)</label>
-                <input type="number" id="movCostoUnitario" step="0.0001" min="0">
-                <small style="color: #888; font-size: 0.75rem;">Dejar vacío para usar costo actual</small>
-            </div>
-            
-            <div class="form-group">
-                <label>Observaciones</label>
-                <textarea id="movObservaciones" rows="2"></textarea>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModalMovimiento()">Cancelar</button>
-            <button type="button" class="btn btn-success" onclick="guardarMovimiento()">
-                <i class="fas fa-check"></i> Registrar
-            </button>
+            <button type="button" class="btn btn-secondary" onclick="closeModalKardex()">Cerrar</button>
         </div>
     </div>
 </div>
 
+<style>
+/* Estilos adicionales para modales y formularios */
+.modal-inventario {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-inventario.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    padding: 20px 25px;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-close {
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.modal-close:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.modal-body {
+    padding: 25px;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    padding: 15px 25px;
+    background: #f8f9fa;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #e9ecef;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-group.full-width {
+    grid-column: span 2;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+.form-group .required {
+    color: #dc3545;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 10px 14px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.15);
+}
+
+.readonly-input {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    color: white;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Kardex styles */
+.kardex-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.kardex-table th {
+    background: #343a40;
+    color: white;
+    padding: 10px 8px;
+    text-align: left;
+}
+
+.kardex-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.kardex-table tr:nth-child(even) {
+    background: #f8f9fa;
+}
+
+.kardex-entrada { color: #28a745; }
+.kardex-salida { color: #dc3545; }
+</style>
+
+
 <script>
+// ========== VARIABLES GLOBALES ==========
 const baseUrl = window.location.origin + '/mes_hermen';
 
-// Datos globales
-let inventarios = [];
-let tipos = [];
-let categorias = [];
-let unidades = [];
+let tiposInventario = [];
+let categoriasInventario = [];
+let productosInventario = [];
+let unidadesMedida = [];
 let ubicaciones = [];
-let lineas = [];
-let tipoFiltroActivo = null;
+
+let tipoSeleccionado = null;
+let categoriaSeleccionada = null;
 
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', function() {
     cargarDashboard();
     cargarCatalogos();
-    cargarInventario();
 });
 
-// ========== DASHBOARD ==========
+// ========== CARGA DE DATOS ==========
 async function cargarDashboard() {
     try {
         const response = await fetch(`${baseUrl}/api/inventarios.php?action=resumen`);
         const data = await response.json();
         
         if (data.success) {
-            renderDashboard(data.resumen);
+            // KPIs generales
+            document.getElementById('kpiTotalItems').textContent = data.totales.items;
+            document.getElementById('kpiValorTotal').textContent = 'Bs. ' + parseFloat(data.totales.valor).toLocaleString('es-BO', {minimumFractionDigits: 2});
+            document.getElementById('kpiAlertas').textContent = data.totales.alertas;
+            document.getElementById('kpiAlertas').className = 'kpi-value ' + (data.totales.alertas > 0 ? 'danger' : 'success');
+            document.getElementById('kpiTipos').textContent = data.resumen.length;
             
-            // Actualizar totales
-            document.getElementById('totalItems').textContent = data.totales.items.toLocaleString();
-            document.getElementById('totalValor').textContent = 'Bs. ' + parseFloat(data.totales.valor).toLocaleString('es-BO', {minimumFractionDigits: 2});
-            document.getElementById('totalAlertas').textContent = data.totales.alertas;
+            // Guardar tipos y renderizar
+            tiposInventario = data.resumen;
+            renderTiposInventario(tiposInventario);
         }
     } catch (error) {
         console.error('Error cargando dashboard:', error);
     }
 }
 
-function renderDashboard(resumen) {
-    const container = document.getElementById('dashboardCards');
+async function cargarCatalogos() {
+    try {
+        // Cargar unidades de medida
+        const resUnidades = await fetch(`${baseUrl}/api/inventarios.php?action=unidades`);
+        const dataUnidades = await resUnidades.json();
+        if (dataUnidades.success) {
+            unidadesMedida = dataUnidades.unidades;
+        }
+        
+        // Cargar ubicaciones
+        const resUbicaciones = await fetch(`${baseUrl}/api/inventarios.php?action=ubicaciones`);
+        const dataUbicaciones = await resUbicaciones.json();
+        if (dataUbicaciones.success) {
+            ubicaciones = dataUbicaciones.ubicaciones;
+        }
+    } catch (error) {
+        console.error('Error cargando catálogos:', error);
+    }
+}
+
+// ========== RENDERIZADO DE TIPOS ==========
+function renderTiposInventario(tipos) {
+    const container = document.getElementById('tiposGrid');
     
-    if (!resumen || resumen.length === 0) {
-        container.innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><h4>Sin datos</h4></div>';
+    if (tipos.length === 0) {
+        container.innerHTML = '<p class="empty">No hay tipos de inventario configurados</p>';
         return;
     }
     
-    container.innerHTML = resumen.map(tipo => {
+    container.innerHTML = tipos.map(tipo => {
+        const color = tipo.color || '#007bff';
+        const tieneItems = parseInt(tipo.total_items) > 0;
         const alertas = parseInt(tipo.sin_stock) + parseInt(tipo.stock_critico);
+        
         return `
-            <div class="inv-card ${tipoFiltroActivo == tipo.id_tipo_inventario ? 'active' : ''}" 
-                 style="--card-color: ${tipo.color}"
-                 onclick="filtrarPorTipo(${tipo.id_tipo_inventario})">
-                ${alertas > 0 ? `<span class="inv-card-badge badge-critico">${alertas} alertas</span>` : ''}
-                <div class="inv-card-icon">
-                    <i class="fas ${tipo.icono}"></i>
+            <div class="tipo-card fade-in" 
+                 style="--tipo-color: ${color}"
+                 onclick="seleccionarTipo(${tipo.id_tipo_inventario})"
+                 id="tipoCard_${tipo.id_tipo_inventario}">
+                <div class="tipo-card-header">
+                    <div class="tipo-icon" style="background: ${color}">
+                        <i class="fas ${tipo.icono || 'fa-box'}"></i>
+                    </div>
+                    <div class="tipo-nombre">${tipo.nombre}</div>
                 </div>
-                <div class="inv-card-title">${tipo.nombre}</div>
-                <div class="inv-card-value">${tipo.total_items}</div>
-                <div class="inv-card-subtitle">
-                    Valor: Bs. ${parseFloat(tipo.valor_total).toLocaleString('es-BO', {minimumFractionDigits: 2})}
+                <div class="tipo-stats">
+                    <div class="tipo-stat">
+                        <div class="tipo-stat-value">${tipo.total_items}</div>
+                        <div class="tipo-stat-label">Items</div>
+                    </div>
+                    <div class="tipo-stat">
+                        <div class="tipo-stat-value ${alertas > 0 ? 'text-danger' : ''}">${alertas}</div>
+                        <div class="tipo-stat-label">Alertas</div>
+                    </div>
+                </div>
+                <div class="tipo-valor-total">
+                    <div class="valor">Bs. ${parseFloat(tipo.valor_total).toLocaleString('es-BO', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
+                    <div class="label">Valor Total</div>
                 </div>
             </div>
         `;
     }).join('');
 }
 
-// ========== CATÁLOGOS ==========
-async function cargarCatalogos() {
+// ========== SELECCIÓN DE TIPO ==========
+async function seleccionarTipo(idTipo) {
+    // Marcar card como activo
+    document.querySelectorAll('.tipo-card').forEach(card => card.classList.remove('active'));
+    document.getElementById(`tipoCard_${idTipo}`).classList.add('active');
+    
+    // Guardar tipo seleccionado
+    tipoSeleccionado = tiposInventario.find(t => t.id_tipo_inventario == idTipo);
+    
+    if (!tipoSeleccionado) return;
+    
+    // Actualizar header del workspace
+    const color = tipoSeleccionado.color || '#007bff';
+    document.getElementById('workspaceIcon').style.background = color;
+    document.getElementById('workspaceIcon').innerHTML = `<i class="fas ${tipoSeleccionado.icono || 'fa-box'}"></i>`;
+    document.getElementById('workspaceTitulo').textContent = tipoSeleccionado.nombre;
+    document.getElementById('workspaceSubtitulo').textContent = `${tipoSeleccionado.total_items} items | Bs. ${parseFloat(tipoSeleccionado.valor_total).toLocaleString('es-BO', {minimumFractionDigits: 2})}`;
+    
+    // Mostrar workspace
+    document.getElementById('workspace').classList.add('active');
+    document.getElementById('workspace').style.setProperty('--tipo-color', color);
+    
+    // Ocultar sección de productos
+    document.getElementById('productosSection').classList.remove('active');
+    categoriaSeleccionada = null;
+    
+    // Cargar categorías del tipo
+    await cargarCategoriasDelTipo(idTipo);
+    
+    // Scroll al workspace
+    document.getElementById('workspace').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function cargarCategoriasDelTipo(idTipo) {
+    const container = document.getElementById('categoriasGrid');
+    container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner"></i><span>Cargando categorías...</span></div>';
+    
     try {
-        // Cargar tipos
-        const resTipos = await fetch(`${baseUrl}/api/inventarios.php?action=tipos`);
-        const dataTipos = await resTipos.json();
-        if (dataTipos.success) {
-            tipos = dataTipos.tipos;
-            poblarSelectTipos();
-        }
-        
-        // Cargar categorías
-        const resCat = await fetch(`${baseUrl}/api/inventarios.php?action=categorias`);
-        const dataCat = await resCat.json();
-        if (dataCat.success) {
-            categorias = dataCat.categorias;
-            poblarSelectCategorias();
-        }
-        
-        // Cargar unidades
-        const resUni = await fetch(`${baseUrl}/api/inventarios.php?action=unidades`);
-        const dataUni = await resUni.json();
-        if (dataUni.success) {
-            unidades = dataUni.unidades;
-            poblarSelectUnidades();
-        }
-        
-        // Cargar ubicaciones
-        const resUbi = await fetch(`${baseUrl}/api/inventarios.php?action=ubicaciones`);
-        const dataUbi = await resUbi.json();
-        if (dataUbi.success) {
-            ubicaciones = dataUbi.ubicaciones;
-            poblarSelectUbicaciones();
-        }
-        
-        // Cargar líneas
-        const resLin = await fetch(`${baseUrl}/api/inventarios.php?action=lineas`);
-        const dataLin = await resLin.json();
-        if (dataLin.success) {
-            lineas = dataLin.lineas;
-            poblarSelectLineas();
-        }
-        
-    } catch (error) {
-        console.error('Error cargando catálogos:', error);
-    }
-}
-
-function poblarSelectTipos() {
-    // Filtro
-    const filtro = document.getElementById('filtroTipo');
-    filtro.innerHTML = '<option value="">Todos los tipos</option>' + 
-        tipos.map(t => `<option value="${t.id_tipo_inventario}">${t.nombre}</option>`).join('');
-    
-    // Modal
-    const modal = document.getElementById('idTipoInventario');
-    modal.innerHTML = '<option value="">Seleccione...</option>' + 
-        tipos.map(t => `<option value="${t.id_tipo_inventario}">${t.nombre}</option>`).join('');
-}
-
-function poblarSelectCategorias(tipoId = null) {
-    const filtro = document.getElementById('filtroCategoria');
-    const modal = document.getElementById('idCategoria');
-    
-    let cats = categorias;
-    if (tipoId) {
-        cats = categorias.filter(c => c.id_tipo_inventario == tipoId);
-    }
-    
-    const opciones = '<option value="">Todas las categorías</option>' + 
-        cats.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
-    
-    filtro.innerHTML = opciones;
-    modal.innerHTML = '<option value="">Seleccione...</option>' + 
-        cats.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
-}
-
-function poblarSelectUnidades() {
-    const modal = document.getElementById('idUnidad');
-    modal.innerHTML = '<option value="">Seleccione...</option>' + 
-        unidades.map(u => `<option value="${u.id_unidad}">${u.nombre} (${u.abreviatura})</option>`).join('');
-}
-
-function poblarSelectUbicaciones() {
-    const modal = document.getElementById('idUbicacion');
-    modal.innerHTML = '<option value="">Sin asignar</option>' + 
-        ubicaciones.map(u => `<option value="${u.id_ubicacion}">${u.nombre}</option>`).join('');
-}
-
-function poblarSelectLineas() {
-    const modal = document.getElementById('idLineaProduccion');
-    modal.innerHTML = '<option value="">Todas las líneas</option>' + 
-        lineas.map(l => `<option value="${l.id_linea_produccion}">${l.nombre}</option>`).join('');
-}
-
-function cargarCategoriasPorTipo() {
-    const tipoId = document.getElementById('idTipoInventario').value;
-    poblarSelectCategorias(tipoId);
-}
-
-// ========== INVENTARIO ==========
-async function cargarInventario() {
-    try {
-        const tipoId = document.getElementById('filtroTipo').value;
-        const categoriaId = document.getElementById('filtroCategoria').value;
-        const estadoStock = document.getElementById('filtroEstado').value;
-        const buscar = document.getElementById('buscarInput').value;
-        
-        let url = `${baseUrl}/api/inventarios.php?action=list`;
-        if (tipoId) url += `&tipo_id=${tipoId}`;
-        if (categoriaId) url += `&categoria_id=${categoriaId}`;
-        if (estadoStock) url += `&estado_stock=${estadoStock}`;
-        if (buscar) url += `&buscar=${encodeURIComponent(buscar)}`;
-        
-        const response = await fetch(url);
+        // Obtener categorías con sus valores
+        const response = await fetch(`${baseUrl}/api/inventarios.php?action=categorias_resumen&tipo_id=${idTipo}`);
         const data = await response.json();
         
-        if (data.success) {
-            inventarios = data.inventarios;
-            renderTabla(inventarios);
-            document.getElementById('totalRegistros').textContent = `${data.total} registros`;
+        if (data.success && data.categorias) {
+            categoriasInventario = data.categorias;
+            renderCategorias(data.categorias);
+        } else {
+            // Si no hay endpoint especial, cargar categorías básicas
+            const resCat = await fetch(`${baseUrl}/api/inventarios.php?action=categorias&tipo_id=${idTipo}`);
+            const dataCat = await resCat.json();
+            
+            if (dataCat.success) {
+                // Cargar productos para calcular totales por categoría
+                const resProd = await fetch(`${baseUrl}/api/inventarios.php?action=list&tipo_id=${idTipo}`);
+                const dataProd = await resProd.json();
+                
+                if (dataProd.success) {
+                    productosInventario = dataProd.inventarios;
+                    
+                    // Calcular totales por categoría
+                    const categoriasConTotales = dataCat.categorias.map(cat => {
+                        const productosCat = productosInventario.filter(p => p.id_categoria == cat.id_categoria);
+                        return {
+                            ...cat,
+                            total_items: productosCat.length,
+                            valor_total: productosCat.reduce((sum, p) => sum + parseFloat(p.valor_total || 0), 0),
+                            alertas: productosCat.filter(p => {
+                                const stock = parseFloat(p.stock_actual);
+                                const minimo = parseFloat(p.stock_minimo);
+                                return stock <= 0 || stock <= minimo;
+                            }).length
+                        };
+                    });
+                    
+                    categoriasInventario = categoriasConTotales;
+                    renderCategorias(categoriasConTotales);
+                }
+            }
         }
     } catch (error) {
-        console.error('Error cargando inventario:', error);
+        console.error('Error cargando categorías:', error);
+        container.innerHTML = '<p class="error">Error al cargar categorías</p>';
     }
 }
 
-function renderTabla(items) {
-    const tbody = document.getElementById('tablaBody');
+function renderCategorias(categorias) {
+    const container = document.getElementById('categoriasGrid');
+    const color = tipoSeleccionado?.color || '#007bff';
     
-    if (!items || items.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8">
-                    <div class="empty-state">
-                        <i class="fas fa-box-open"></i>
-                        <h4>No se encontraron items</h4>
-                        <p>Intenta con otros filtros o crea un nuevo item</p>
-                    </div>
-                </td>
-            </tr>
+    if (categorias.length === 0) {
+        container.innerHTML = `
+            <div class="workspace-placeholder">
+                <i class="fas fa-folder-open"></i>
+                <h3>Sin categorías</h3>
+                <p>Este tipo de inventario no tiene categorías configuradas</p>
+            </div>
         `;
         return;
     }
     
-    tbody.innerHTML = items.map(item => {
-        const estadoBadge = getEstadoBadge(item.estado_stock);
+    container.innerHTML = categorias.map(cat => `
+        <div class="categoria-card fade-in" 
+             style="--tipo-color: ${color}"
+             onclick="seleccionarCategoria(${cat.id_categoria})"
+             id="catCard_${cat.id_categoria}">
+            <div class="categoria-header">
+                <div class="categoria-info">
+                    <h4>${cat.nombre}</h4>
+                    <div class="codigo">${cat.codigo}</div>
+                </div>
+                <span class="categoria-badge" style="background: ${color}">${cat.total_items || 0}</span>
+            </div>
+            <div class="categoria-stats">
+                <div class="categoria-stat">
+                    <div class="value">${cat.total_items || 0}</div>
+                    <div class="label">Items</div>
+                </div>
+                <div class="categoria-stat">
+                    <div class="value ${(cat.alertas || 0) > 0 ? 'text-danger' : ''}">${cat.alertas || 0}</div>
+                    <div class="label">Alertas</div>
+                </div>
+                <div class="categoria-stat">
+                    <div class="value money">Bs. ${parseFloat(cat.valor_total || 0).toLocaleString('es-BO', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</div>
+                    <div class="label">Valor</div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// ========== SELECCIÓN DE CATEGORÍA ==========
+async function seleccionarCategoria(idCategoria) {
+    // Marcar card como activo
+    document.querySelectorAll('.categoria-card').forEach(card => card.classList.remove('active'));
+    document.getElementById(`catCard_${idCategoria}`).classList.add('active');
+    
+    // Guardar categoría seleccionada
+    categoriaSeleccionada = categoriasInventario.find(c => c.id_categoria == idCategoria);
+    
+    if (!categoriaSeleccionada) return;
+    
+    // Actualizar título de productos
+    document.getElementById('productosTitulo').textContent = categoriaSeleccionada.nombre;
+    document.getElementById('productosCategoria').textContent = categoriaSeleccionada.codigo;
+    document.getElementById('productosCategoria').style.background = tipoSeleccionado?.color || '#007bff';
+    
+    // Mostrar sección de productos con loading
+    document.getElementById('productosSection').classList.add('active');
+    document.getElementById('productosBody').innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Cargando productos...</td></tr>';
+    
+    // Cargar productos de la categoría desde la API
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php?action=list&tipo_id=${tipoSeleccionado.id_tipo_inventario}&categoria_id=${idCategoria}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const productosCategoria = data.inventarios || [];
+            renderProductos(productosCategoria);
+        } else {
+            document.getElementById('productosBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error al cargar productos</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('productosBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error de conexión</td></tr>';
+    }
+    
+    // Scroll a la tabla
+    document.getElementById('productosSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderProductos(productos) {
+    const tbody = document.getElementById('productosBody');
+    document.getElementById('totalProductos').textContent = `${productos.length} items`;
+    document.getElementById('buscarProducto').value = '';
+    
+    if (productos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px; color: #6c757d;">No hay productos en esta categoría</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = productos.map(prod => {
+        const stock = parseFloat(prod.stock_actual);
+        const minimo = parseFloat(prod.stock_minimo);
+        let estadoClass = 'ok';
+        let estadoText = 'OK';
+        
+        if (stock <= 0) {
+            estadoClass = 'sin-stock';
+            estadoText = 'Sin Stock';
+        } else if (stock <= minimo) {
+            estadoClass = 'critico';
+            estadoText = 'Crítico';
+        } else if (stock <= minimo * 1.5) {
+            estadoClass = 'bajo';
+            estadoText = 'Bajo';
+        }
+        
+        const valor = parseFloat(prod.valor_total || 0);
+        const costo = parseFloat(prod.costo_unitario || 0);
+        
         return `
             <tr>
-                <td class="codigo">${item.codigo}</td>
-                <td>
-                    <div class="nombre">${item.nombre}</div>
-                    ${item.descripcion ? `<div class="descripcion">${item.descripcion}</div>` : ''}
-                </td>
-                <td>
-                    <span class="tipo-badge" style="background: ${item.tipo_color}20; color: ${item.tipo_color}">
-                        ${item.tipo_nombre}
-                    </span>
-                    <div style="font-size: 0.75rem; color: #888; margin-top: 4px;">${item.categoria_nombre}</div>
-                </td>
-                <td class="valor-numerico stock-actual">${parseFloat(item.stock_actual).toLocaleString('es-BO')} ${item.unidad}</td>
-                <td>${estadoBadge}</td>
-                <td class="valor-numerico costo">Bs. ${parseFloat(item.costo_unitario).toFixed(4)}</td>
-                <td class="valor-numerico">Bs. ${parseFloat(item.valor_total).toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
+                <td class="codigo">${prod.codigo}</td>
+                <td class="nombre">${prod.nombre}</td>
+                <td class="text-right stock ${estadoClass}">${stock.toFixed(2)}</td>
+                <td>${prod.unidad || '-'}</td>
+                <td><span class="estado-badge ${estadoClass}">${estadoText}</span></td>
+                <td class="text-right">Bs. ${costo.toFixed(4)}</td>
+                <td class="text-right valor">Bs. ${valor.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
                 <td class="acciones">
-                    <button class="btn-accion ver" title="Ver Kardex" onclick="verKardex(${item.id_inventario})">
+                    <button class="btn-accion kardex" onclick="verKardex(${prod.id_inventario})" title="Ver Kardex">
                         <i class="fas fa-book"></i>
                     </button>
-                    <button class="btn-accion movimiento" title="Registrar Movimiento" onclick="openModalMovimiento(${item.id_inventario})">
-                        <i class="fas fa-exchange-alt"></i>
-                    </button>
-                    <button class="btn-accion editar" title="Editar" onclick="editarInventario(${item.id_inventario})">
+                    <button class="btn-accion editar" onclick="editarItem(${prod.id_inventario})" title="Editar">
                         <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-accion eliminar" title="Eliminar" onclick="eliminarInventario(${item.id_inventario})">
-                        <i class="fas fa-trash"></i>
                     </button>
                 </td>
             </tr>
@@ -1366,926 +1393,142 @@ function renderTabla(items) {
     }).join('');
 }
 
-function getEstadoBadge(estado) {
-    const badges = {
-        'SIN_STOCK': '<span class="stock-badge sin-stock">Sin Stock</span>',
-        'CRITICO': '<span class="stock-badge critico">Crítico</span>',
-        'BAJO': '<span class="stock-badge bajo">Bajo</span>',
-        'OK': '<span class="stock-badge ok">OK</span>'
-    };
-    return badges[estado] || estado;
-}
-
-// ========== FILTROS ==========
-function filtrarPorTipo(tipoId) {
-    if (tipoFiltroActivo === tipoId) {
-        tipoFiltroActivo = null;
-        document.getElementById('filtroTipo').value = '';
-    } else {
-        tipoFiltroActivo = tipoId;
-        document.getElementById('filtroTipo').value = tipoId;
+function filtrarProductos() {
+    const buscar = document.getElementById('buscarProducto').value.toLowerCase();
+    
+    if (!categoriaSeleccionada) return;
+    
+    let productosFiltrados = productosInventario.filter(p => p.id_categoria == categoriaSeleccionada.id_categoria);
+    
+    if (buscar) {
+        productosFiltrados = productosFiltrados.filter(p => 
+            p.codigo.toLowerCase().includes(buscar) || 
+            p.nombre.toLowerCase().includes(buscar)
+        );
     }
     
-    // Actualizar categorías según tipo
-    poblarSelectCategorias(tipoFiltroActivo);
-    
-    cargarInventario();
-    cargarDashboard();
+    renderProductos(productosFiltrados);
 }
 
-function filtrarInventario() {
-    tipoFiltroActivo = document.getElementById('filtroTipo').value || null;
-    
-    // Actualizar categorías si cambia el tipo
-    const tipoId = document.getElementById('filtroTipo').value;
-    poblarSelectCategorias(tipoId || null);
-    
-    cargarInventario();
-    cargarDashboard();
+// ========== NAVEGACIÓN ==========
+function volverATipos() {
+    document.getElementById('workspace').classList.remove('active');
+    document.querySelectorAll('.tipo-card').forEach(card => card.classList.remove('active'));
+    tipoSeleccionado = null;
+    categoriaSeleccionada = null;
 }
 
-function buscarInventario() {
-    clearTimeout(window.searchTimeout);
-    window.searchTimeout = setTimeout(() => {
-        cargarInventario();
-    }, 300);
+// ========== ACCIONES CONTEXTUALES ==========
+function abrirIngreso() {
+    if (!tipoSeleccionado) {
+        alert('Seleccione un tipo de inventario primero');
+        return;
+    }
+    // Abrir modal de ingreso filtrado por tipo
+    openModalMultiContextual('ENTRADA');
 }
 
-function limpiarFiltros() {
-    document.getElementById('filtroTipo').value = '';
-    document.getElementById('filtroCategoria').value = '';
-    document.getElementById('filtroEstado').value = '';
-    document.getElementById('buscarInput').value = '';
-    tipoFiltroActivo = null;
+function abrirSalida() {
+    if (!tipoSeleccionado) {
+        alert('Seleccione un tipo de inventario primero');
+        return;
+    }
+    // Abrir modal de salida filtrado por tipo
+    openModalSalidaContextual();
+}
+
+function abrirHistorial() {
+    if (!tipoSeleccionado) {
+        alert('Seleccione un tipo de inventario primero');
+        return;
+    }
+    // Abrir historial filtrado por tipo
+    openModalHistoricoContextual();
+}
+
+function abrirNuevoItem() {
+    if (!tipoSeleccionado) {
+        alert('Seleccione un tipo de inventario primero');
+        return;
+    }
+    openModalNuevoItem();
+}
+
+// ========== MODAL NUEVO ITEM ==========
+async function openModalNuevoItem() {
+    const modal = document.getElementById('modalInventario');
     
-    poblarSelectCategorias();
-    cargarInventario();
-    cargarDashboard();
-}
-
-// ========== MODAL CREAR/EDITAR ==========
-function openModal() {
+    // Limpiar formulario
     document.getElementById('formInventario').reset();
     document.getElementById('idInventario').value = '';
-    document.getElementById('modalTitulo').innerHTML = '<i class="fas fa-box"></i> Nuevo Item de Inventario';
-    document.getElementById('modalInventario').classList.add('show');
+    document.getElementById('tipoInventarioHidden').value = tipoSeleccionado.id_tipo_inventario;
+    document.getElementById('tipoInventarioDisplay').value = tipoSeleccionado.nombre;
+    document.getElementById('modalTitulo').innerHTML = `<i class="fas fa-plus"></i> Nuevo Item - ${tipoSeleccionado.nombre}`;
+    
+    // Cargar categorías del tipo seleccionado
+    await cargarSelectCategorias();
+    cargarSelectUnidades();
+    cargarSelectUbicaciones();
+    
+    modal.classList.add('show');
+}
+
+async function cargarSelectCategorias() {
+    const select = document.getElementById('idCategoria');
+    select.innerHTML = '<option value="">Cargando...</option>';
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php?action=categorias&tipo_id=${tipoSeleccionado.id_tipo_inventario}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            select.innerHTML = '<option value="">Seleccione...</option>' +
+                data.categorias.map(cat => `<option value="${cat.id_categoria}">${cat.codigo} - ${cat.nombre}</option>`).join('');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        select.innerHTML = '<option value="">Error al cargar</option>';
+    }
+}
+
+function cargarSelectUnidades() {
+    const select = document.getElementById('idUnidad');
+    select.innerHTML = '<option value="">Seleccione...</option>' +
+        unidadesMedida.map(u => `<option value="${u.id_unidad}">${u.abreviatura} - ${u.nombre}</option>`).join('');
+}
+
+function cargarSelectUbicaciones() {
+    const select = document.getElementById('idUbicacion');
+    select.innerHTML = '<option value="">Sin ubicación específica</option>' +
+        ubicaciones.map(u => `<option value="${u.id_ubicacion}">${u.codigo} - ${u.nombre}</option>`).join('');
 }
 
 function closeModal() {
     document.getElementById('modalInventario').classList.remove('show');
 }
 
-async function editarInventario(id) {
-    try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=detalle&id=${id}`);
-        const data = await response.json();
-        
-        if (data.success && data.item) {
-            const item = data.item;
-            
-            document.getElementById('idInventario').value = item.id_inventario;
-            document.getElementById('codigo').value = item.codigo;
-            document.getElementById('nombre').value = item.nombre;
-            document.getElementById('descripcion').value = item.descripcion || '';
-            document.getElementById('idTipoInventario').value = item.id_tipo_inventario;
-            
-            // Cargar categorías del tipo y seleccionar
-            await cargarCategoriasPorTipo();
-            document.getElementById('idCategoria').value = item.id_categoria;
-            
-            document.getElementById('idUnidad').value = item.id_unidad;
-            document.getElementById('stockActual').value = item.stock_actual;
-            document.getElementById('stockMinimo').value = item.stock_minimo;
-            document.getElementById('costoUnitario').value = item.costo_unitario;
-            document.getElementById('idUbicacion').value = item.id_ubicacion || '';
-            document.getElementById('idLineaProduccion').value = item.id_linea_produccion || '';
-            document.getElementById('proveedorPrincipal').value = item.proveedor_principal || '';
-            
-            document.getElementById('modalTitulo').innerHTML = '<i class="fas fa-edit"></i> Editar Item';
-            document.getElementById('modalInventario').classList.add('show');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al cargar los datos');
-    }
-}
-
 async function guardarInventario() {
     const form = document.getElementById('formInventario');
     
-    // Validar campos requeridos
-    if (!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-    
-    const data = {
+    const payload = {
         id_inventario: document.getElementById('idInventario').value || null,
-        codigo: document.getElementById('codigo').value,
-        nombre: document.getElementById('nombre').value,
-        descripcion: document.getElementById('descripcion').value,
-        id_tipo_inventario: document.getElementById('idTipoInventario').value,
+        codigo: document.getElementById('codigo').value.trim(),
+        nombre: document.getElementById('nombre').value.trim(),
+        descripcion: document.getElementById('descripcion').value.trim(),
+        id_tipo_inventario: document.getElementById('tipoInventarioHidden').value,
         id_categoria: document.getElementById('idCategoria').value,
         id_unidad: document.getElementById('idUnidad').value,
-        stock_actual: document.getElementById('stockActual').value,
-        stock_minimo: document.getElementById('stockMinimo').value,
-        costo_unitario: document.getElementById('costoUnitario').value,
-        id_ubicacion: document.getElementById('idUbicacion').value,
-        id_linea_produccion: document.getElementById('idLineaProduccion').value,
-        proveedor_principal: document.getElementById('proveedorPrincipal').value
+        stock_actual: parseFloat(document.getElementById('stockActual').value) || 0,
+        stock_minimo: parseFloat(document.getElementById('stockMinimo').value) || 0,
+        costo_unitario: parseFloat(document.getElementById('costoUnitario').value) || 0,
+        id_ubicacion: document.getElementById('idUbicacion').value || null,
+        proveedor_principal: document.getElementById('proveedorPrincipal').value.trim()
     };
     
-    try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            closeModal();
-            cargarDashboard();
-            cargarInventario();
-            showNotification(result.message, 'success');
-        } else {
-            alert(result.message || 'Error al guardar');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al guardar');
-    }
-}
-
-async function eliminarInventario(id) {
-    if (!confirm('¿Está seguro de eliminar este item?')) return;
-    
-    try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id_inventario: id })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            cargarDashboard();
-            cargarInventario();
-            showNotification(result.message, 'success');
-        } else {
-            alert(result.message || 'Error al eliminar');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al eliminar');
-    }
-}
-
-// ========== MODAL MOVIMIENTO ==========
-let movTipoSeleccionado = null;
-
-function openModalMovimiento(id) {
-    const item = inventarios.find(i => i.id_inventario == id);
-    if (!item) return;
-    
-    document.getElementById('movIdInventario').value = id;
-    document.getElementById('movProductoNombre').textContent = item.nombre;
-    document.getElementById('movStockActual').textContent = parseFloat(item.stock_actual).toLocaleString('es-BO');
-    document.getElementById('movUnidad').textContent = item.unidad;
-    document.getElementById('movCantidad').value = '';
-    document.getElementById('movCostoUnitario').value = '';
-    document.getElementById('movObservaciones').value = '';
-    document.getElementById('movTipoMovimiento').innerHTML = '<option value="">Seleccione tipo de movimiento...</option>';
-    
-    // Reset botones
-    document.querySelectorAll('.mov-tipo-btn').forEach(btn => btn.classList.remove('active'));
-    movTipoSeleccionado = null;
-    
-    document.getElementById('modalMovimiento').classList.add('show');
-}
-
-function closeModalMovimiento() {
-    document.getElementById('modalMovimiento').classList.remove('show');
-}
-
-function selectTipoMov(tipo) {
-    movTipoSeleccionado = tipo;
-    
-    document.querySelectorAll('.mov-tipo-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.mov-tipo-btn.${tipo}`).classList.add('active');
-    
-    const select = document.getElementById('movTipoMovimiento');
-    
-    if (tipo === 'entrada') {
-        select.innerHTML = `
-            <option value="">Seleccione...</option>
-            <option value="ENTRADA_COMPRA">Entrada por Compra</option>
-            <option value="ENTRADA_PRODUCCION">Entrada por Producción</option>
-            <option value="ENTRADA_DEVOLUCION">Entrada por Devolución</option>
-            <option value="ENTRADA_AJUSTE">Ajuste de Inventario (+)</option>
-        `;
-    } else {
-        select.innerHTML = `
-            <option value="">Seleccione...</option>
-            <option value="SALIDA_PRODUCCION">Salida a Producción</option>
-            <option value="SALIDA_VENTA">Salida por Venta</option>
-            <option value="SALIDA_MERMA">Salida por Merma</option>
-            <option value="SALIDA_MUESTRA">Salida por Muestra</option>
-            <option value="SALIDA_AJUSTE">Ajuste de Inventario (-)</option>
-        `;
-    }
-}
-
-async function guardarMovimiento() {
-    const idInventario = document.getElementById('movIdInventario').value;
-    const tipoMovimiento = document.getElementById('movTipoMovimiento').value;
-    const cantidad = parseFloat(document.getElementById('movCantidad').value);
-    const costoUnitario = parseFloat(document.getElementById('movCostoUnitario').value) || 0;
-    const observaciones = document.getElementById('movObservaciones').value;
-    
-    if (!tipoMovimiento) {
-        alert('Seleccione un tipo de movimiento');
+    if (!payload.codigo || !payload.nombre || !payload.id_categoria || !payload.id_unidad) {
+        alert('⚠️ Complete los campos requeridos');
         return;
     }
-    
-    if (!cantidad || cantidad <= 0) {
-        alert('Ingrese una cantidad válida');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                action: 'movimiento',
-                id_inventario: idInventario,
-                tipo_movimiento: tipoMovimiento,
-                cantidad: cantidad,
-                costo_unitario: costoUnitario,
-                observaciones: observaciones
-            })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            closeModalMovimiento();
-            cargarDashboard();
-            cargarInventario();
-            showNotification(result.message, 'success');
-        } else {
-            alert(result.message || 'Error al registrar movimiento');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        alert('Error al registrar movimiento');
-    }
-}
-
-// ========== UTILIDADES ==========
-function showNotification(message, type = 'info') {
-    // Crear notificación
-    const notif = document.createElement('div');
-    notif.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 16px 24px;
-        background: ${type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#007bff'};
-        color: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        z-index: 9999;
-        animation: fadeIn 0.3s ease;
-    `;
-    notif.textContent = message;
-    document.body.appendChild(notif);
-    
-    setTimeout(() => {
-        notif.style.opacity = '0';
-        setTimeout(() => notif.remove(), 300);
-    }, 3000);
-}
-
-// =============================================
-// KARDEX FÍSICO-VALORADO
-// Método: Costo Promedio Ponderado (CPP)
-// =============================================
-
-let kardexData = {
-    inventario: null,
-    movimientos: []
-};
-
-function crearModalKardex() {
-    if (document.getElementById('modalKardex')) return;
-    
-    const modalHTML = `
-    <div class="modal-inventario" id="modalKardex">
-        <div class="modal-content" style="max-width: 1200px;">
-            <div class="modal-header">
-                <h3 id="kardexTitulo"><i class="fas fa-book"></i> Kardex Físico-Valorado</h3>
-                <button class="modal-close" onclick="closeModalKardex()">&times;</button>
-            </div>
-            <div class="modal-body" style="padding: 0;">
-                <div id="kardexProductoInfo" style="padding: 16px 24px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white;">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
-                        <div>
-                            <small style="opacity: 0.7;">Código</small>
-                            <div id="kardexCodigo" style="font-weight: 600; font-size: 1.1rem;">-</div>
-                        </div>
-                        <div>
-                            <small style="opacity: 0.7;">Producto</small>
-                            <div id="kardexNombre" style="font-weight: 600; font-size: 1.1rem;">-</div>
-                        </div>
-                        <div>
-                            <small style="opacity: 0.7;">Stock Actual</small>
-                            <div id="kardexStock" style="font-weight: 600; font-size: 1.1rem; color: #28a745;">-</div>
-                        </div>
-                        <div>
-                            <small style="opacity: 0.7;">Costo Promedio</small>
-                            <div id="kardexCPP" style="font-weight: 600; font-size: 1.1rem; color: #ffc107;">-</div>
-                        </div>
-                        <div>
-                            <small style="opacity: 0.7;">Valor Total</small>
-                            <div id="kardexValorTotal" style="font-weight: 600; font-size: 1.1rem; color: #17a2b8;">-</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="padding: 16px 24px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-                    <div>
-                        <label style="font-size: 0.85rem; color: #666;">Desde:</label>
-                        <input type="date" id="kardexFechaDesde" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.85rem; color: #666;">Hasta:</label>
-                        <input type="date" id="kardexFechaHasta" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px;">
-                    </div>
-                    <button onclick="filtrarKardex()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-filter"></i> Filtrar
-                    </button>
-                    <button onclick="imprimirKardex()" style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-print"></i> Imprimir
-                    </button>
-                </div>
-                
-                <div style="overflow-x: auto; max-height: 500px; overflow-y: auto;">
-                    <table id="tablaKardex" style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                        <thead style="position: sticky; top: 0; z-index: 5;">
-                            <tr style="background: #343a40; color: yellow;">
-                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle; color: white;">FECHA</th>
-                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle; color: white;">DOCUMENTO</th>
-                                <th rowspan="2" style="padding: 10px; border: 1px solid #454d55; text-align: center; vertical-align: middle; min-width: 150px; color: white;">CONCEPTO</th>
-                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #28a745; color: white;">ENTRADAS</th>
-                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #dc3545; color: white;">SALIDAS</th>
-                                <th colspan="3" style="padding: 8px; border: 1px solid #454d55; text-align: center; background: #007bff; color: white;">SALDO</th>
-                            </tr>
-                            <tr style="background: #495057; color: yellow;">
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838; color: white;">Cant.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838; color: white;">C.Unit.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #218838; color: white;">Total Bs.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333; color: white;">Cant.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333; color: white;">C.Unit.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #c82333; color: white;">Total Bs.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9; color: white;">Cant.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9; color: white;">C.Prom.</th>
-                                <th style="padding: 8px; border: 1px solid #454d55; text-align: right; background: #0069d9; color: white;">Total Bs.</th>
-                            </tr>
-                        </thead>
-                        <tbody id="kardexBody">
-                            <tr>
-                                <td colspan="12" style="text-align: center; padding: 40px; color: #888;">
-                                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem;"></i>
-                                    <p>Cargando movimientos...</p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-}
-
-async function verKardex(idInventario) {
-    crearModalKardex();
-    
-    const item = inventarios.find(i => i.id_inventario == idInventario);
-    if (!item) {
-        alert('Producto no encontrado');
-        return;
-    }
-    
-    kardexData.inventario = item;
-    
-    document.getElementById('kardexCodigo').textContent = item.codigo;
-    document.getElementById('kardexNombre').textContent = item.nombre;
-    document.getElementById('kardexStock').textContent = parseFloat(item.stock_actual).toLocaleString('es-BO') + ' ' + item.unidad;
-    document.getElementById('kardexCPP').textContent = 'Bs. ' + parseFloat(item.costo_unitario).toFixed(4);
-    document.getElementById('kardexValorTotal').textContent = 'Bs. ' + parseFloat(item.valor_total).toLocaleString('es-BO', {minimumFractionDigits: 2});
-    
-    const hoy = new Date();
-    const hace30Dias = new Date();
-    hace30Dias.setDate(hace30Dias.getDate() - 30);
-    
-    document.getElementById('kardexFechaHasta').value = hoy.toISOString().split('T')[0];
-    document.getElementById('kardexFechaDesde').value = hace30Dias.toISOString().split('T')[0];
-    
-    await cargarMovimientosKardex(idInventario);
-    
-    document.getElementById('modalKardex').classList.add('show');
-}
-
-async function cargarMovimientosKardex(idInventario) {
-    try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=kardex&id=${idInventario}`);
-        const data = await response.json();
-        
-        if (data.success) {
-            kardexData.movimientos = data.movimientos;
-            renderKardex(data.movimientos);
-        } else {
-            document.getElementById('kardexBody').innerHTML = `
-                <tr><td colspan="12" style="text-align: center; padding: 40px; color: #dc3545;">
-                    Error al cargar movimientos
-                </td></tr>
-            `;
-        }
-    } catch (error) {
-        console.error('Error:', error);
-    }
-}
-
-function renderKardex(movimientos) {
-    const tbody = document.getElementById('kardexBody');
-    
-    if (!movimientos || movimientos.length === 0) {
-        tbody.innerHTML = `
-            <tr><td colspan="12" style="text-align: center; padding: 40px; color: #888;">
-                <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
-                No hay movimientos registrados.<br>
-                <small>Registre una entrada o salida para ver el kardex.</small>
-            </td></tr>
-        `;
-        return;
-    }
-    
-    // Ordenar por fecha ASCENDENTE para mostrar cronológicamente
-    const movsOrdenados = [...movimientos].sort((a, b) => 
-        new Date(a.fecha_movimiento) - new Date(b.fecha_movimiento)
-    );
-    
-    let filas = [];
-    
-    // Obtener el saldo inicial (antes del primer movimiento)
-    const primerMov = movsOrdenados[0];
-    const saldoInicial = parseFloat(primerMov.stock_anterior);
-    
-    // El CPP inicial: si hay costo_promedio_resultado, usamos el del movimiento anterior
-    // Si no, usamos el costo_unitario del primer movimiento como aproximación
-    let cppInicial = parseFloat(primerMov.costo_unitario);
-    
-    // Mostrar saldo inicial solo si hay stock previo
-    if (saldoInicial > 0) {
-        const valorInicial = saldoInicial * cppInicial;
-        filas.push(`
-            <tr style="background: #f8f9fa; font-style: italic;">
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center;">-</td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center;">-</td>
-                <td style="padding: 8px; border: 1px solid #dee2e6;"><strong>SALDO INICIAL</strong></td>
-                <td colspan="3" style="padding: 8px; border: 1px solid #dee2e6; background: #e8f5e9;"></td>
-                <td colspan="3" style="padding: 8px; border: 1px solid #dee2e6; background: #ffebee;"></td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${saldoInicial.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${cppInicial.toFixed(4)}</td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">${valorInicial.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
-            </tr>
-        `);
-    }
-    
-    // Procesar cada movimiento
-    movsOrdenados.forEach((mov, index) => {
-        const fecha = new Date(mov.fecha_movimiento);
-        const fechaStr = fecha.toLocaleDateString('es-BO');
-        const horaStr = fecha.toLocaleTimeString('es-BO', {hour: '2-digit', minute: '2-digit'});
-        
-        const esEntrada = mov.tipo_movimiento.includes('ENTRADA') || mov.tipo_movimiento === 'TRANSFERENCIA_ENTRADA';
-        const cantidad = parseFloat(mov.cantidad);
-        const costoUnit = parseFloat(mov.costo_unitario);
-        const valorMov = parseFloat(mov.costo_total);
-        const stockNuevo = parseFloat(mov.stock_nuevo);
-        
-        // CORRECCIÓN DEL BUG: Usar el CPP resultado guardado en la BD
-        // Si existe costo_promedio_resultado, usarlo; si no, calcular
-        let cppResultado;
-        if (mov.costo_promedio_resultado !== null && mov.costo_promedio_resultado !== undefined) {
-            cppResultado = parseFloat(mov.costo_promedio_resultado);
-        } else {
-            // Fallback: para movimientos antiguos sin el campo
-            cppResultado = costoUnit;
-        }
-        
-        const valorSaldo = stockNuevo * cppResultado;
-        
-        const conceptos = {
-            'ENTRADA_COMPRA': 'Compra',
-            'ENTRADA_PRODUCCION': 'Producción (Entrada)',
-            'ENTRADA_DEVOLUCION': 'Devolución',
-            'ENTRADA_AJUSTE': 'Ajuste (+)',
-            'ENTRADA_INICIAL': 'Inventario Inicial',
-            'SALIDA_PRODUCCION': 'Producción (Salida)',
-            'SALIDA_VENTA': 'Venta',
-            'SALIDA_MERMA': 'Merma',
-            'SALIDA_MUESTRA': 'Muestra',
-            'SALIDA_AJUSTE': 'Ajuste (-)',
-            'TRANSFERENCIA_ENTRADA': 'Transferencia (+)',
-            'TRANSFERENCIA_SALIDA': 'Transferencia (-)'
-        };
-        const concepto = conceptos[mov.tipo_movimiento] || mov.tipo_movimiento;
-        const documento = mov.documento_numero ? `${mov.documento_tipo || ''} ${mov.documento_numero}`.trim() : '-';
-        
-        filas.push(`
-            <tr style="${index % 2 === 0 ? '' : 'background: #f8f9fa;'}">
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center; white-space: nowrap;">
-                    ${fechaStr}<br><small style="color: #888;">${horaStr}</small>
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: center; font-size: 0.8rem;">${documento}</td>
-                <td style="padding: 8px; border: 1px solid #dee2e6;">
-                    ${concepto}
-                    ${mov.observaciones ? `<br><small style="color: #888;">${mov.observaciones}</small>` : ''}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e8f5e9;">
-                    ${esEntrada ? cantidad.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e8f5e9;">
-                    ${esEntrada ? costoUnit.toFixed(4) : ''}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e8f5e9; font-weight: 500;">
-                    ${esEntrada ? valorMov.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #ffebee;">
-                    ${!esEntrada ? cantidad.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #ffebee;">
-                    ${!esEntrada ? costoUnit.toFixed(4) : ''}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #ffebee; font-weight: 500;">
-                    ${!esEntrada ? valorMov.toLocaleString('es-BO', {minimumFractionDigits: 2}) : ''}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
-                    ${stockNuevo.toLocaleString('es-BO', {minimumFractionDigits: 2})}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
-                    ${cppResultado.toFixed(4)}
-                </td>
-                <td style="padding: 8px; border: 1px solid #dee2e6; text-align: right; background: #e3f2fd; font-weight: 600;">
-                    ${valorSaldo.toLocaleString('es-BO', {minimumFractionDigits: 2})}
-                </td>
-            </tr>
-        `);
-    });
-    
-    tbody.innerHTML = filas.join('');
-}
-
-function filtrarKardex() {
-    const desde = document.getElementById('kardexFechaDesde').value;
-    const hasta = document.getElementById('kardexFechaHasta').value;
-    
-    let movsFiltrados = kardexData.movimientos;
-    
-    if (desde) {
-        const fechaDesde = new Date(desde);
-        movsFiltrados = movsFiltrados.filter(m => new Date(m.fecha_movimiento) >= fechaDesde);
-    }
-    
-    if (hasta) {
-        const fechaHasta = new Date(hasta + 'T23:59:59');
-        movsFiltrados = movsFiltrados.filter(m => new Date(m.fecha_movimiento) <= fechaHasta);
-    }
-    
-    renderKardex(movsFiltrados);
-}
-
-function closeModalKardex() {
-    document.getElementById('modalKardex').classList.remove('show');
-}
-
-function imprimirKardex() {
-    const item = kardexData.inventario;
-    if (!item) return;
-    
-    const tabla = document.getElementById('tablaKardex').outerHTML;
-    
-    const ventana = window.open('', '_blank');
-    ventana.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Kardex - ${item.codigo}</title>
-            <style>
-                @page { size: landscape; margin: 1cm; }
-                body { font-family: Arial, sans-serif; font-size: 10px; }
-                .header { text-align: center; margin-bottom: 20px; }
-                .header h1 { margin: 0; font-size: 18px; }
-                .header h2 { margin: 5px 0; font-size: 14px; font-weight: normal; }
-                .info { display: flex; justify-content: space-between; margin-bottom: 15px; padding: 10px; background: #f5f5f5; border: 1px solid #ddd; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid #333; padding: 4px 6px; }
-                th { background: #333; color: white; font-size: 9px; }
-                .text-right { text-align: right; }
-                .footer { margin-top: 30px; display: flex; justify-content: space-around; }
-                .firma { text-align: center; padding-top: 40px; border-top: 1px solid #333; width: 200px; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>HERMEN LTDA.</h1>
-                <h2>KARDEX FÍSICO-VALORADO</h2>
-                <p>Método: Costo Promedio Ponderado (CPP)</p>
-            </div>
-            
-            <div class="info">
-                <div><strong>Código:</strong> ${item.codigo}</div>
-                <div><strong>Producto:</strong> ${item.nombre}</div>
-                <div><strong>Unidad:</strong> ${item.unidad}</div>
-                <div><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-BO')}</div>
-            </div>
-            
-            ${tabla}
-            
-            <div class="footer">
-                <div class="firma">Elaborado por</div>
-                <div class="firma">Revisado por</div>
-                <div class="firma">Aprobado por</div>
-            </div>
-            
-            <scr` + `ipt>window.onload = function() { window.print(); }<\/scr` + `ipt>
-        </body>
-        </html>
-    `);
-    ventana.document.close();
-}
-
-
-// ========== MODAL MULTIPRODUCTO ==========
-let multiLineas = [];
-let multiLineaCounter = 0;
-
-function openModalMulti(tipo = 'ENTRADA_COMPRA') {
-    const modal = document.getElementById('modalMultiproducto');
-    
-    document.getElementById('multiTipoMov').value = tipo;
-    document.getElementById('multiProveedor').value = '';
-    document.getElementById('multiDocNumero').value = '';
-    document.getElementById('multiFecha').value = new Date().toISOString().split('T')[0];
-    document.getElementById('multiConFactura').checked = false;
-    document.getElementById('multiObservaciones').value = '';
-    
-    multiLineas = [];
-    multiLineaCounter = 0;
-    document.getElementById('tbodyMultiDetalle').innerHTML = '';
-    
-    cambiarTipoMovMulti();
-    agregarLineaMulti();
-    calcularTotalesMulti();
-    document.getElementById('ivaRow').style.display = 'none';
-    
-    modal.classList.add('show');
-}
-
-function closeModalMulti() {
-    document.getElementById('modalMultiproducto').classList.remove('show');
-}
-
-function cambiarTipoMovMulti() {
-    const tipo = document.getElementById('multiTipoMov').value;
-    const titulo = document.getElementById('modalMultiTitulo');
-    
-    const titulos = {
-        'ENTRADA_COMPRA': '📥 Ingreso de Compra / Factura',
-        'ENTRADA_PRODUCCION': '📥 Ingreso por Producción',
-        'ENTRADA_DEVOLUCION': '📥 Registro de Devolución',
-        'ENTRADA_AJUSTE': '📥 Ajuste Positivo de Inventario',
-        'SALIDA_PRODUCCION': '📤 Salida a Producción',
-        'SALIDA_VENTA': '📤 Salida por Venta',
-        'SALIDA_MERMA': '📤 Registro de Mermas',
-        'SALIDA_AJUSTE': '📤 Ajuste Negativo de Inventario'
-    };
-    
-    titulo.innerHTML = `<i class="fas fa-file-invoice"></i> ${titulos[tipo] || 'Movimiento Múltiple'}`;
-    
-    const checkboxContainer = document.getElementById('multiConFactura').parentElement;
-    if (tipo === 'ENTRADA_COMPRA') {
-        checkboxContainer.style.display = 'flex';
-    } else {
-        checkboxContainer.style.display = 'none';
-        document.getElementById('multiConFactura').checked = false;
-        toggleIVA();
-    }
-}
-
-function toggleIVA() {
-    const conFactura = document.getElementById('multiConFactura').checked;
-    document.getElementById('ivaRow').style.display = conFactura ? 'flex' : 'none';
-    calcularTotalesMulti();
-}
-
-function agregarLineaMulti() {
-    multiLineaCounter++;
-    const lineaId = multiLineaCounter;
-    
-    const tipo = document.getElementById('multiTipoMov').value;
-    const esEntrada = tipo.includes('ENTRADA');
-    
-    const tbody = document.getElementById('tbodyMultiDetalle');
-    
-    let opcionesProductos = '<option value="">Seleccione producto...</option>';
-    inventarios.forEach(inv => {
-        const stockInfo = esEntrada ? '' : ` (Stock: ${parseFloat(inv.stock_actual).toFixed(2)})`;
-        opcionesProductos += `<option value="${inv.id_inventario}" 
-            data-stock="${inv.stock_actual}" 
-            data-costo="${inv.costo_unitario}"
-            data-unidad="${inv.unidad}"
-            data-nombre="${inv.nombre}">
-            ${inv.codigo} - ${inv.nombre}${stockInfo}
-        </option>`;
-    });
-    
-    const nuevaFila = document.createElement('tr');
-    nuevaFila.id = `lineaMulti_${lineaId}`;
-    nuevaFila.innerHTML = `
-        <td>
-            <select id="multiProd_${lineaId}" onchange="seleccionarProductoMulti(${lineaId})">
-                ${opcionesProductos}
-            </select>
-        </td>
-        <td>
-            <input type="number" id="multiCant_${lineaId}" 
-                   step="0.01" min="0.01" placeholder="0.00"
-                   onchange="calcularCostoLinea(${lineaId})"
-                   onkeyup="calcularCostoLinea(${lineaId})">
-        </td>
-        <td>
-            <input type="number" id="multiValor_${lineaId}" 
-                   step="0.01" min="0" placeholder="0.00"
-                   onchange="calcularCostoLinea(${lineaId})"
-                   onkeyup="calcularCostoLinea(${lineaId})">
-        </td>
-        <td class="costo-calculado" id="multiCostoUnit_${lineaId}">
-            0.0000
-        </td>
-        <td style="text-align: center;">
-            <button type="button" class="btn-eliminar-linea" onclick="eliminarLineaMulti(${lineaId})" title="Eliminar línea">
-                <i class="fas fa-trash"></i>
-            </button>
-        </td>
-    `;
-    
-    tbody.appendChild(nuevaFila);
-    
-    multiLineas.push({
-        id: lineaId,
-        idInventario: null,
-        cantidad: 0,
-        valorTotal: 0,
-        costoUnitario: 0
-    });
-}
-
-function seleccionarProductoMulti(lineaId) {
-    const select = document.getElementById(`multiProd_${lineaId}`);
-    const option = select.options[select.selectedIndex];
-    
-    const linea = multiLineas.find(l => l.id === lineaId);
-    if (linea) {
-        linea.idInventario = select.value ? parseInt(select.value) : null;
-        linea.stockDisponible = parseFloat(option.dataset.stock) || 0;
-        linea.costoActual = parseFloat(option.dataset.costo) || 0;
-        linea.unidad = option.dataset.unidad || '';
-        linea.nombreProducto = option.dataset.nombre || '';
-    }
-    
-    calcularCostoLinea(lineaId);
-}
-
-function calcularCostoLinea(lineaId) {
-    const cantidad = parseFloat(document.getElementById(`multiCant_${lineaId}`).value) || 0;
-    const valorTotal = parseFloat(document.getElementById(`multiValor_${lineaId}`).value) || 0;
-    
-    let costoUnitario = 0;
-    if (cantidad > 0 && valorTotal > 0) {
-        costoUnitario = valorTotal / cantidad;
-    }
-    
-    document.getElementById(`multiCostoUnit_${lineaId}`).textContent = costoUnitario.toFixed(4);
-    
-    const linea = multiLineas.find(l => l.id === lineaId);
-    if (linea) {
-        linea.cantidad = cantidad;
-        linea.valorTotal = valorTotal;
-        linea.costoUnitario = costoUnitario;
-    }
-    
-    calcularTotalesMulti();
-}
-
-function eliminarLineaMulti(lineaId) {
-    const fila = document.getElementById(`lineaMulti_${lineaId}`);
-    if (fila) {
-        fila.remove();
-    }
-    
-    multiLineas = multiLineas.filter(l => l.id !== lineaId);
-    
-    if (multiLineas.length === 0) {
-        agregarLineaMulti();
-    }
-    
-    calcularTotalesMulti();
-}
-
-function calcularTotalesMulti() {
-    let subtotal = 0;
-    
-    multiLineas.forEach(linea => {
-        subtotal += linea.valorTotal || 0;
-    });
-    
-    const conFactura = document.getElementById('multiConFactura').checked;
-    let iva = 0;
-    let total = subtotal;
-    
-    if (conFactura && subtotal > 0) {
-        iva = subtotal * 13 / 113;
-    }
-    
-    document.getElementById('multiSubtotal').textContent = 'Bs. ' + subtotal.toLocaleString('es-BO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    document.getElementById('multiIVA').textContent = 'Bs. ' + iva.toLocaleString('es-BO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    document.getElementById('multiTotal').textContent = 'Bs. ' + total.toLocaleString('es-BO', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-}
-
-async function guardarMultiproducto() {
-    const tipoMov = document.getElementById('multiTipoMov').value;
-    const docNumero = document.getElementById('multiDocNumero').value.trim();
-    const proveedor = document.getElementById('multiProveedor').value.trim();
-    const fecha = document.getElementById('multiFecha').value;
-    const observaciones = document.getElementById('multiObservaciones').value.trim();
-    const conFactura = document.getElementById('multiConFactura').checked;
-    
-    if (!docNumero) {
-        alert('Ingrese el número de documento');
-        document.getElementById('multiDocNumero').focus();
-        return;
-    }
-    
-    const lineasValidas = multiLineas.filter(l => l.idInventario && l.cantidad > 0 && l.valorTotal > 0);
-    
-    if (lineasValidas.length === 0) {
-        alert('Agregue al menos un producto con cantidad y valor');
-        return;
-    }
-    
-    const esSalida = tipoMov.includes('SALIDA');
-    if (esSalida) {
-        for (const linea of lineasValidas) {
-            if (linea.cantidad > linea.stockDisponible) {
-                alert(`Stock insuficiente para ${linea.nombreProducto}. Disponible: ${linea.stockDisponible.toFixed(2)}`);
-                return;
-            }
-        }
-    }
-    
-    let subtotal = lineasValidas.reduce((sum, l) => sum + l.valorTotal, 0);
-    let ivaCredito = 0;
-    if (conFactura && tipoMov === 'ENTRADA_COMPRA') {
-        ivaCredito = subtotal * 13 / 113;
-    }
-    
-    const payload = {
-        action: 'multiproducto',
-        tipo_movimiento: tipoMov,
-        documento_tipo: conFactura ? 'FACTURA' : 'NOTA',
-        documento_numero: docNumero,
-        proveedor: proveedor,
-        fecha: fecha,
-        observaciones: observaciones,
-        con_factura: conFactura,
-        iva_credito: ivaCredito,
-        subtotal: subtotal,
-        lineas: lineasValidas.map(l => ({
-            id_inventario: l.idInventario,
-            cantidad: l.cantidad,
-            valor_total: l.valorTotal,
-            costo_unitario: l.costoUnitario
-        }))
-    };
     
     try {
         const response = await fetch(`${baseUrl}/api/inventarios.php`, {
@@ -2298,222 +1541,143 @@ async function guardarMultiproducto() {
         
         if (data.success) {
             alert('✅ ' + data.message);
-            closeModalMulti();
+            closeModal();
             cargarDashboard();
-            cargarInventario();
+            if (tipoSeleccionado) {
+                seleccionarTipo(tipoSeleccionado.id_tipo_inventario);
+            }
         } else {
-            alert('❌ ' + (data.message || 'Error al registrar'));
+            alert('❌ ' + (data.message || 'Error al guardar'));
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('Error de conexión');
+        alert('❌ Error de conexión');
     }
 }
 
+async function editarItem(idInventario) {
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php?action=detalle&id=${idInventario}`);
+        const data = await response.json();
+        
+        if (data.success && data.item) {
+            const item = data.item;
+            
+            document.getElementById('idInventario').value = item.id_inventario;
+            document.getElementById('codigo').value = item.codigo;
+            document.getElementById('nombre').value = item.nombre;
+            document.getElementById('descripcion').value = item.descripcion || '';
+            document.getElementById('tipoInventarioHidden').value = item.id_tipo_inventario;
+            document.getElementById('tipoInventarioDisplay').value = item.tipo_nombre;
+            document.getElementById('stockActual').value = item.stock_actual;
+            document.getElementById('stockMinimo').value = item.stock_minimo;
+            document.getElementById('costoUnitario').value = item.costo_unitario;
+            document.getElementById('proveedorPrincipal').value = item.proveedor_principal || '';
+            
+            await cargarSelectCategorias();
+            cargarSelectUnidades();
+            cargarSelectUbicaciones();
+            
+            // Esperar un momento para que se carguen los selects
+            setTimeout(() => {
+                document.getElementById('idCategoria').value = item.id_categoria;
+                document.getElementById('idUnidad').value = item.id_unidad;
+                document.getElementById('idUbicacion').value = item.id_ubicacion || '';
+            }, 300);
+            
+            document.getElementById('modalTitulo').innerHTML = `<i class="fas fa-edit"></i> Editar: ${item.nombre}`;
+            document.getElementById('modalInventario').classList.add('show');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al cargar datos del item');
+    }
+}
 
+// ========== KARDEX ==========
+async function verKardex(idInventario) {
+    const modal = document.getElementById('modalKardex');
+    const content = document.getElementById('kardexContent');
+    
+    content.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner"></i><span>Cargando kardex...</span></div>';
+    modal.classList.add('show');
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php?action=kardex&id=${idInventario}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const producto = productosInventario.find(p => p.id_inventario == idInventario);
+            document.getElementById('kardexTitulo').textContent = `Kardex: ${producto?.nombre || 'Producto'}`;
+            
+            if (data.movimientos.length === 0) {
+                content.innerHTML = '<p class="text-center" style="padding: 40px; color: #6c757d;">No hay movimientos registrados</p>';
+                return;
+            }
+            
+            content.innerHTML = `
+                <table class="kardex-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Documento</th>
+                            <th class="text-right">Cantidad</th>
+                            <th class="text-right">Costo Unit.</th>
+                            <th class="text-right">Stock</th>
+                            <th class="text-right">CPP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.movimientos.map(mov => {
+                            const esEntrada = mov.tipo_movimiento.includes('ENTRADA');
+                            const fecha = new Date(mov.fecha_movimiento);
+                            return `
+                                <tr>
+                                    <td>${fecha.toLocaleDateString('es-BO')}</td>
+                                    <td class="${esEntrada ? 'kardex-entrada' : 'kardex-salida'}">
+                                        ${esEntrada ? '↓' : '↑'} ${mov.tipo_movimiento.replace('ENTRADA_', '').replace('SALIDA_', '')}
+                                    </td>
+                                    <td>${mov.documento_numero || '-'}</td>
+                                    <td class="text-right ${esEntrada ? 'kardex-entrada' : 'kardex-salida'}">
+                                        ${esEntrada ? '+' : '-'}${parseFloat(mov.cantidad).toFixed(2)}
+                                    </td>
+                                    <td class="text-right">Bs. ${parseFloat(mov.costo_unitario).toFixed(4)}</td>
+                                    <td class="text-right">${parseFloat(mov.stock_nuevo).toFixed(2)}</td>
+                                    <td class="text-right">Bs. ${parseFloat(mov.costo_promedio_resultado).toFixed(4)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        content.innerHTML = '<p class="text-center text-danger">Error al cargar kardex</p>';
+    }
+}
+
+function closeModalKardex() {
+    document.getElementById('modalKardex').classList.remove('show');
+}
+
+// ========== FUNCIONES PLACEHOLDER PARA MODALES CONTEXTUALES ==========
+// Estas funciones conectarán con los modales existentes pero filtrados por tipo
+
+function openModalMultiContextual(tipo) {
+    // Por ahora mostrar alerta - esto se conectará con el modal existente
+    alert(`Abrir modal de ${tipo} para: ${tipoSeleccionado.nombre}\n\nEsta funcionalidad se conectará con el modal de ingreso múltiple existente, filtrado por el tipo de inventario seleccionado.`);
+}
+
+function openModalSalidaContextual() {
+    alert(`Abrir modal de SALIDA para: ${tipoSeleccionado.nombre}\n\nEsta funcionalidad se conectará con el modal de salida existente, filtrado por el tipo de inventario seleccionado.`);
+}
+
+function openModalHistoricoContextual() {
+    alert(`Abrir HISTORIAL de: ${tipoSeleccionado.nombre}\n\nEsta funcionalidad mostrará solo los movimientos del tipo de inventario seleccionado.`);
+}
 
 </script>
-<!-- Modal Multiproducto -->
-<div class="modal-inventario" id="modalMultiproducto">
-    <div class="modal-content" style="max-width: 1000px;">
-        <div class="modal-header">
-            <h3 id="modalMultiTitulo"><i class="fas fa-file-invoice"></i> Ingreso de Compra / Múltiples Productos</h3>
-            <button class="modal-close" onclick="closeModalMulti()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <!-- Cabecera del Documento -->
-            <div class="multi-cabecera">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Tipo de Movimiento <span class="required">*</span></label>
-                        <select id="multiTipoMov" onchange="cambiarTipoMovMulti()">
-                            <option value="ENTRADA_COMPRA">📥 Ingreso por Compra</option>
-                            <option value="ENTRADA_PRODUCCION">📥 Ingreso por Producción</option>
-                            <option value="ENTRADA_DEVOLUCION">📥 Devolución</option>
-                            <option value="ENTRADA_AJUSTE">📥 Ajuste Positivo</option>
-                            <option value="SALIDA_PRODUCCION">📤 Salida a Producción</option>
-                            <option value="SALIDA_VENTA">📤 Salida por Venta</option>
-                            <option value="SALIDA_MERMA">📤 Merma/Desperdicio</option>
-                            <option value="SALIDA_AJUSTE">📤 Ajuste Negativo</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Proveedor / Origen</label>
-                        <input type="text" id="multiProveedor" placeholder="Nombre del proveedor o referencia">
-                    </div>
-                    <div class="form-group">
-                        <label>N° Documento <span class="required">*</span></label>
-                        <input type="text" id="multiDocNumero" placeholder="Ej: FAC-001234">
-                    </div>
-                    <div class="form-group">
-                        <label>Fecha</label>
-                        <input type="date" id="multiFecha" value="">
-                    </div>
-                    <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="multiConFactura" onchange="toggleIVA()" style="width: auto;">
-                            <span>¿Con Factura? (deduce IVA 13%)</span>
-                        </label>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Observaciones Generales</label>
-                        <input type="text" id="multiObservaciones" placeholder="Observaciones del documento">
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Detalle de Productos -->
-            <div class="multi-detalle">
-                <div class="multi-detalle-header">
-                    <h4><i class="fas fa-list"></i> Detalle de Productos</h4>
-                    <button type="button" class="btn btn-success btn-sm" onclick="agregarLineaMulti()">
-                        <i class="fas fa-plus"></i> Agregar Línea
-                    </button>
-                </div>
-                
-                <table class="tabla-multi" id="tablaMultiDetalle">
-                    <thead>
-                        <tr>
-                            <th style="width: 40%;">Producto</th>
-                            <th style="width: 15%;">Cantidad</th>
-                            <th style="width: 18%;">Valor Total (Bs.)</th>
-                            <th style="width: 18%;">Costo Unit.</th>
-                            <th style="width: 9%;">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbodyMultiDetalle">
-                        <!-- Las líneas se agregan dinámicamente -->
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Totales -->
-            <div class="multi-totales">
-                <div class="totales-grid">
-                    <div class="total-item">
-                        <span class="total-label">Subtotal:</span>
-                        <span class="total-value" id="multiSubtotal">Bs. 0.00</span>
-                    </div>
-                    <div class="total-item iva-row" id="ivaRow" style="display: none;">
-                        <span class="total-label">Crédito Fiscal IVA (13%):</span>
-                        <span class="total-value iva-valor" id="multiIVA">Bs. 0.00</span>
-                    </div>
-                    <div class="total-item total-final">
-                        <span class="total-label">TOTAL DOCUMENTO:</span>
-                        <span class="total-value" id="multiTotal">Bs. 0.00</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModalMulti()">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="guardarMultiproducto()">
-                <i class="fas fa-save"></i> Registrar Movimientos
-            </button>
-        </div>
-    </div>
-</div>
-
-
-<!-- Modal Multiproducto -->
-<div class="modal-inventario" id="modalMultiproducto">
-    <div class="modal-content" style="max-width: 1000px;">
-        <div class="modal-header">
-            <h3 id="modalMultiTitulo"><i class="fas fa-file-invoice"></i> Ingreso de Compra / Múltiples Productos</h3>
-            <button class="modal-close" onclick="closeModalMulti()">&times;</button>
-        </div>
-        <div class="modal-body">
-            <!-- Cabecera del Documento -->
-            <div class="multi-cabecera">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label>Tipo de Movimiento <span class="required">*</span></label>
-                        <select id="multiTipoMov" onchange="cambiarTipoMovMulti()">
-                            <option value="ENTRADA_COMPRA">📥 Ingreso por Compra</option>
-                            <option value="ENTRADA_PRODUCCION">📥 Ingreso por Producción</option>
-                            <option value="ENTRADA_DEVOLUCION">📥 Devolución</option>
-                            <option value="ENTRADA_AJUSTE">📥 Ajuste Positivo</option>
-                            <option value="SALIDA_PRODUCCION">📤 Salida a Producción</option>
-                            <option value="SALIDA_VENTA">📤 Salida por Venta</option>
-                            <option value="SALIDA_MERMA">📤 Merma/Desperdicio</option>
-                            <option value="SALIDA_AJUSTE">📤 Ajuste Negativo</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Proveedor / Origen</label>
-                        <input type="text" id="multiProveedor" placeholder="Nombre del proveedor o referencia">
-                    </div>
-                    <div class="form-group">
-                        <label>N° Documento <span class="required">*</span></label>
-                        <input type="text" id="multiDocNumero" placeholder="Ej: FAC-001234">
-                    </div>
-                    <div class="form-group">
-                        <label>Fecha</label>
-                        <input type="date" id="multiFecha" value="">
-                    </div>
-                    <div class="form-group">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="multiConFactura" onchange="toggleIVA()" style="width: auto;">
-                            <span>¿Con Factura? (deduce IVA 13%)</span>
-                        </label>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Observaciones Generales</label>
-                        <input type="text" id="multiObservaciones" placeholder="Observaciones del documento">
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Detalle de Productos -->
-            <div class="multi-detalle">
-                <div class="multi-detalle-header">
-                    <h4><i class="fas fa-list"></i> Detalle de Productos</h4>
-                    <button type="button" class="btn btn-success btn-sm" onclick="agregarLineaMulti()">
-                        <i class="fas fa-plus"></i> Agregar Línea
-                    </button>
-                </div>
-                
-                <table class="tabla-multi" id="tablaMultiDetalle">
-                    <thead>
-                        <tr>
-                            <th style="width: 40%;">Producto</th>
-                            <th style="width: 15%;">Cantidad</th>
-                            <th style="width: 18%;">Valor Total (Bs.)</th>
-                            <th style="width: 18%;">Costo Unit.</th>
-                            <th style="width: 9%;">Acción</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbodyMultiDetalle">
-                        <!-- Las líneas se agregan dinámicamente -->
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Totales -->
-            <div class="multi-totales">
-                <div class="totales-grid">
-                    <div class="total-item">
-                        <span class="total-label">Subtotal:</span>
-                        <span class="total-value" id="multiSubtotal">Bs. 0.00</span>
-                    </div>
-                    <div class="total-item iva-row" id="ivaRow" style="display: none;">
-                        <span class="total-label">Crédito Fiscal IVA (13%):</span>
-                        <span class="total-value iva-valor" id="multiIVA">Bs. 0.00</span>
-                    </div>
-                    <div class="total-item total-final">
-                        <span class="total-label">TOTAL DOCUMENTO:</span>
-                        <span class="total-value" id="multiTotal">Bs. 0.00</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModalMulti()">Cancelar</button>
-            <button type="button" class="btn btn-primary" onclick="guardarMultiproducto()">
-                <i class="fas fa-save"></i> Registrar Movimientos
-            </button>
-        </div>
-    </div>
-</div>
 
 <?php require_once '../../includes/footer.php'; ?>

@@ -158,6 +158,76 @@ try {
                         'categorias' => $categorias
                     ]);
                     break;
+                
+                case 'subcategorias':
+                    // Lista de subcategorías (opcionalmente filtrado por categoría)
+                    $categoriaId = $_GET['categoria_id'] ?? null;
+                    
+                    $sql = "
+                        SELECT s.id_subcategoria, s.codigo, s.nombre, s.id_categoria, s.orden,
+                               c.nombre AS categoria_nombre, c.codigo AS categoria_codigo,
+                               t.id_tipo_inventario, t.nombre AS tipo_nombre
+                        FROM subcategorias_inventario s
+                        JOIN categorias_inventario c ON s.id_categoria = c.id_categoria
+                        JOIN tipos_inventario t ON c.id_tipo_inventario = t.id_tipo_inventario
+                        WHERE s.activo = 1
+                    ";
+                    
+                    if ($categoriaId) {
+                        $sql .= " AND s.id_categoria = " . intval($categoriaId);
+                    }
+                    $sql .= " ORDER BY c.orden, s.orden, s.nombre";
+                    
+                    $stmt = $db->query($sql);
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'subcategorias' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+                    ]);
+                    break;
+                
+                case 'subcategorias_resumen':
+                    // Subcategorías con totales (items, valor, alertas)
+                    $categoriaId = $_GET['categoria_id'] ?? null;
+                    
+                    $sql = "
+                        SELECT 
+                            s.id_subcategoria, 
+                            s.codigo, 
+                            s.nombre, 
+                            s.id_categoria,
+                            c.nombre AS categoria_nombre,
+                            COUNT(i.id_inventario) AS total_items,
+                            COALESCE(SUM(i.stock_actual * i.costo_unitario), 0) AS valor_total,
+                            SUM(CASE WHEN i.stock_actual <= 0 THEN 1 ELSE 0 END) AS sin_stock,
+                            SUM(CASE WHEN i.stock_actual > 0 AND i.stock_actual <= i.stock_minimo THEN 1 ELSE 0 END) AS stock_critico
+                        FROM subcategorias_inventario s
+                        JOIN categorias_inventario c ON s.id_categoria = c.id_categoria
+                        LEFT JOIN inventarios i ON s.id_subcategoria = i.id_subcategoria AND i.activo = 1
+                        WHERE s.activo = 1
+                    ";
+                    
+                    if ($categoriaId) {
+                        $sql .= " AND s.id_categoria = " . intval($categoriaId);
+                    }
+                    
+                    $sql .= " GROUP BY s.id_subcategoria, s.codigo, s.nombre, s.id_categoria, c.nombre
+                              ORDER BY s.orden, s.nombre";
+                    
+                    $stmt = $db->query($sql);
+                    $subcategorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    
+                    // Calcular alertas totales
+                    foreach ($subcategorias as &$sub) {
+                        $sub['alertas'] = intval($sub['sin_stock']) + intval($sub['stock_critico']);
+                    }
+                    
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'subcategorias' => $subcategorias
+                    ]);
+                    break;
                     
                 case 'unidades':
                     // Lista de unidades de medida
@@ -425,6 +495,7 @@ try {
                     // Listar inventarios con filtros
                     $tipoId = $_GET['tipo_id'] ?? null;
                     $categoriaId = $_GET['categoria_id'] ?? null;
+                    $subcategoriaId = $_GET['subcategoria_id'] ?? null;
                     $buscar = $_GET['buscar'] ?? null;
                     $estadoStock = $_GET['estado_stock'] ?? null;
                     
@@ -441,6 +512,7 @@ try {
                             ci.id_categoria,
                             ci.codigo AS categoria_codigo,
                             ci.nombre AS categoria_nombre,
+                            i.id_subcategoria,
                             um.abreviatura AS unidad,
                             i.stock_actual,
                             i.stock_minimo,
@@ -472,6 +544,11 @@ try {
                     if ($categoriaId) {
                         $sql .= " AND ci.id_categoria = ?";
                         $params[] = $categoriaId;
+                    }
+                    
+                    if ($subcategoriaId) {
+                        $sql .= " AND i.id_subcategoria = ?";
+                        $params[] = $subcategoriaId;
                     }
                     
                     if ($buscar) {
@@ -507,6 +584,154 @@ try {
             $data = json_decode(file_get_contents('php://input'), true);
             
             $action = $data['action'] ?? 'save';
+            
+            // ========== GUARDAR TIPO DE INVENTARIO ==========
+            if ($action === 'guardar_tipo') {
+                $idTipo = $data['id_tipo_inventario'] ?? null;
+                $codigo = strtoupper(trim($data['codigo'] ?? ''));
+                $nombre = trim($data['nombre'] ?? '');
+                $icono = trim($data['icono'] ?? 'fa-box');
+                $color = trim($data['color'] ?? '#007bff');
+                
+                if (empty($codigo) || empty($nombre)) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Código y Nombre son requeridos']);
+                    exit();
+                }
+                
+                try {
+                    if ($idTipo) {
+                        // Actualizar
+                        $stmt = $db->prepare("
+                            UPDATE tipos_inventario 
+                            SET codigo = ?, nombre = ?, icono = ?, color = ?
+                            WHERE id_tipo_inventario = ?
+                        ");
+                        $stmt->execute([$codigo, $nombre, $icono, $color, $idTipo]);
+                        $mensaje = 'Tipo de inventario actualizado';
+                    } else {
+                        // Obtener el siguiente orden
+                        $stmt = $db->query("SELECT COALESCE(MAX(orden), 0) + 1 AS siguiente FROM tipos_inventario");
+                        $orden = $stmt->fetch()['siguiente'];
+                        
+                        // Crear nuevo
+                        $stmt = $db->prepare("
+                            INSERT INTO tipos_inventario (codigo, nombre, icono, color, orden, activo) 
+                            VALUES (?, ?, ?, ?, ?, 1)
+                        ");
+                        $stmt->execute([$codigo, $nombre, $icono, $color, $orden]);
+                        $mensaje = 'Tipo de inventario creado';
+                    }
+                    
+                    ob_clean();
+                    echo json_encode(['success' => true, 'message' => $mensaje]);
+                    
+                } catch (PDOException $e) {
+                    ob_clean();
+                    if (strpos($e->getMessage(), 'Duplicate') !== false) {
+                        echo json_encode(['success' => false, 'message' => 'El código ya existe']);
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Error de base de datos: ' . $e->getMessage()]);
+                    }
+                }
+                exit();
+            }
+            
+            // ========== GUARDAR CATEGORÍA ==========
+            if ($action === 'guardar_categoria') {
+                $idCategoria = $data['id_categoria'] ?? null;
+                $idTipoInventario = intval($data['id_tipo_inventario'] ?? 0);
+                $codigo = strtoupper(trim($data['codigo'] ?? ''));
+                $nombre = trim($data['nombre'] ?? '');
+                $orden = intval($data['orden'] ?? 1);
+                
+                if (!$idTipoInventario || empty($codigo) || empty($nombre)) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Tipo, Código y Nombre son requeridos']);
+                    exit();
+                }
+                
+                try {
+                    if ($idCategoria) {
+                        // Actualizar
+                        $stmt = $db->prepare("
+                            UPDATE categorias_inventario 
+                            SET id_tipo_inventario = ?, codigo = ?, nombre = ?, orden = ?
+                            WHERE id_categoria = ?
+                        ");
+                        $stmt->execute([$idTipoInventario, $codigo, $nombre, $orden, $idCategoria]);
+                        $mensaje = 'Categoría actualizada';
+                    } else {
+                        // Crear nueva
+                        $stmt = $db->prepare("
+                            INSERT INTO categorias_inventario (id_tipo_inventario, codigo, nombre, orden, activo) 
+                            VALUES (?, ?, ?, ?, 1)
+                        ");
+                        $stmt->execute([$idTipoInventario, $codigo, $nombre, $orden]);
+                        $mensaje = 'Categoría creada';
+                    }
+                    
+                    ob_clean();
+                    echo json_encode(['success' => true, 'message' => $mensaje]);
+                    
+                } catch (PDOException $e) {
+                    ob_clean();
+                    if (strpos($e->getMessage(), 'Duplicate') !== false) {
+                        echo json_encode(['success' => false, 'message' => 'El código ya existe']);
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Error de base de datos: ' . $e->getMessage()]);
+                    }
+                }
+                exit();
+            }
+            
+            // ========== GUARDAR SUBCATEGORÍA ==========
+            if ($action === 'guardar_subcategoria') {
+                $idSubcategoria = $data['id_subcategoria'] ?? null;
+                $idCategoria = intval($data['id_categoria'] ?? 0);
+                $codigo = strtoupper(trim($data['codigo'] ?? ''));
+                $nombre = trim($data['nombre'] ?? '');
+                $orden = intval($data['orden'] ?? 1);
+                
+                if (!$idCategoria || empty($codigo) || empty($nombre)) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Categoría, Código y Nombre son requeridos']);
+                    exit();
+                }
+                
+                try {
+                    if ($idSubcategoria) {
+                        // Actualizar
+                        $stmt = $db->prepare("
+                            UPDATE subcategorias_inventario 
+                            SET id_categoria = ?, codigo = ?, nombre = ?, orden = ?
+                            WHERE id_subcategoria = ?
+                        ");
+                        $stmt->execute([$idCategoria, $codigo, $nombre, $orden, $idSubcategoria]);
+                        $mensaje = 'Subcategoría actualizada';
+                    } else {
+                        // Crear nueva
+                        $stmt = $db->prepare("
+                            INSERT INTO subcategorias_inventario (id_categoria, codigo, nombre, orden, activo) 
+                            VALUES (?, ?, ?, ?, 1)
+                        ");
+                        $stmt->execute([$idCategoria, $codigo, $nombre, $orden]);
+                        $mensaje = 'Subcategoría creada';
+                    }
+                    
+                    ob_clean();
+                    echo json_encode(['success' => true, 'message' => $mensaje]);
+                    
+                } catch (PDOException $e) {
+                    ob_clean();
+                    if (strpos($e->getMessage(), 'Duplicate') !== false) {
+                        echo json_encode(['success' => false, 'message' => 'El código ya existe']);
+                    } else {
+                        echo json_encode(['success' => false, 'message' => 'Error de base de datos: ' . $e->getMessage()]);
+                    }
+                }
+                exit();
+            }
             
             if ($action === 'movimiento') {
                 // Registrar movimiento de inventario con COSTO PROMEDIO PONDERADO
@@ -1036,6 +1261,10 @@ try {
                 $descripcion = trim($data['descripcion'] ?? '');
                 $idTipoInventario = intval($data['id_tipo_inventario'] ?? 0);
                 $idCategoria = intval($data['id_categoria'] ?? 0);
+                // Capturar id_subcategoria (puede ser null si no se asigna)
+                $idSubcategoria = isset($data['id_subcategoria']) && $data['id_subcategoria'] !== null && $data['id_subcategoria'] !== '' 
+                    ? intval($data['id_subcategoria']) 
+                    : null;
                 $idUnidad = intval($data['id_unidad'] ?? 0);
                 $stockActual = floatval($data['stock_actual'] ?? 0);
                 $stockMinimo = floatval($data['stock_minimo'] ?? 0);
@@ -1060,6 +1289,7 @@ try {
                             descripcion = ?,
                             id_tipo_inventario = ?,
                             id_categoria = ?,
+                            id_subcategoria = ?,
                             id_unidad = ?,
                             stock_actual = ?,
                             stock_minimo = ?,
@@ -1071,7 +1301,7 @@ try {
                     ");
                     $stmt->execute([
                         $codigo, $nombre, $descripcion,
-                        $idTipoInventario, $idCategoria, $idUnidad,
+                        $idTipoInventario, $idCategoria, $idSubcategoria, $idUnidad,
                         $stockActual, $stockMinimo, $costoUnitario,
                         $idUbicacion, $idLineaProduccion, $proveedorPrincipal,
                         $idInventario
@@ -1084,14 +1314,14 @@ try {
                     $stmt = $db->prepare("
                         INSERT INTO inventarios (
                             codigo, nombre, descripcion,
-                            id_tipo_inventario, id_categoria, id_unidad,
+                            id_tipo_inventario, id_categoria, id_subcategoria, id_unidad,
                             stock_actual, stock_minimo, costo_unitario,
                             id_ubicacion, id_linea_produccion, proveedor_principal
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ");
                     $stmt->execute([
                         $codigo, $nombre, $descripcion,
-                        $idTipoInventario, $idCategoria, $idUnidad,
+                        $idTipoInventario, $idCategoria, $idSubcategoria, $idUnidad,
                         $stockActual, $stockMinimo, $costoUnitario,
                         $idUbicacion, $idLineaProduccion, $proveedorPrincipal
                     ]);

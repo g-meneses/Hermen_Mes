@@ -653,6 +653,263 @@ require_once '../../includes/header.php';
 .btn-volver:hover {
     background: #e9ecef;
 }
+
+/* Botón Configuración */
+.btn-config {
+    background: linear-gradient(135deg, #495057 0%, #343a40 100%);
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn-config:hover {
+    background: linear-gradient(135deg, #343a40 0%, #212529 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Breadcrumb de navegación */
+.breadcrumb-nav {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    background: #e9ecef;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.breadcrumb-item {
+    color: #007bff;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.breadcrumb-item:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-current {
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Sección de subcategorías */
+.subcategorias-section {
+    margin-bottom: 25px;
+}
+
+.subcategoria-card {
+    background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+    border-radius: 14px;
+    padding: 18px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid #e9ecef;
+    position: relative;
+}
+
+.subcategoria-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--tipo-color, #007bff);
+    border-radius: 14px 14px 0 0;
+}
+
+.subcategoria-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    border-color: var(--tipo-color, #007bff);
+}
+
+.subcategoria-card.active {
+    border-color: var(--tipo-color, #007bff);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+/* Estilos para modal de configuración */
+.config-tabs {
+    display: flex;
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 20px;
+}
+
+.config-tab {
+    padding: 12px 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: #6c757d;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.config-tab:hover {
+    color: #007bff;
+}
+
+.config-tab.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+    font-weight: 600;
+}
+
+.config-panel {
+    display: none;
+}
+
+.config-panel.active {
+    display: block;
+}
+
+.config-lista {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.config-item:hover {
+    background: #e9ecef;
+}
+
+.config-item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.config-item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.config-item-details h4 {
+    margin: 0 0 4px 0;
+    font-size: 0.95rem;
+}
+
+.config-item-details span {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.config-item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.config-item-actions button {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-editar-config {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.btn-eliminar-config {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.config-add-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.config-add-btn:hover {
+    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+}
+
+/* Formulario de categoría */
+.form-config {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 15px;
+}
+
+.form-config .form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-config .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.form-config label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #495057;
+}
+
+.form-config input,
+.form-config select {
+    padding: 10px 14px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.form-config-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
 </style>
 
 <!-- ========== HTML PRINCIPAL ========== -->
@@ -660,6 +917,9 @@ require_once '../../includes/header.php';
     <!-- Header -->
     <div class="inv-header">
         <h1><i class="fas fa-warehouse"></i> Centro de Inventarios</h1>
+        <button class="btn btn-config" onclick="openModalConfig()">
+            <i class="fas fa-cog"></i> Configuración
+        </button>
     </div>
     
     <!-- KPIs Generales -->
@@ -748,12 +1008,32 @@ require_once '../../includes/header.php';
         </div>
         
         <div class="workspace-body">
+            <!-- Breadcrumb de navegación -->
+            <div class="breadcrumb-nav" id="breadcrumbNav" style="display: none;">
+                <span class="breadcrumb-item" onclick="volverACategorias()">
+                    <i class="fas fa-folder"></i> <span id="breadcrumbCategoria">Categoría</span>
+                </span>
+                <i class="fas fa-chevron-right" style="margin: 0 10px; color: #adb5bd;"></i>
+                <span class="breadcrumb-current" id="breadcrumbSubcategoria">Subcategoría</span>
+            </div>
+            
             <!-- Categorías del tipo seleccionado -->
             <div class="categorias-grid" id="categoriasGrid">
                 <!-- Se llena dinámicamente -->
             </div>
             
-            <!-- Tabla de productos (se muestra al seleccionar categoría) -->
+            <!-- Subcategorías (se muestra al seleccionar categoría con subcategorías) -->
+            <div class="subcategorias-section" id="subcategoriasSection" style="display: none;">
+                <div class="section-title" style="margin-bottom: 15px;">
+                    <i class="fas fa-folder-open"></i>
+                    <span>Subcategorías de: <strong id="subcategoriasTitulo">Categoría</strong></span>
+                </div>
+                <div class="categorias-grid" id="subcategoriasGrid">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+            
+            <!-- Tabla de productos (se muestra al seleccionar categoría/subcategoría) -->
             <div class="productos-section" id="productosSection">
                 <div class="productos-header">
                     <h3>
@@ -817,8 +1097,14 @@ require_once '../../includes/header.php';
                     </div>
                     <div class="form-group">
                         <label>Categoría <span class="required">*</span></label>
-                        <select id="idCategoria" name="id_categoria" required>
+                        <select id="idCategoria" name="id_categoria" required onchange="cargarSubcategoriasParaItem()">
                             <option value="">Seleccione...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Subcategoría</label>
+                        <select id="idSubcategoria" name="id_subcategoria">
+                            <option value="">Sin subcategoría</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -882,6 +1168,188 @@ require_once '../../includes/header.php';
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModalKardex()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Configuración de Catálogos -->
+<div class="modal-inventario" id="modalConfig">
+    <div class="modal-content" style="max-width: 900px; max-height: 85vh;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #495057 0%, #343a40 100%); color: white;">
+            <h3><i class="fas fa-cog"></i> Configuración de Inventarios</h3>
+            <button class="modal-close" onclick="closeModalConfig()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body" style="overflow-y: auto; max-height: calc(85vh - 140px);">
+            <!-- Tabs -->
+            <div class="config-tabs">
+                <button class="config-tab active" onclick="cambiarTabConfig('tipos')">
+                    <i class="fas fa-layer-group"></i> Tipos
+                </button>
+                <button class="config-tab" onclick="cambiarTabConfig('categorias')">
+                    <i class="fas fa-folder"></i> Categorías
+                </button>
+                <button class="config-tab" onclick="cambiarTabConfig('subcategorias')">
+                    <i class="fas fa-folder-open"></i> Subcategorías
+                </button>
+            </div>
+            
+            <!-- Panel Tipos de Inventario -->
+            <div class="config-panel active" id="panelTipos">
+                <div class="config-lista" id="listaTipos">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner"></i>
+                        <span>Cargando tipos...</span>
+                    </div>
+                </div>
+                <button class="config-add-btn" onclick="mostrarFormTipo()">
+                    <i class="fas fa-plus"></i> Agregar Tipo de Inventario
+                </button>
+                
+                <!-- Formulario Tipo -->
+                <div class="form-config" id="formTipoContainer" style="display: none;">
+                    <h4 id="formTipoTitulo"><i class="fas fa-plus"></i> Nuevo Tipo de Inventario</h4>
+                    <input type="hidden" id="tipoId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Código *</label>
+                            <input type="text" id="tipoCodigo" maxlength="10" placeholder="Ej: MP, CAQ, PT">
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre *</label>
+                            <input type="text" id="tipoNombre" maxlength="100" placeholder="Ej: Materias Primas">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Ícono (FontAwesome)</label>
+                            <input type="text" id="tipoIcono" placeholder="fa-box, fa-flask, etc.">
+                        </div>
+                        <div class="form-group">
+                            <label>Color</label>
+                            <input type="color" id="tipoColor" value="#007bff">
+                        </div>
+                    </div>
+                    <div class="form-config-actions">
+                        <button class="btn btn-secondary" onclick="cancelarFormTipo()">Cancelar</button>
+                        <button class="btn btn-primary" onclick="guardarTipo()">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panel Categorías -->
+            <div class="config-panel" id="panelCategorias">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Filtrar por Tipo de Inventario:</label>
+                    <select id="filtroTipoCategoria" onchange="cargarCategoriasPorTipo()">
+                        <option value="">-- Todos los tipos --</option>
+                    </select>
+                </div>
+                
+                <div class="config-lista" id="listaCategorias">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner"></i>
+                        <span>Cargando categorías...</span>
+                    </div>
+                </div>
+                <button class="config-add-btn" onclick="mostrarFormCategoria()">
+                    <i class="fas fa-plus"></i> Agregar Categoría
+                </button>
+                
+                <!-- Formulario Categoría -->
+                <div class="form-config" id="formCategoriaContainer" style="display: none;">
+                    <h4 id="formCategoriaTitulo"><i class="fas fa-plus"></i> Nueva Categoría</h4>
+                    <input type="hidden" id="categoriaId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo de Inventario *</label>
+                            <select id="categoriaTipo" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Código *</label>
+                            <input type="text" id="categoriaCodigo" maxlength="20" placeholder="Ej: MP-HILO-POLI">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre *</label>
+                            <input type="text" id="categoriaNombre" maxlength="100" placeholder="Ej: Hilos de Poliamida">
+                        </div>
+                        <div class="form-group">
+                            <label>Orden</label>
+                            <input type="number" id="categoriaOrden" value="1" min="1">
+                        </div>
+                    </div>
+                    <div class="form-config-actions">
+                        <button class="btn btn-secondary" onclick="cancelarFormCategoria()">Cancelar</button>
+                        <button class="btn btn-primary" onclick="guardarCategoria()">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Panel Subcategorías -->
+            <div class="config-panel" id="panelSubcategorias">
+                <div class="form-row" style="margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label>Filtrar por Categoría:</label>
+                        <select id="filtroCategoriaSub" onchange="cargarSubcategoriasPorCategoria()">
+                            <option value="">-- Todas las categorías --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="config-lista" id="listaSubcategorias">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner"></i>
+                        <span>Cargando subcategorías...</span>
+                    </div>
+                </div>
+                <button class="config-add-btn" onclick="mostrarFormSubcategoria()">
+                    <i class="fas fa-plus"></i> Agregar Subcategoría
+                </button>
+                
+                <!-- Formulario Subcategoría -->
+                <div class="form-config" id="formSubcategoriaContainer" style="display: none;">
+                    <h4 id="formSubcategoriaTitulo"><i class="fas fa-plus"></i> Nueva Subcategoría</h4>
+                    <input type="hidden" id="subcategoriaId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Categoría Padre *</label>
+                            <select id="subcategoriaCategoria" required>
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Código *</label>
+                            <input type="text" id="subcategoriaCodigo" maxlength="30" placeholder="Ej: MP-HILO-DTY">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre *</label>
+                            <input type="text" id="subcategoriaNombre" maxlength="100" placeholder="Ej: Hilos DTY">
+                        </div>
+                        <div class="form-group">
+                            <label>Orden</label>
+                            <input type="number" id="subcategoriaOrden" value="1" min="1">
+                        </div>
+                    </div>
+                    <div class="form-config-actions">
+                        <button class="btn btn-secondary" onclick="cancelarFormSubcategoria()">Cancelar</button>
+                        <button class="btn btn-primary" onclick="guardarSubcategoria()">
+                            <i class="fas fa-save"></i> Guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalConfig()">Cerrar</button>
         </div>
     </div>
 </div>
@@ -1231,18 +1699,17 @@ async function cargarCategoriasDelTipo(idTipo) {
                     productosInventario = dataProd.inventarios;
                     
                     // Calcular totales por categoría
-                    const categoriasConTotales = dataCat.categorias.map(cat => {
-                        const productosCat = productosInventario.filter(p => p.id_categoria == cat.id_categoria);
-                        return {
-                            ...cat,
+                    const categoriasConTotales = dataCat.categorias.map(function(cat) {
+                        const productosCat = productosInventario.filter(function(p) { return p.id_categoria == cat.id_categoria; });
+                        return Object.assign({}, cat, {
                             total_items: productosCat.length,
-                            valor_total: productosCat.reduce((sum, p) => sum + parseFloat(p.valor_total || 0), 0),
-                            alertas: productosCat.filter(p => {
+                            valor_total: productosCat.reduce(function(sum, p) { return sum + parseFloat(p.valor_total || 0); }, 0),
+                            alertas: productosCat.filter(function(p) {
                                 const stock = parseFloat(p.stock_actual);
                                 const minimo = parseFloat(p.stock_minimo);
                                 return stock <= 0 || stock <= minimo;
                             }).length
-                        };
+                        });
                     });
                     
                     categoriasInventario = categoriasConTotales;
@@ -1258,7 +1725,7 @@ async function cargarCategoriasDelTipo(idTipo) {
 
 function renderCategorias(categorias) {
     const container = document.getElementById('categoriasGrid');
-    const color = tipoSeleccionado?.color || '#007bff';
+    const color = (tipoSeleccionado && tipoSeleccionado.color) ? tipoSeleccionado.color : '#007bff';
     
     if (categorias.length === 0) {
         container.innerHTML = `
@@ -1302,33 +1769,123 @@ function renderCategorias(categorias) {
 }
 
 // ========== SELECCIÓN DE CATEGORÍA ==========
+let subcategoriasInventario = [];
+let subcategoriaSeleccionada = null;
+
 async function seleccionarCategoria(idCategoria) {
     // Marcar card como activo
-    document.querySelectorAll('.categoria-card').forEach(card => card.classList.remove('active'));
-    document.getElementById(`catCard_${idCategoria}`).classList.add('active');
+    document.querySelectorAll('.categoria-card').forEach(function(card) { card.classList.remove('active'); });
+    var cardElement = document.getElementById('catCard_' + idCategoria);
+    if (cardElement) cardElement.classList.add('active');
     
     // Guardar categoría seleccionada
-    categoriaSeleccionada = categoriasInventario.find(c => c.id_categoria == idCategoria);
+    categoriaSeleccionada = categoriasInventario.find(function(c) { return c.id_categoria == idCategoria; });
     
     if (!categoriaSeleccionada) return;
     
+    // Ocultar subcategorías y productos anteriores
+    document.getElementById('subcategoriasSection').style.display = 'none';
+    document.getElementById('productosSection').classList.remove('active');
+    document.getElementById('breadcrumbNav').style.display = 'none';
+    subcategoriaSeleccionada = null;
+    
+    // Verificar si la categoría tiene subcategorías
+    try {
+        const response = await fetch(baseUrl + '/api/inventarios.php?action=subcategorias_resumen&categoria_id=' + idCategoria);
+        const data = await response.json();
+        
+        if (data.success && data.subcategorias && data.subcategorias.length > 0) {
+            // Tiene subcategorías - mostrar subcategorías Y productos de la categoría
+            subcategoriasInventario = data.subcategorias;
+            mostrarSubcategorias(data.subcategorias);
+            
+            // TAMBIÉN mostrar productos de la categoría (para asignar subcategorías)
+            cargarProductosCategoria(idCategoria);
+        } else {
+            // No tiene subcategorías - mostrar productos directamente
+            cargarProductosCategoria(idCategoria);
+        }
+    } catch (error) {
+        console.error('Error verificando subcategorías:', error);
+        // En caso de error, intentar cargar productos directamente
+        cargarProductosCategoria(idCategoria);
+    }
+}
+
+function mostrarSubcategorias(subcategorias) {
+    var container = document.getElementById('subcategoriasGrid');
+    var color = (tipoSeleccionado && tipoSeleccionado.color) ? tipoSeleccionado.color : '#007bff';
+    
+    document.getElementById('subcategoriasTitulo').textContent = categoriaSeleccionada.nombre;
+    document.getElementById('subcategoriasSection').style.display = 'block';
+    
+    container.innerHTML = subcategorias.map(function(sub) {
+        return '<div class="categoria-card subcategoria-card fade-in" ' +
+               'style="--tipo-color: ' + color + '" ' +
+               'onclick="seleccionarSubcategoria(' + sub.id_subcategoria + ')" ' +
+               'id="subCard_' + sub.id_subcategoria + '">' +
+               '<div class="categoria-header">' +
+               '<div class="categoria-info">' +
+               '<h4>' + sub.nombre + '</h4>' +
+               '<div class="codigo">' + sub.codigo + '</div>' +
+               '</div>' +
+               '<span class="categoria-badge" style="background: ' + color + '">' + (sub.total_items || 0) + '</span>' +
+               '</div>' +
+               '<div class="categoria-stats">' +
+               '<div class="categoria-stat">' +
+               '<div class="value">' + (sub.total_items || 0) + '</div>' +
+               '<div class="label">Items</div>' +
+               '</div>' +
+               '<div class="categoria-stat">' +
+               '<div class="value ' + ((sub.alertas || 0) > 0 ? 'text-danger' : '') + '">' + (sub.alertas || 0) + '</div>' +
+               '<div class="label">Alertas</div>' +
+               '</div>' +
+               '<div class="categoria-stat">' +
+               '<div class="value money">Bs. ' + parseFloat(sub.valor_total || 0).toLocaleString('es-BO', {minimumFractionDigits: 0, maximumFractionDigits: 0}) + '</div>' +
+               '<div class="label">Valor</div>' +
+               '</div>' +
+               '</div>' +
+               '</div>';
+    }).join('');
+    
+    // Scroll a subcategorías
+    document.getElementById('subcategoriasSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function seleccionarSubcategoria(idSubcategoria) {
+    // Marcar card como activo
+    document.querySelectorAll('.subcategoria-card').forEach(function(card) { card.classList.remove('active'); });
+    var cardElement = document.getElementById('subCard_' + idSubcategoria);
+    if (cardElement) cardElement.classList.add('active');
+    
+    // Guardar subcategoría seleccionada
+    subcategoriaSeleccionada = subcategoriasInventario.find(function(s) { return s.id_subcategoria == idSubcategoria; });
+    
+    if (!subcategoriaSeleccionada) return;
+    
+    // Mostrar breadcrumb
+    document.getElementById('breadcrumbCategoria').textContent = categoriaSeleccionada.nombre;
+    document.getElementById('breadcrumbSubcategoria').textContent = subcategoriaSeleccionada.nombre;
+    document.getElementById('breadcrumbNav').style.display = 'flex';
+    
     // Actualizar título de productos
-    document.getElementById('productosTitulo').textContent = categoriaSeleccionada.nombre;
-    document.getElementById('productosCategoria').textContent = categoriaSeleccionada.codigo;
-    document.getElementById('productosCategoria').style.background = tipoSeleccionado?.color || '#007bff';
+    document.getElementById('productosTitulo').textContent = subcategoriaSeleccionada.nombre;
+    document.getElementById('productosCategoria').textContent = subcategoriaSeleccionada.codigo;
+    var color = (tipoSeleccionado && tipoSeleccionado.color) ? tipoSeleccionado.color : '#007bff';
+    document.getElementById('productosCategoria').style.background = color;
     
     // Mostrar sección de productos con loading
     document.getElementById('productosSection').classList.add('active');
     document.getElementById('productosBody').innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Cargando productos...</td></tr>';
     
-    // Cargar productos de la categoría desde la API
+    // Cargar productos de la subcategoría desde la API
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=list&tipo_id=${tipoSeleccionado.id_tipo_inventario}&categoria_id=${idCategoria}`);
-        const data = await response.json();
+        var response = await fetch(baseUrl + '/api/inventarios.php?action=list&subcategoria_id=' + idSubcategoria);
+        var data = await response.json();
         
         if (data.success) {
-            const productosCategoria = data.inventarios || [];
-            renderProductos(productosCategoria);
+            var productos = data.inventarios || [];
+            renderProductos(productos);
         } else {
             document.getElementById('productosBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error al cargar productos</td></tr>';
         }
@@ -1341,10 +1898,58 @@ async function seleccionarCategoria(idCategoria) {
     document.getElementById('productosSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+async function cargarProductosCategoria(idCategoria) {
+    // Actualizar título de productos
+    document.getElementById('productosTitulo').textContent = categoriaSeleccionada.nombre;
+    document.getElementById('productosCategoria').textContent = categoriaSeleccionada.codigo;
+    var color = (tipoSeleccionado && tipoSeleccionado.color) ? tipoSeleccionado.color : '#007bff';
+    document.getElementById('productosCategoria').style.background = color;
+    
+    // Mostrar sección de productos con loading
+    document.getElementById('productosSection').classList.add('active');
+    document.getElementById('productosBody').innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Cargando productos...</td></tr>';
+    
+    // Cargar productos de la categoría desde la API
+    try {
+        var response = await fetch(baseUrl + '/api/inventarios.php?action=list&tipo_id=' + tipoSeleccionado.id_tipo_inventario + '&categoria_id=' + idCategoria);
+        var data = await response.json();
+        
+        if (data.success) {
+            var productos = data.inventarios || [];
+            renderProductos(productos);
+        } else {
+            document.getElementById('productosBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error al cargar productos</td></tr>';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('productosBody').innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error de conexión</td></tr>';
+    }
+    
+    // Scroll a la tabla
+    document.getElementById('productosSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function volverACategorias() {
+    // Ocultar subcategorías, breadcrumb y productos
+    document.getElementById('subcategoriasSection').style.display = 'none';
+    document.getElementById('productosSection').classList.remove('active');
+    document.getElementById('breadcrumbNav').style.display = 'none';
+    subcategoriaSeleccionada = null;
+    
+    // Quitar selección de categoría
+    document.querySelectorAll('.categoria-card').forEach(function(card) { card.classList.remove('active'); });
+    categoriaSeleccionada = null;
+}
+
+// Variable para almacenar los productos de la categoría actual
+let productosCategoriaCargados = [];
+
 function renderProductos(productos) {
     const tbody = document.getElementById('productosBody');
     document.getElementById('totalProductos').textContent = `${productos.length} items`;
-    document.getElementById('buscarProducto').value = '';
+    
+    // Guardar productos cargados para el filtro
+    productosCategoriaCargados = productos;
     
     if (productos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px; color: #6c757d;">No hay productos en esta categoría</td></tr>';
@@ -1394,20 +1999,72 @@ function renderProductos(productos) {
 }
 
 function filtrarProductos() {
-    const buscar = document.getElementById('buscarProducto').value.toLowerCase();
+    const buscar = document.getElementById('buscarProducto').value.toLowerCase().trim();
     
-    if (!categoriaSeleccionada) return;
-    
-    let productosFiltrados = productosInventario.filter(p => p.id_categoria == categoriaSeleccionada.id_categoria);
-    
-    if (buscar) {
-        productosFiltrados = productosFiltrados.filter(p => 
-            p.codigo.toLowerCase().includes(buscar) || 
-            p.nombre.toLowerCase().includes(buscar)
-        );
+    if (!buscar) {
+        // Si no hay búsqueda, mostrar todos
+        renderProductosFiltrados(productosCategoriaCargados);
+        return;
     }
     
-    renderProductos(productosFiltrados);
+    // Filtrar de los productos cargados
+    const productosFiltrados = productosCategoriaCargados.filter(p => 
+        p.codigo.toLowerCase().includes(buscar) || 
+        p.nombre.toLowerCase().includes(buscar)
+    );
+    
+    renderProductosFiltrados(productosFiltrados);
+}
+
+function renderProductosFiltrados(productos) {
+    const tbody = document.getElementById('productosBody');
+    document.getElementById('totalProductos').textContent = `${productos.length} items`;
+    
+    if (productos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding: 40px; color: #6c757d;">No se encontraron productos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = productos.map(prod => {
+        const stock = parseFloat(prod.stock_actual);
+        const minimo = parseFloat(prod.stock_minimo);
+        let estadoClass = 'ok';
+        let estadoText = 'OK';
+        
+        if (stock <= 0) {
+            estadoClass = 'sin-stock';
+            estadoText = 'Sin Stock';
+        } else if (stock <= minimo) {
+            estadoClass = 'critico';
+            estadoText = 'Crítico';
+        } else if (stock <= minimo * 1.5) {
+            estadoClass = 'bajo';
+            estadoText = 'Bajo';
+        }
+        
+        const valor = parseFloat(prod.valor_total || 0);
+        const costo = parseFloat(prod.costo_unitario || 0);
+        
+        return `
+            <tr>
+                <td class="codigo">${prod.codigo}</td>
+                <td class="nombre">${prod.nombre}</td>
+                <td class="text-right stock ${estadoClass}">${stock.toFixed(2)}</td>
+                <td>${prod.unidad || '-'}</td>
+                <td><span class="estado-badge ${estadoClass}">${estadoText}</span></td>
+                <td class="text-right">Bs. ${costo.toFixed(4)}</td>
+                <td class="text-right valor">Bs. ${valor.toLocaleString('es-BO', {minimumFractionDigits: 2})}</td>
+                <td class="acciones">
+                    <button class="btn-accion kardex" onclick="verKardex(${prod.id_inventario})" title="Ver Kardex">
+                        <i class="fas fa-book"></i>
+                    </button>
+                    <button class="btn-accion editar" onclick="editarItem(${prod.id_inventario})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 // ========== NAVEGACIÓN ==========
@@ -1477,6 +2134,9 @@ async function cargarSelectCategorias() {
     const select = document.getElementById('idCategoria');
     select.innerHTML = '<option value="">Cargando...</option>';
     
+    // Limpiar subcategorías
+    document.getElementById('idSubcategoria').innerHTML = '<option value="">Sin subcategoría</option>';
+    
     try {
         const response = await fetch(`${baseUrl}/api/inventarios.php?action=categorias&tipo_id=${tipoSeleccionado.id_tipo_inventario}`);
         const data = await response.json();
@@ -1484,6 +2144,36 @@ async function cargarSelectCategorias() {
         if (data.success) {
             select.innerHTML = '<option value="">Seleccione...</option>' +
                 data.categorias.map(cat => `<option value="${cat.id_categoria}">${cat.codigo} - ${cat.nombre}</option>`).join('');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        select.innerHTML = '<option value="">Error al cargar</option>';
+    }
+}
+
+// Cargar subcategorías cuando cambia la categoría
+async function cargarSubcategoriasParaItem() {
+    var categoriaId = document.getElementById('idCategoria').value;
+    var select = document.getElementById('idSubcategoria');
+    
+    if (!categoriaId) {
+        select.innerHTML = '<option value="">Sin subcategoría</option>';
+        return;
+    }
+    
+    select.innerHTML = '<option value="">Cargando...</option>';
+    
+    try {
+        var response = await fetch(baseUrl + '/api/inventarios.php?action=subcategorias&categoria_id=' + categoriaId);
+        var data = await response.json();
+        
+        if (data.success && data.subcategorias.length > 0) {
+            select.innerHTML = '<option value="">Sin subcategoría</option>' +
+                data.subcategorias.map(function(sub) {
+                    return '<option value="' + sub.id_subcategoria + '">' + sub.codigo + ' - ' + sub.nombre + '</option>';
+                }).join('');
+        } else {
+            select.innerHTML = '<option value="">No hay subcategorías</option>';
         }
     } catch (error) {
         console.error('Error:', error);
@@ -1510,6 +2200,10 @@ function closeModal() {
 async function guardarInventario() {
     const form = document.getElementById('formInventario');
     
+    // Obtener valor de subcategoría correctamente
+    var subcategoriaValue = document.getElementById('idSubcategoria').value;
+    var idSubcategoriaFinal = (subcategoriaValue && subcategoriaValue !== '' && subcategoriaValue !== '0') ? parseInt(subcategoriaValue) : null;
+    
     const payload = {
         id_inventario: document.getElementById('idInventario').value || null,
         codigo: document.getElementById('codigo').value.trim(),
@@ -1517,6 +2211,7 @@ async function guardarInventario() {
         descripcion: document.getElementById('descripcion').value.trim(),
         id_tipo_inventario: document.getElementById('tipoInventarioHidden').value,
         id_categoria: document.getElementById('idCategoria').value,
+        id_subcategoria: idSubcategoriaFinal,
         id_unidad: document.getElementById('idUnidad').value,
         stock_actual: parseFloat(document.getElementById('stockActual').value) || 0,
         stock_minimo: parseFloat(document.getElementById('stockMinimo').value) || 0,
@@ -1524,6 +2219,10 @@ async function guardarInventario() {
         id_ubicacion: document.getElementById('idUbicacion').value || null,
         proveedor_principal: document.getElementById('proveedorPrincipal').value.trim()
     };
+    
+    // Debug - ver qué se está enviando
+    console.log('Guardando inventario:', payload);
+    console.log('Subcategoría seleccionada:', subcategoriaValue, '→', idSubcategoriaFinal);
     
     if (!payload.codigo || !payload.nombre || !payload.id_categoria || !payload.id_unidad) {
         alert('⚠️ Complete los campos requeridos');
@@ -1538,6 +2237,7 @@ async function guardarInventario() {
         });
         
         const data = await response.json();
+        console.log('Respuesta servidor:', data);
         
         if (data.success) {
             alert('✅ ' + data.message);
@@ -1579,13 +2279,24 @@ async function editarItem(idInventario) {
             cargarSelectUbicaciones();
             
             // Esperar un momento para que se carguen los selects
-            setTimeout(() => {
+            setTimeout(async function() {
                 document.getElementById('idCategoria').value = item.id_categoria;
                 document.getElementById('idUnidad').value = item.id_unidad;
                 document.getElementById('idUbicacion').value = item.id_ubicacion || '';
+                
+                // Cargar subcategorías de la categoría seleccionada
+                if (item.id_categoria) {
+                    await cargarSubcategoriasParaItem();
+                    // Esperar a que se carguen las subcategorías
+                    setTimeout(function() {
+                        if (item.id_subcategoria) {
+                            document.getElementById('idSubcategoria').value = item.id_subcategoria;
+                        }
+                    }, 200);
+                }
             }, 300);
             
-            document.getElementById('modalTitulo').innerHTML = `<i class="fas fa-edit"></i> Editar: ${item.nombre}`;
+            document.getElementById('modalTitulo').innerHTML = '<i class="fas fa-edit"></i> Editar: ' + item.nombre;
             document.getElementById('modalInventario').classList.add('show');
         }
     } catch (error) {
@@ -1608,7 +2319,7 @@ async function verKardex(idInventario) {
         
         if (data.success) {
             const producto = productosInventario.find(p => p.id_inventario == idInventario);
-            document.getElementById('kardexTitulo').textContent = `Kardex: ${producto?.nombre || 'Producto'}`;
+            document.getElementById('kardexTitulo').textContent = 'Kardex: ' + (producto && producto.nombre ? producto.nombre : 'Producto');
             
             if (data.movimientos.length === 0) {
                 content.innerHTML = '<p class="text-center" style="padding: 40px; color: #6c757d;">No hay movimientos registrados</p>';
@@ -1676,6 +2387,493 @@ function openModalSalidaContextual() {
 
 function openModalHistoricoContextual() {
     alert(`Abrir HISTORIAL de: ${tipoSeleccionado.nombre}\n\nEsta funcionalidad mostrará solo los movimientos del tipo de inventario seleccionado.`);
+}
+
+// ========== MODAL CONFIGURACIÓN ==========
+
+let tiposConfig = [];
+let categoriasConfig = [];
+
+function openModalConfig() {
+    document.getElementById('modalConfig').classList.add('show');
+    cambiarTabConfig('tipos');
+}
+
+function closeModalConfig() {
+    document.getElementById('modalConfig').classList.remove('show');
+    // Recargar dashboard para reflejar cambios
+    cargarDashboard();
+}
+
+function cambiarTabConfig(tab) {
+    // Cambiar tabs activos
+    document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.config-panel').forEach(p => p.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+    
+    // Cargar datos
+    if (tab === 'tipos') {
+        cargarTiposConfig();
+    } else if (tab === 'categorias') {
+        cargarCategoriasConfig();
+    } else if (tab === 'subcategorias') {
+        cargarSubcategoriasConfig();
+    }
+}
+
+// ========== TIPOS DE INVENTARIO ==========
+
+async function cargarTiposConfig() {
+    const lista = document.getElementById('listaTipos');
+    lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Cargando...</span></div>';
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php?action=tipos`);
+        const data = await response.json();
+        
+        if (data.success) {
+            tiposConfig = data.tipos;
+            renderTiposConfig(data.tipos);
+            
+            // También cargar en el select de categorías
+            const selectTipo = document.getElementById('filtroTipoCategoria');
+            const selectCategoriaTipo = document.getElementById('categoriaTipo');
+            
+            const opciones = '<option value="">-- Todos --</option>' + 
+                data.tipos.map(t => `<option value="${t.id_tipo_inventario}">${t.nombre}</option>`).join('');
+            
+            selectTipo.innerHTML = opciones;
+            selectCategoriaTipo.innerHTML = '<option value="">Seleccione...</option>' + 
+                data.tipos.map(t => `<option value="${t.id_tipo_inventario}">${t.nombre}</option>`).join('');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        lista.innerHTML = '<p class="text-danger">Error al cargar tipos</p>';
+    }
+}
+
+function renderTiposConfig(tipos) {
+    const lista = document.getElementById('listaTipos');
+    
+    if (tipos.length === 0) {
+        lista.innerHTML = '<p class="text-center" style="padding: 20px; color: #6c757d;">No hay tipos de inventario</p>';
+        return;
+    }
+    
+    lista.innerHTML = tipos.map(tipo => `
+        <div class="config-item">
+            <div class="config-item-info">
+                <div class="config-item-icon" style="background: ${tipo.color || '#007bff'}">
+                    <i class="fas ${tipo.icono || 'fa-box'}"></i>
+                </div>
+                <div class="config-item-details">
+                    <h4>${tipo.nombre}</h4>
+                    <span>${tipo.codigo} | Orden: ${tipo.orden || 1}</span>
+                </div>
+            </div>
+            <div class="config-item-actions">
+                <button class="btn-editar-config" onclick="editarTipo(${tipo.id_tipo_inventario})" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function mostrarFormTipo(tipo = null) {
+    document.getElementById('formTipoContainer').style.display = 'block';
+    
+    if (tipo) {
+        document.getElementById('formTipoTitulo').innerHTML = '<i class="fas fa-edit"></i> Editar Tipo';
+        document.getElementById('tipoId').value = tipo.id_tipo_inventario;
+        document.getElementById('tipoCodigo').value = tipo.codigo;
+        document.getElementById('tipoNombre').value = tipo.nombre;
+        document.getElementById('tipoIcono').value = tipo.icono || '';
+        document.getElementById('tipoColor').value = tipo.color || '#007bff';
+    } else {
+        document.getElementById('formTipoTitulo').innerHTML = '<i class="fas fa-plus"></i> Nuevo Tipo';
+        document.getElementById('tipoId').value = '';
+        document.getElementById('tipoCodigo').value = '';
+        document.getElementById('tipoNombre').value = '';
+        document.getElementById('tipoIcono').value = 'fa-box';
+        document.getElementById('tipoColor').value = '#007bff';
+    }
+}
+
+function cancelarFormTipo() {
+    document.getElementById('formTipoContainer').style.display = 'none';
+}
+
+function editarTipo(id) {
+    const tipo = tiposConfig.find(t => t.id_tipo_inventario == id);
+    if (tipo) {
+        mostrarFormTipo(tipo);
+    }
+}
+
+async function guardarTipo() {
+    const payload = {
+        action: 'guardar_tipo',
+        id_tipo_inventario: document.getElementById('tipoId').value || null,
+        codigo: document.getElementById('tipoCodigo').value.trim(),
+        nombre: document.getElementById('tipoNombre').value.trim(),
+        icono: document.getElementById('tipoIcono').value.trim(),
+        color: document.getElementById('tipoColor').value
+    };
+    
+    if (!payload.codigo || !payload.nombre) {
+        alert('⚠️ Código y Nombre son requeridos');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            cancelarFormTipo();
+            cargarTiposConfig();
+        } else {
+            alert('❌ ' + (data.message || 'Error al guardar'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
+}
+
+// ========== CATEGORÍAS ==========
+
+async function cargarCategoriasConfig() {
+    const lista = document.getElementById('listaCategorias');
+    lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Cargando...</span></div>';
+    
+    // Primero cargar tipos si no están cargados
+    if (tiposConfig.length === 0) {
+        await cargarTiposConfig();
+    }
+    
+    cargarCategoriasPorTipo();
+}
+
+async function cargarCategoriasPorTipo() {
+    const tipoId = document.getElementById('filtroTipoCategoria').value;
+    const lista = document.getElementById('listaCategorias');
+    lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Cargando...</span></div>';
+    
+    try {
+        let url = `${baseUrl}/api/inventarios.php?action=categorias`;
+        if (tipoId) {
+            url += `&tipo_id=${tipoId}`;
+        }
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+            categoriasConfig = data.categorias;
+            renderCategoriasConfig(data.categorias);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        lista.innerHTML = '<p class="text-danger">Error al cargar categorías</p>';
+    }
+}
+
+function renderCategoriasConfig(categorias) {
+    const lista = document.getElementById('listaCategorias');
+    
+    if (categorias.length === 0) {
+        lista.innerHTML = '<p class="text-center" style="padding: 20px; color: #6c757d;">No hay categorías para mostrar</p>';
+        return;
+    }
+    
+    // Agrupar por tipo
+    const porTipo = {};
+    categorias.forEach(cat => {
+        const tipoNombre = cat.tipo_nombre || 'Sin tipo';
+        if (!porTipo[tipoNombre]) {
+            porTipo[tipoNombre] = [];
+        }
+        porTipo[tipoNombre].push(cat);
+    });
+    
+    let html = '';
+    for (const [tipoNombre, cats] of Object.entries(porTipo)) {
+        html += `<h5 style="margin: 15px 0 10px; color: #495057; border-bottom: 1px solid #e9ecef; padding-bottom: 5px;">${tipoNombre}</h5>`;
+        cats.forEach(cat => {
+            const tipo = tiposConfig.find(t => t.id_tipo_inventario == cat.id_tipo_inventario);
+            const color = (tipo && tipo.color) ? tipo.color : '#6c757d';
+            
+            html += `
+                <div class="config-item">
+                    <div class="config-item-info">
+                        <div class="config-item-icon" style="background: ${color}">
+                            <i class="fas fa-folder"></i>
+                        </div>
+                        <div class="config-item-details">
+                            <h4>${cat.nombre}</h4>
+                            <span>${cat.codigo} | Orden: ${cat.orden || 1}</span>
+                        </div>
+                    </div>
+                    <div class="config-item-actions">
+                        <button class="btn-editar-config" onclick="editarCategoria(${cat.id_categoria})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    lista.innerHTML = html;
+}
+
+function mostrarFormCategoria(categoria = null) {
+    document.getElementById('formCategoriaContainer').style.display = 'block';
+    
+    if (categoria) {
+        document.getElementById('formCategoriaTitulo').innerHTML = '<i class="fas fa-edit"></i> Editar Categoría';
+        document.getElementById('categoriaId').value = categoria.id_categoria;
+        document.getElementById('categoriaTipo').value = categoria.id_tipo_inventario;
+        document.getElementById('categoriaCodigo').value = categoria.codigo;
+        document.getElementById('categoriaNombre').value = categoria.nombre;
+        document.getElementById('categoriaOrden').value = categoria.orden || 1;
+    } else {
+        document.getElementById('formCategoriaTitulo').innerHTML = '<i class="fas fa-plus"></i> Nueva Categoría';
+        document.getElementById('categoriaId').value = '';
+        document.getElementById('categoriaTipo').value = document.getElementById('filtroTipoCategoria').value || '';
+        document.getElementById('categoriaCodigo').value = '';
+        document.getElementById('categoriaNombre').value = '';
+        document.getElementById('categoriaOrden').value = 1;
+    }
+}
+
+function cancelarFormCategoria() {
+    document.getElementById('formCategoriaContainer').style.display = 'none';
+}
+
+function editarCategoria(id) {
+    const cat = categoriasConfig.find(c => c.id_categoria == id);
+    if (cat) {
+        mostrarFormCategoria(cat);
+    }
+}
+
+async function guardarCategoria() {
+    const payload = {
+        action: 'guardar_categoria',
+        id_categoria: document.getElementById('categoriaId').value || null,
+        id_tipo_inventario: document.getElementById('categoriaTipo').value,
+        codigo: document.getElementById('categoriaCodigo').value.trim(),
+        nombre: document.getElementById('categoriaNombre').value.trim(),
+        orden: parseInt(document.getElementById('categoriaOrden').value) || 1
+    };
+    
+    if (!payload.id_tipo_inventario || !payload.codigo || !payload.nombre) {
+        alert('⚠️ Tipo, Código y Nombre son requeridos');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            cancelarFormCategoria();
+            cargarCategoriasPorTipo();
+        } else {
+            alert('❌ ' + (data.message || 'Error al guardar'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
+}
+
+// ========== SUBCATEGORÍAS ==========
+let subcategoriasConfig = [];
+
+async function cargarSubcategoriasConfig() {
+    var lista = document.getElementById('listaSubcategorias');
+    lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Cargando...</span></div>';
+    
+    // Cargar tipos y categorías para los selects
+    if (tiposConfig.length === 0) {
+        await cargarTiposConfig();
+    }
+    
+    // Cargar todas las categorías para el filtro
+    try {
+        var response = await fetch(baseUrl + '/api/inventarios.php?action=categorias');
+        var data = await response.json();
+        
+        if (data.success) {
+            var select = document.getElementById('filtroCategoriaSub');
+            var selectForm = document.getElementById('subcategoriaCategoria');
+            
+            var opciones = data.categorias.map(function(c) {
+                return '<option value="' + c.id_categoria + '">' + c.nombre + ' (' + (c.tipo_nombre || '') + ')</option>';
+            }).join('');
+            
+            select.innerHTML = '<option value="">-- Todas --</option>' + opciones;
+            selectForm.innerHTML = '<option value="">Seleccione...</option>' + opciones;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+    
+    cargarSubcategoriasPorCategoria();
+}
+
+async function cargarSubcategoriasPorCategoria() {
+    var categoriaId = document.getElementById('filtroCategoriaSub').value;
+    var lista = document.getElementById('listaSubcategorias');
+    lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Cargando...</span></div>';
+    
+    try {
+        var url = baseUrl + '/api/inventarios.php?action=subcategorias';
+        if (categoriaId) {
+            url += '&categoria_id=' + categoriaId;
+        }
+        
+        var response = await fetch(url);
+        var data = await response.json();
+        
+        if (data.success) {
+            subcategoriasConfig = data.subcategorias;
+            renderSubcategoriasConfig(data.subcategorias);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        lista.innerHTML = '<p class="text-danger">Error al cargar subcategorías</p>';
+    }
+}
+
+function renderSubcategoriasConfig(subcategorias) {
+    var lista = document.getElementById('listaSubcategorias');
+    
+    if (subcategorias.length === 0) {
+        lista.innerHTML = '<p class="text-center" style="padding: 20px; color: #6c757d;">No hay subcategorías. ¡Crea la primera!</p>';
+        return;
+    }
+    
+    // Agrupar por categoría
+    var porCategoria = {};
+    subcategorias.forEach(function(sub) {
+        var catNombre = sub.categoria_nombre || 'Sin categoría';
+        if (!porCategoria[catNombre]) {
+            porCategoria[catNombre] = [];
+        }
+        porCategoria[catNombre].push(sub);
+    });
+    
+    var html = '';
+    for (var catNombre in porCategoria) {
+        html += '<h5 style="margin: 15px 0 10px; color: #495057; border-bottom: 1px solid #e9ecef; padding-bottom: 5px;">' + catNombre + '</h5>';
+        porCategoria[catNombre].forEach(function(sub) {
+            html += '<div class="config-item">' +
+                '<div class="config-item-info">' +
+                '<div class="config-item-icon" style="background: #17a2b8">' +
+                '<i class="fas fa-folder-open"></i>' +
+                '</div>' +
+                '<div class="config-item-details">' +
+                '<h4>' + sub.nombre + '</h4>' +
+                '<span>' + sub.codigo + ' | Orden: ' + (sub.orden || 1) + '</span>' +
+                '</div>' +
+                '</div>' +
+                '<div class="config-item-actions">' +
+                '<button class="btn-editar-config" onclick="editarSubcategoria(' + sub.id_subcategoria + ')" title="Editar">' +
+                '<i class="fas fa-edit"></i>' +
+                '</button>' +
+                '</div>' +
+                '</div>';
+        });
+    }
+    
+    lista.innerHTML = html;
+}
+
+function mostrarFormSubcategoria(subcategoria) {
+    document.getElementById('formSubcategoriaContainer').style.display = 'block';
+    
+    if (subcategoria) {
+        document.getElementById('formSubcategoriaTitulo').innerHTML = '<i class="fas fa-edit"></i> Editar Subcategoría';
+        document.getElementById('subcategoriaId').value = subcategoria.id_subcategoria;
+        document.getElementById('subcategoriaCategoria').value = subcategoria.id_categoria;
+        document.getElementById('subcategoriaCodigo').value = subcategoria.codigo;
+        document.getElementById('subcategoriaNombre').value = subcategoria.nombre;
+        document.getElementById('subcategoriaOrden').value = subcategoria.orden || 1;
+    } else {
+        document.getElementById('formSubcategoriaTitulo').innerHTML = '<i class="fas fa-plus"></i> Nueva Subcategoría';
+        document.getElementById('subcategoriaId').value = '';
+        document.getElementById('subcategoriaCategoria').value = document.getElementById('filtroCategoriaSub').value || '';
+        document.getElementById('subcategoriaCodigo').value = '';
+        document.getElementById('subcategoriaNombre').value = '';
+        document.getElementById('subcategoriaOrden').value = 1;
+    }
+}
+
+function cancelarFormSubcategoria() {
+    document.getElementById('formSubcategoriaContainer').style.display = 'none';
+}
+
+function editarSubcategoria(id) {
+    var sub = subcategoriasConfig.find(function(s) { return s.id_subcategoria == id; });
+    if (sub) {
+        mostrarFormSubcategoria(sub);
+    }
+}
+
+async function guardarSubcategoria() {
+    var payload = {
+        action: 'guardar_subcategoria',
+        id_subcategoria: document.getElementById('subcategoriaId').value || null,
+        id_categoria: document.getElementById('subcategoriaCategoria').value,
+        codigo: document.getElementById('subcategoriaCodigo').value.trim(),
+        nombre: document.getElementById('subcategoriaNombre').value.trim(),
+        orden: parseInt(document.getElementById('subcategoriaOrden').value) || 1
+    };
+    
+    if (!payload.id_categoria || !payload.codigo || !payload.nombre) {
+        alert('⚠️ Categoría, Código y Nombre son requeridos');
+        return;
+    }
+    
+    try {
+        var response = await fetch(baseUrl + '/api/inventarios.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        var data = await response.json();
+        
+        if (data.success) {
+            alert('✅ ' + data.message);
+            cancelarFormSubcategoria();
+            cargarSubcategoriasPorCategoria();
+        } else {
+            alert('❌ ' + (data.message || 'Error al guardar'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
 }
 
 </script>

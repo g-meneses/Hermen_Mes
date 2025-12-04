@@ -275,7 +275,7 @@ try {
                     break;
                 
                 case 'kardex':
-                    // Movimientos de un producto específico
+                    // Kardex completo de un producto (datos + movimientos)
                     $inventarioId = $_GET['id'] ?? null;
                     if (!$inventarioId) {
                         ob_clean();
@@ -283,6 +283,30 @@ try {
                         exit();
                     }
                     
+                    // Obtener datos del producto
+                    $stmt = $db->prepare("
+                        SELECT 
+                            i.id_inventario, i.codigo, i.nombre, i.descripcion,
+                            i.stock_actual, i.stock_minimo, i.costo_unitario, i.costo_promedio,
+                            um.abreviatura AS unidad,
+                            ti.nombre AS tipo_nombre,
+                            ci.nombre AS categoria_nombre
+                        FROM inventarios i
+                        JOIN unidades_medida um ON i.id_unidad = um.id_unidad
+                        JOIN tipos_inventario ti ON i.id_tipo_inventario = ti.id_tipo_inventario
+                        JOIN categorias_inventario ci ON i.id_categoria = ci.id_categoria
+                        WHERE i.id_inventario = ?
+                    ");
+                    $stmt->execute([$inventarioId]);
+                    $producto = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$producto) {
+                        ob_clean();
+                        echo json_encode(['success' => false, 'message' => 'Producto no encontrado']);
+                        exit();
+                    }
+                    
+                    // Obtener movimientos
                     $stmt = $db->prepare("
                         SELECT 
                             m.id_movimiento,
@@ -296,8 +320,8 @@ try {
                             m.costo_promedio_resultado,
                             m.documento_tipo,
                             m.documento_numero,
-                            m.numero_lote,
                             m.observaciones,
+                            m.estado,
                             u.nombre_completo AS usuario
                         FROM movimientos_inventario_erp m
                         LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
@@ -310,68 +334,84 @@ try {
                     ob_clean();
                     echo json_encode([
                         'success' => true,
+                        'producto' => $producto,
                         'movimientos' => $stmt->fetchAll(PDO::FETCH_ASSOC)
                     ]);
                     break;
                 
+                case 'historial':
                 case 'documentos':
                     // Lista de documentos agrupados (para histórico)
-                    $tipoMov = $_GET['tipo_mov'] ?? null;
+                    $tipoMov = $_GET['tipo_movimiento'] ?? $_GET['tipo_mov'] ?? null;
                     $fechaDesde = $_GET['fecha_desde'] ?? null;
                     $fechaHasta = $_GET['fecha_hasta'] ?? null;
                     $buscar = $_GET['buscar'] ?? null;
+                    $tipoInventarioId = $_GET['tipo_id'] ?? null;
                     
                     $sql = "
                         SELECT 
-                            documento_numero,
-                            documento_tipo,
-                            tipo_movimiento,
-                            MIN(fecha_movimiento) AS fecha,
+                            m.documento_numero,
+                            m.documento_tipo,
+                            m.tipo_movimiento,
+                            MIN(m.fecha_movimiento) AS fecha,
                             COUNT(*) AS total_lineas,
-                            SUM(cantidad) AS total_cantidad,
-                            SUM(costo_total) AS total_valor,
-                            MAX(observaciones) AS observaciones,
+                            SUM(m.cantidad) AS total_cantidad,
+                            SUM(m.costo_total) AS total_documento,
+                            MAX(m.observaciones) AS observaciones,
                             u.nombre_completo AS usuario,
                             CASE 
-                                WHEN tipo_movimiento LIKE 'ENTRADA%' THEN 'ENTRADA'
+                                WHEN m.tipo_movimiento LIKE 'ENTRADA%' THEN 'ENTRADA'
+                                WHEN m.tipo_movimiento LIKE 'DEVOLUCION%' THEN 'DEVOLUCION'
                                 ELSE 'SALIDA'
                             END AS categoria,
                             MAX(m.estado) AS estado
                         FROM movimientos_inventario_erp m
                         LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
-                        WHERE 1=1
                     ";
                     
+                    // Si hay filtro por tipo de inventario, hacer join
+                    if ($tipoInventarioId) {
+                        $sql .= " JOIN inventarios i ON m.id_inventario = i.id_inventario ";
+                    }
+                    
+                    $sql .= " WHERE 1=1 ";
                     $params = [];
                     
                     if ($tipoMov) {
                         if ($tipoMov === 'ENTRADA') {
-                            $sql .= " AND tipo_movimiento LIKE 'ENTRADA%'";
+                            $sql .= " AND m.tipo_movimiento LIKE 'ENTRADA%'";
                         } elseif ($tipoMov === 'SALIDA') {
-                            $sql .= " AND tipo_movimiento LIKE 'SALIDA%'";
+                            $sql .= " AND m.tipo_movimiento LIKE 'SALIDA%'";
+                        } elseif ($tipoMov === 'DEVOLUCION') {
+                            $sql .= " AND m.tipo_movimiento LIKE 'DEVOLUCION%'";
                         } else {
-                            $sql .= " AND tipo_movimiento = ?";
+                            $sql .= " AND m.tipo_movimiento = ?";
                             $params[] = $tipoMov;
                         }
                     }
                     
+                    if ($tipoInventarioId) {
+                        $sql .= " AND i.id_tipo_inventario = ?";
+                        $params[] = $tipoInventarioId;
+                    }
+                    
                     if ($fechaDesde) {
-                        $sql .= " AND DATE(fecha_movimiento) >= ?";
+                        $sql .= " AND DATE(m.fecha_movimiento) >= ?";
                         $params[] = $fechaDesde;
                     }
                     
                     if ($fechaHasta) {
-                        $sql .= " AND DATE(fecha_movimiento) <= ?";
+                        $sql .= " AND DATE(m.fecha_movimiento) <= ?";
                         $params[] = $fechaHasta;
                     }
                     
                     if ($buscar) {
-                        $sql .= " AND (documento_numero LIKE ? OR observaciones LIKE ?)";
+                        $sql .= " AND (m.documento_numero LIKE ? OR m.observaciones LIKE ?)";
                         $params[] = "%$buscar%";
                         $params[] = "%$buscar%";
                     }
                     
-                    $sql .= " GROUP BY documento_numero, documento_tipo, tipo_movimiento
+                    $sql .= " GROUP BY m.documento_numero, m.documento_tipo, m.tipo_movimiento, u.nombre_completo
                               ORDER BY fecha DESC
                               LIMIT 100";
                     

@@ -1354,6 +1354,559 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
+<!-- =====================================================
+     MODALES ADICIONALES PARA INVENTARIOS v1.6.5
+     Sistema MES Hermen Ltda.
+     
+     Este archivo contiene:
+     - Modal de Ingreso (con Proveedor y IVA 13%)
+     - Modal de Salida
+     - Modal de Historial de Documentos
+     - Modal de Kardex
+     - Modal de Devoluciones
+     - Modal de Reportes
+     - Modal de Proveedores
+     
+     INSTRUCCIÓN: Agregar este código ANTES del cierre </body>
+     en modules/inventarios/index.php
+===================================================== -->
+
+<!-- ========== MODAL INGRESO MULTIPRODUCTO CON PROVEEDOR ========== -->
+<div class="modal-inventario" id="modalIngreso">
+    <div class="modal-content" style="max-width: 1000px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white;">
+            <h3><i class="fas fa-arrow-down"></i> Ingreso de Inventario</h3>
+            <button class="modal-close" onclick="closeModalIngreso()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="formIngreso">
+                <!-- Cabecera del documento -->
+                <div class="form-row" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Tipo Documento *</label>
+                        <select id="ingresoDocTipo" required>
+                            <option value="FACTURA">Factura</option>
+                            <option value="NOTA">Nota de Ingreso</option>
+                            <option value="REMISION">Remisión</option>
+                            <option value="AJUSTE">Ajuste</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nº Documento *</label>
+                        <input type="text" id="ingresoDocNumero" required placeholder="Ej: FAC-001">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha *</label>
+                        <input type="date" id="ingresoFecha" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Proveedor</label>
+                        <select id="ingresoProveedor">
+                            <option value="">-- Seleccione --</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Checkbox IVA -->
+                <div class="form-row" style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="ingresoConFactura" style="width: 20px; height: 20px;">
+                        <span>📄 Compra con Factura (Descontar IVA 13% del costo)</span>
+                    </label>
+                </div>
+                
+                <!-- Observaciones -->
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Observaciones</label>
+                    <input type="text" id="ingresoObservaciones" placeholder="Notas adicionales...">
+                </div>
+                
+                <!-- Líneas de productos -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="margin: 0;"><i class="fas fa-list"></i> Productos a Ingresar</h4>
+                        <button type="button" class="btn btn-sm" onclick="agregarLineaIngreso()" 
+                                style="background: #28a745; color: white; padding: 8px 15px; border-radius: 6px;">
+                            <i class="fas fa-plus"></i> Agregar Línea
+                        </button>
+                    </div>
+                    
+                    <table class="tabla-lineas" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #e9ecef;">
+                                <th style="padding: 10px; text-align: left; width: 35%;">Producto</th>
+                                <th style="padding: 10px; text-align: right; width: 15%;">Cantidad</th>
+                                <th style="padding: 10px; text-align: right; width: 15%;">Costo Bruto</th>
+                                <th style="padding: 10px; text-align: right; width: 15%;">Costo Neto</th>
+                                <th style="padding: 10px; text-align: right; width: 15%;">Subtotal</th>
+                                <th style="padding: 10px; width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="lineasIngresoBody">
+                            <!-- Se llena dinámicamente -->
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #d4edda; font-weight: bold;">
+                                <td colspan="4" style="padding: 12px; text-align: right;">TOTAL NETO:</td>
+                                <td style="padding: 12px; text-align: right;" id="ingresoTotalNeto">Bs. 0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr id="filaIVA" style="background: #fff3cd; display: none;">
+                                <td colspan="4" style="padding: 10px; text-align: right;">IVA 13% (Crédito Fiscal):</td>
+                                <td style="padding: 10px; text-align: right;" id="ingresoTotalIVA">Bs. 0.00</td>
+                                <td></td>
+                            </tr>
+                            <tr id="filaBruto" style="background: #e2e3e5; display: none;">
+                                <td colspan="4" style="padding: 10px; text-align: right;">Total Bruto (con IVA):</td>
+                                <td style="padding: 10px; text-align: right;" id="ingresoTotalBruto">Bs. 0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalIngreso()">Cancelar</button>
+            <button type="button" class="btn btn-success" onclick="guardarIngreso()">
+                <i class="fas fa-save"></i> Guardar Ingreso
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL SALIDA MULTIPRODUCTO ========== -->
+<div class="modal-inventario" id="modalSalida">
+    <div class="modal-content" style="max-width: 1000px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white;">
+            <h3><i class="fas fa-arrow-up"></i> Salida de Inventario</h3>
+            <button class="modal-close" onclick="closeModalSalida()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="formSalida">
+                <!-- Cabecera -->
+                <div class="form-row" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Tipo Movimiento *</label>
+                        <select id="salidaTipoMov" required>
+                            <option value="SALIDA_CONSUMO">Consumo Producción</option>
+                            <option value="SALIDA_PRODUCCION">Entrega a Producción</option>
+                            <option value="SALIDA_AJUSTE">Ajuste de Inventario</option>
+                            <option value="SALIDA_MERMA">Merma/Desperdicio</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nº Documento *</label>
+                        <input type="text" id="salidaDocNumero" required placeholder="Ej: SAL-001">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha *</label>
+                        <input type="date" id="salidaFecha" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Destino</label>
+                        <input type="text" id="salidaDestino" placeholder="Área o responsable">
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Observaciones</label>
+                    <input type="text" id="salidaObservaciones" placeholder="Notas adicionales...">
+                </div>
+                
+                <!-- Líneas -->
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h4 style="margin: 0;"><i class="fas fa-list"></i> Productos a Salir</h4>
+                        <button type="button" class="btn btn-sm" onclick="agregarLineaSalida()" 
+                                style="background: #dc3545; color: white; padding: 8px 15px; border-radius: 6px;">
+                            <i class="fas fa-plus"></i> Agregar Línea
+                        </button>
+                    </div>
+                    
+                    <table class="tabla-lineas" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #e9ecef;">
+                                <th style="padding: 10px; text-align: left; width: 40%;">Producto</th>
+                                <th style="padding: 10px; text-align: right; width: 15%;">Stock Disp.</th>
+                                <th style="padding: 10px; text-align: right; width: 15%;">Cantidad</th>
+                                <th style="padding: 10px; text-align: right; width: 15%;">Costo Unit.</th>
+                                <th style="padding: 10px; text-align: right; width: 10%;">Subtotal</th>
+                                <th style="padding: 10px; width: 5%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="lineasSalidaBody">
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: #f8d7da; font-weight: bold;">
+                                <td colspan="4" style="padding: 12px; text-align: right;">TOTAL SALIDA:</td>
+                                <td style="padding: 12px; text-align: right;" id="salidaTotal">Bs. 0.00</td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalSalida()">Cancelar</button>
+            <button type="button" class="btn btn-danger" onclick="guardarSalida()">
+                <i class="fas fa-save"></i> Registrar Salida
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL HISTORIAL DE DOCUMENTOS ========== -->
+<div class="modal-inventario" id="modalHistorial">
+    <div class="modal-content" style="max-width: 1100px; max-height: 90vh;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%); color: white;">
+            <h3><i class="fas fa-history"></i> Historial de Documentos</h3>
+            <button class="modal-close" onclick="closeModalHistorial()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+            <!-- Filtros -->
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 15px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                <div>
+                    <label style="font-size: 0.85rem; color: #666;">Desde</label>
+                    <input type="date" id="historialFechaDesde" class="form-control">
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; color: #666;">Hasta</label>
+                    <input type="date" id="historialFechaHasta" class="form-control">
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; color: #666;">Tipo</label>
+                    <select id="historialTipoMov" class="form-control">
+                        <option value="">Todos</option>
+                        <option value="ENTRADA">Entradas</option>
+                        <option value="SALIDA">Salidas</option>
+                        <option value="DEVOLUCION">Devoluciones</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; color: #666;">Buscar</label>
+                    <input type="text" id="historialBuscar" class="form-control" placeholder="Nº Doc...">
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button type="button" class="btn btn-primary" onclick="buscarHistorial()" style="padding: 10px 20px;">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tabla de documentos -->
+            <table class="tabla-historial" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #343a40; color: white;">
+                        <th style="padding: 12px;">Fecha</th>
+                        <th style="padding: 12px;">Documento</th>
+                        <th style="padding: 12px;">Tipo</th>
+                        <th style="padding: 12px;">Proveedor/Destino</th>
+                        <th style="padding: 12px; text-align: right;">Total</th>
+                        <th style="padding: 12px;">Estado</th>
+                        <th style="padding: 12px; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="historialBody">
+                    <tr><td colspan="7" style="text-align: center; padding: 30px;">Use los filtros para buscar documentos</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalHistorial()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL DETALLE DE DOCUMENTO ========== -->
+<div class="modal-inventario" id="modalDetalleDoc">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white;">
+            <h3 id="detalleDocTitulo"><i class="fas fa-file-alt"></i> Detalle de Documento</h3>
+            <button class="modal-close" onclick="closeModalDetalleDoc()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="detalleDocContenido">
+                <!-- Se llena dinámicamente -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalDetalleDoc()">Cerrar</button>
+            <button type="button" class="btn btn-warning" onclick="anularDocumento()" id="btnAnularDoc">
+                <i class="fas fa-ban"></i> Anular Documento
+            </button>
+            <button type="button" class="btn btn-info" onclick="imprimirDocumento()">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL DEVOLUCIONES ========== -->
+<div class="modal-inventario" id="modalDevolucion">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #fd7e14 0%, #e55c00 100%); color: white;">
+            <h3><i class="fas fa-undo-alt"></i> Devolución a Proveedor</h3>
+            <button class="modal-close" onclick="closeModalDevolucion()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Paso 1: Buscar documento original -->
+            <div id="devolucionPaso1">
+                <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 0;"><i class="fas fa-info-circle"></i> Ingrese el número de documento de compra original para iniciar la devolución.</p>
+                </div>
+                
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr auto; gap: 15px;">
+                    <div class="form-group">
+                        <label>Nº Documento de Compra Original *</label>
+                        <input type="text" id="devolucionDocOriginal" placeholder="Ej: FAC-001">
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button type="button" class="btn btn-primary" onclick="buscarDocumentoDevolucion()">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="devolucionDocInfo" style="display: none; margin-top: 20px;">
+                    <!-- Info del documento encontrado -->
+                </div>
+            </div>
+            
+            <!-- Paso 2: Seleccionar items a devolver -->
+            <div id="devolucionPaso2" style="display: none;">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Nº Documento de Devolución *</label>
+                    <input type="text" id="devolucionDocNumero" placeholder="Ej: DEV-001">
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Motivo de Devolución *</label>
+                    <textarea id="devolucionMotivo" rows="2" placeholder="Describa el motivo de la devolución..."></textarea>
+                </div>
+                
+                <h4 style="margin: 20px 0 10px;"><i class="fas fa-list"></i> Items a Devolver</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #e9ecef;">
+                            <th style="padding: 10px;"><input type="checkbox" id="devSeleccionarTodos" onchange="toggleTodosDevolucion()"></th>
+                            <th style="padding: 10px; text-align: left;">Producto</th>
+                            <th style="padding: 10px; text-align: right;">Cant. Original</th>
+                            <th style="padding: 10px; text-align: right;">Cant. Devolver</th>
+                            <th style="padding: 10px; text-align: right;">Costo Unit.</th>
+                            <th style="padding: 10px; text-align: right;">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="devolucionLineasBody">
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: #fff3cd; font-weight: bold;">
+                            <td colspan="5" style="padding: 12px; text-align: right;">TOTAL DEVOLUCIÓN:</td>
+                            <td style="padding: 12px; text-align: right;" id="devolucionTotal">Bs. 0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalDevolucion()">Cancelar</button>
+            <button type="button" class="btn btn-warning" onclick="procesarDevolucion()" id="btnProcesarDev" style="display: none;">
+                <i class="fas fa-undo-alt"></i> Procesar Devolución
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL REPORTES ========== -->
+<div class="modal-inventario" id="modalReportes">
+    <div class="modal-content" style="max-width: 1200px; max-height: 90vh;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%); color: white;">
+            <h3><i class="fas fa-chart-bar"></i> Reportes de Inventario</h3>
+            <button class="modal-close" onclick="closeModalReportes()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+            <!-- Selector de tipo de reporte -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                <button class="btn-reporte active" onclick="seleccionarReporte('total')" id="btnRepTotal">
+                    <i class="fas fa-globe"></i> Total General
+                </button>
+                <button class="btn-reporte" onclick="seleccionarReporte('por_tipo')" id="btnRepTipo">
+                    <i class="fas fa-layer-group"></i> Por Tipo
+                </button>
+                <button class="btn-reporte" onclick="seleccionarReporte('por_categoria')" id="btnRepCategoria">
+                    <i class="fas fa-folder"></i> Por Categoría
+                </button>
+                <button class="btn-reporte" onclick="seleccionarReporte('por_subcategoria')" id="btnRepSubcategoria">
+                    <i class="fas fa-folder-open"></i> Por Subcategoría
+                </button>
+                <button class="btn-reporte" onclick="seleccionarReporte('detallado')" id="btnRepDetallado">
+                    <i class="fas fa-list-alt"></i> Detallado
+                </button>
+                <button class="btn-reporte" onclick="seleccionarReporte('compras_proveedor')" id="btnRepProveedores">
+                    <i class="fas fa-truck"></i> Compras x Proveedor
+                </button>
+            </div>
+            
+            <!-- Filtros -->
+            <div id="filtrosReporte" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none;">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 15px;">
+                    <div id="filtroTipoReporte">
+                        <label>Tipo Inventario</label>
+                        <select id="reporteTipoId" class="form-control">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                    <div id="filtroCategoriaReporte" style="display: none;">
+                        <label>Categoría</label>
+                        <select id="reporteCategoriaId" class="form-control">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div id="filtroFechasReporte" style="display: none;">
+                        <label>Desde</label>
+                        <input type="date" id="reporteFechaDesde" class="form-control">
+                    </div>
+                    <div id="filtroFechasReporte2" style="display: none;">
+                        <label>Hasta</label>
+                        <input type="date" id="reporteFechaHasta" class="form-control">
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button type="button" class="btn btn-primary" onclick="generarReporte()">
+                            <i class="fas fa-sync"></i> Generar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Contenido del reporte -->
+            <div id="reporteContenido">
+                <div style="text-align: center; padding: 50px; color: #666;">
+                    <i class="fas fa-chart-pie" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                    <p>Seleccione un tipo de reporte para comenzar</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalReportes()">Cerrar</button>
+            <button type="button" class="btn btn-success" onclick="exportarReporte('excel')" id="btnExportarExcel" style="display: none;">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button type="button" class="btn btn-info" onclick="imprimirReporte()" id="btnImprimirReporte" style="display: none;">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL GESTIÓN DE PROVEEDORES ========== -->
+<div class="modal-inventario" id="modalProveedores">
+    <div class="modal-content" style="max-width: 1000px; max-height: 90vh;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); color: white;">
+            <h3><i class="fas fa-truck"></i> Gestión de Proveedores</h3>
+            <button class="modal-close" onclick="closeModalProveedores()" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+            <!-- Barra de acciones -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="buscarProveedor" placeholder="Buscar proveedor..." 
+                           style="padding: 10px; border-radius: 6px; border: 1px solid #ddd; width: 300px;">
+                    <button type="button" class="btn btn-outline" onclick="buscarProveedores()">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <button type="button" class="btn btn-success" onclick="nuevoProveedor()">
+                    <i class="fas fa-plus"></i> Nuevo Proveedor
+                </button>
+            </div>
+            
+            <!-- Lista de proveedores -->
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #343a40; color: white;">
+                        <th style="padding: 12px;">Código</th>
+                        <th style="padding: 12px;">Razón Social</th>
+                        <th style="padding: 12px;">NIT</th>
+                        <th style="padding: 12px;">Contacto</th>
+                        <th style="padding: 12px;">Teléfono</th>
+                        <th style="padding: 12px; text-align: right;">Total Compras</th>
+                        <th style="padding: 12px; text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="proveedoresBody">
+                    <tr><td colspan="7" style="text-align: center; padding: 30px;">Cargando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalProveedores()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== MODAL FORM PROVEEDOR ========== -->
+<div class="modal-inventario" id="modalFormProveedor">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 id="formProveedorTitulo"><i class="fas fa-truck"></i> Nuevo Proveedor</h3>
+            <button class="modal-close" onclick="closeModalFormProveedor()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="formProveedor">
+                <input type="hidden" id="proveedorId">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Código *</label>
+                        <input type="text" id="proveedorCodigo" required placeholder="Ej: PROV-001">
+                    </div>
+                    <div class="form-group">
+                        <label>NIT</label>
+                        <input type="text" id="proveedorNIT" placeholder="Número de NIT">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Razón Social *</label>
+                    <input type="text" id="proveedorRazonSocial" required placeholder="Nombre de la empresa">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Nombre Contacto</label>
+                        <input type="text" id="proveedorContacto" placeholder="Persona de contacto">
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono</label>
+                        <input type="text" id="proveedorTelefono" placeholder="+591...">
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="proveedorEmail" placeholder="correo@empresa.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Ciudad</label>
+                        <input type="text" id="proveedorCiudad" placeholder="La Paz, Cochabamba...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Dirección</label>
+                    <textarea id="proveedorDireccion" rows="2" placeholder="Dirección completa..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Observaciones</label>
+                    <textarea id="proveedorObservaciones" rows="2" placeholder="Notas adicionales..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModalFormProveedor()">Cancelar</button>
+            <button type="button" class="btn btn-success" onclick="guardarProveedor()">
+                <i class="fas fa-save"></i> Guardar
+            </button>
+        </div>
+    </div>
+</div>
+
 <style>
 /* Estilos adicionales para modales y formularios */
 .modal-inventario {
@@ -1531,6 +2084,135 @@ require_once '../../includes/header.php';
 
 .kardex-entrada { color: #28a745; }
 .kardex-salida { color: #dc3545; }
+
+
+/* Estilos para botones de reporte */
+.btn-reporte {
+    padding: 12px 20px;
+    border: 2px solid #dee2e6;
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+.btn-reporte:hover {
+    border-color: #007bff;
+    color: #007bff;
+}
+.btn-reporte.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+.btn-reporte i {
+    margin-right: 8px;
+}
+
+/* Tablas */
+.tabla-lineas input, .tabla-lineas select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100%;
+}
+.tabla-lineas input[type="number"] {
+    text-align: right;
+}
+.tabla-lineas td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+/* Badges de estado */
+.badge-activo { background: #28a745; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; }
+.badge-anulado { background: #dc3545; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; }
+
+/* Form controls */
+.form-control {
+    padding: 10px 14px;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+/* Tabla historial */
+.tabla-historial td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+.tabla-historial tr:hover {
+    background: #f8f9fa;
+}
+
+/* Botón eliminar línea */
+.btn-eliminar-linea {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+.btn-eliminar-linea:hover {
+    background: #c82333;
+}
+
+/* Reporte tabla */
+.reporte-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+.reporte-tabla th {
+    background: #343a40;
+    color: white;
+    padding: 12px;
+    text-align: left;
+}
+.reporte-tabla td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+.reporte-tabla tr:hover {
+    background: #f8f9fa;
+}
+.reporte-tabla .subtotal {
+    background: #e9ecef;
+    font-weight: bold;
+}
+.reporte-tabla .total {
+    background: #343a40;
+    color: white;
+    font-weight: bold;
+}
+
+/* Cards KPI reporte */
+.reporte-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+.reporte-kpi {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.reporte-kpi .valor {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #333;
+}
+.reporte-kpi .label {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 5px;
+}
+
 </style>
 
 

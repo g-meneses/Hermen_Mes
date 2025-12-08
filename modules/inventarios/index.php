@@ -3058,18 +3058,7 @@ function closeModalKardex() {
 // ========== FUNCIONES PLACEHOLDER PARA MODALES CONTEXTUALES ==========
 // Estas funciones conectarán con los modales existentes pero filtrados por tipo
 
-function openModalMultiContextual(tipo) {
-    // Por ahora mostrar alerta - esto se conectará con el modal existente
-    alert(`Abrir modal de ${tipo} para: ${tipoSeleccionado.nombre}\n\nEsta funcionalidad se conectará con el modal de ingreso múltiple existente, filtrado por el tipo de inventario seleccionado.`);
-}
 
-function openModalSalidaContextual() {
-    alert(`Abrir modal de SALIDA para: ${tipoSeleccionado.nombre}\n\nEsta funcionalidad se conectará con el modal de salida existente, filtrado por el tipo de inventario seleccionado.`);
-}
-
-function openModalHistoricoContextual() {
-    alert(`Abrir HISTORIAL de: ${tipoSeleccionado.nombre}\n\nEsta funcionalidad mostrará solo los movimientos del tipo de inventario seleccionado.`);
-}
 
 // ========== MODAL CONFIGURACIÓN ==========
 
@@ -3557,6 +3546,726 @@ async function guardarSubcategoria() {
         alert('❌ Error de conexión');
     }
 }
+
+// ========== VARIABLES GLOBALES ADICIONALES ==========
+let productosDisponibles = [];
+let proveedoresLista = [];
+let lineasIngreso = [];
+let lineasSalida = [];
+let documentoActual = null;
+let reporteActual = null;
+
+// ========== REEMPLAZAR FUNCIONES PLACEHOLDER ==========
+
+// Reemplazar openModalMultiContextual
+function openModalMultiContextual(tipo) {
+    if (tipo === 'ENTRADA') {
+        abrirModalIngreso();
+    } else {
+        abrirModalSalida();
+    }
+}
+
+// Reemplazar openModalSalidaContextual  
+function openModalSalidaContextual() {
+    abrirModalSalida();
+}
+
+// Reemplazar openModalHistoricoContextual
+function openModalHistoricoContextual() {
+    abrirModalHistorial();
+}
+
+// ========== CARGAR DATOS PARA MODALES ==========
+async function cargarProductosParaMovimientos() {
+    try {
+        let url = `${baseUrl}/api/inventarios.php?action=list`;
+        if (tipoSeleccionado) {
+            url += `&tipo_id=${tipoSeleccionado.id_tipo_inventario}`;
+        }
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.success) {
+            productosDisponibles = data.inventarios || [];
+        }
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+    }
+}
+
+async function cargarProveedoresSelect() {
+    try {
+        const response = await fetch(`${baseUrl}/api/proveedores.php?action=list`);
+        const data = await response.json();
+        if (data.success) {
+            proveedoresLista = data.proveedores || [];
+            const select = document.getElementById('ingresoProveedor');
+            if (select) {
+                select.innerHTML = '<option value="">-- Seleccione Proveedor --</option>';
+                proveedoresLista.forEach(p => {
+                    select.innerHTML += `<option value="${p.id_proveedor}">${p.codigo} - ${p.razon_social}</option>`;
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error cargando proveedores:', error);
+    }
+}
+
+// ========== MODAL INGRESO ==========
+async function abrirModalIngreso() {
+    await cargarProductosParaMovimientos();
+    await cargarProveedoresSelect();
+    
+    // Resetear formulario
+    document.getElementById('formIngreso').reset();
+    document.getElementById('ingresoFecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('ingresoDocNumero').value = generarNumeroDocumento('ING');
+    
+    // Configurar checkbox IVA
+    document.getElementById('ingresoConFactura').checked = false;
+    document.getElementById('ingresoConFactura').onchange = function() {
+        document.getElementById('filaIVA').style.display = this.checked ? 'table-row' : 'none';
+        document.getElementById('filaBruto').style.display = this.checked ? 'table-row' : 'none';
+        calcularTotalesIngreso();
+    };
+    
+    document.getElementById('filaIVA').style.display = 'none';
+    document.getElementById('filaBruto').style.display = 'none';
+    
+    lineasIngreso = [];
+    renderLineasIngreso();
+    agregarLineaIngreso();
+    
+    document.getElementById('modalIngreso').classList.add('show');
+}
+
+function closeModalIngreso() {
+    document.getElementById('modalIngreso').classList.remove('show');
+}
+
+function agregarLineaIngreso() {
+    const linea = {
+        id: Date.now(),
+        id_inventario: '',
+        cantidad: 0,
+        costo_bruto: 0,
+        costo_neto: 0,
+        subtotal: 0
+    };
+    lineasIngreso.push(linea);
+    renderLineasIngreso();
+}
+
+function renderLineasIngreso() {
+    const tbody = document.getElementById('lineasIngresoBody');
+    tbody.innerHTML = '';
+    
+    lineasIngreso.forEach((linea, index) => {
+        const optionsProductos = productosDisponibles.map(p => 
+            `<option value="${p.id_inventario}" ${p.id_inventario == linea.id_inventario ? 'selected' : ''}>
+                ${p.codigo} - ${p.nombre} (${p.unidad || 'UN'})
+            </option>`
+        ).join('');
+        
+        tbody.innerHTML += `
+            <tr data-id="${linea.id}">
+                <td style="padding: 8px;">
+                    <select style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" 
+                            onchange="actualizarLineaIngreso(${linea.id}, 'id_inventario', this.value)">
+                        <option value="">-- Seleccione --</option>
+                        ${optionsProductos}
+                    </select>
+                </td>
+                <td style="padding: 8px;">
+                    <input type="number" step="0.01" min="0" value="${linea.cantidad}" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: right;"
+                           onchange="actualizarLineaIngreso(${linea.id}, 'cantidad', this.value)">
+                </td>
+                <td style="padding: 8px;">
+                    <input type="number" step="0.01" min="0" value="${linea.costo_bruto}" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: right;"
+                           onchange="actualizarLineaIngreso(${linea.id}, 'costo_bruto', this.value)" placeholder="Con IVA">
+                </td>
+                <td style="padding: 8px; text-align: right; font-weight: bold;">Bs. ${linea.costo_neto.toFixed(2)}</td>
+                <td style="padding: 8px; text-align: right;">Bs. ${linea.subtotal.toFixed(2)}</td>
+                <td style="padding: 8px; text-align: center;">
+                    <button type="button" onclick="eliminarLineaIngreso(${linea.id})" 
+                            style="background: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function actualizarLineaIngreso(id, campo, valor) {
+    const linea = lineasIngreso.find(l => l.id === id);
+    if (!linea) return;
+    
+    linea[campo] = campo === 'id_inventario' ? valor : parseFloat(valor) || 0;
+    
+    const conFactura = document.getElementById('ingresoConFactura').checked;
+    if (campo === 'costo_bruto' || campo === 'cantidad') {
+        if (conFactura) {
+            linea.costo_neto = linea.costo_bruto / 1.13;
+        } else {
+            linea.costo_neto = linea.costo_bruto;
+        }
+        linea.subtotal = linea.cantidad * linea.costo_neto;
+    }
+    
+    calcularTotalesIngreso();
+    renderLineasIngreso();
+}
+
+function eliminarLineaIngreso(id) {
+    lineasIngreso = lineasIngreso.filter(l => l.id !== id);
+    if (lineasIngreso.length === 0) agregarLineaIngreso();
+    renderLineasIngreso();
+    calcularTotalesIngreso();
+}
+
+function calcularTotalesIngreso() {
+    const conFactura = document.getElementById('ingresoConFactura').checked;
+    let totalNeto = 0;
+    let totalBruto = 0;
+    
+    lineasIngreso.forEach(linea => {
+        if (conFactura) {
+            linea.costo_neto = linea.costo_bruto / 1.13;
+        } else {
+            linea.costo_neto = linea.costo_bruto;
+        }
+        linea.subtotal = linea.cantidad * linea.costo_neto;
+        totalNeto += linea.subtotal;
+        totalBruto += linea.cantidad * linea.costo_bruto;
+    });
+    
+    const totalIVA = totalBruto - totalNeto;
+    
+    document.getElementById('ingresoTotalNeto').textContent = `Bs. ${totalNeto.toFixed(2)}`;
+    document.getElementById('ingresoTotalIVA').textContent = `Bs. ${totalIVA.toFixed(2)}`;
+    document.getElementById('ingresoTotalBruto').textContent = `Bs. ${totalBruto.toFixed(2)}`;
+}
+
+async function guardarIngreso() {
+    const lineasValidas = lineasIngreso.filter(l => l.id_inventario && l.cantidad > 0);
+    
+    if (lineasValidas.length === 0) {
+        alert('⚠️ Agregue al menos un producto con cantidad válida');
+        return;
+    }
+    
+    const docNumero = document.getElementById('ingresoDocNumero').value.trim();
+    if (!docNumero) {
+        alert('⚠️ Ingrese el número de documento');
+        return;
+    }
+    
+    const conFactura = document.getElementById('ingresoConFactura').checked;
+    const proveedorSelect = document.getElementById('ingresoProveedor');
+    
+    const payload = {
+        action: 'multiproducto',
+        tipo_movimiento: 'ENTRADA_COMPRA',
+        documento_tipo: document.getElementById('ingresoDocTipo').value,
+        documento_numero: docNumero,
+        proveedor: proveedorSelect.selectedOptions[0]?.text || '',
+        id_proveedor: proveedorSelect.value || null,
+        fecha: document.getElementById('ingresoFecha').value,
+        observaciones: document.getElementById('ingresoObservaciones').value,
+        con_factura: conFactura,
+        lineas: lineasValidas.map(l => ({
+            id_inventario: l.id_inventario,
+            cantidad: l.cantidad,
+            costo_unitario: l.costo_neto,
+            costo_bruto: l.costo_bruto,
+            valor_total_bruto: l.cantidad * l.costo_bruto
+        }))
+    };
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ ${data.message}\n\nDocumento: ${docNumero}\nProductos: ${data.movimientos_registrados || lineasValidas.length}`);
+            closeModalIngreso();
+            cargarDashboard();
+            if (tipoSeleccionado) {
+                seleccionarTipo(tipoSeleccionado.id_tipo_inventario);
+            }
+        } else {
+            alert('❌ ' + (data.message || 'Error al guardar'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
+}
+
+// ========== MODAL SALIDA ==========
+async function abrirModalSalida() {
+    await cargarProductosParaMovimientos();
+    
+    document.getElementById('formSalida').reset();
+    document.getElementById('salidaFecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('salidaDocNumero').value = generarNumeroDocumento('SAL');
+    
+    lineasSalida = [];
+    renderLineasSalida();
+    agregarLineaSalida();
+    
+    document.getElementById('modalSalida').classList.add('show');
+}
+
+function closeModalSalida() {
+    document.getElementById('modalSalida').classList.remove('show');
+}
+
+function agregarLineaSalida() {
+    const linea = {
+        id: Date.now(),
+        id_inventario: '',
+        stock_disponible: 0,
+        cantidad: 0,
+        costo_unitario: 0,
+        subtotal: 0
+    };
+    lineasSalida.push(linea);
+    renderLineasSalida();
+}
+
+function renderLineasSalida() {
+    const tbody = document.getElementById('lineasSalidaBody');
+    tbody.innerHTML = '';
+    
+    lineasSalida.forEach((linea, index) => {
+        const optionsProductos = productosDisponibles.map(p => 
+            `<option value="${p.id_inventario}" 
+                data-stock="${p.stock_actual}" 
+                data-costo="${p.costo_unitario}"
+                ${p.id_inventario == linea.id_inventario ? 'selected' : ''}>
+                ${p.codigo} - ${p.nombre}
+            </option>`
+        ).join('');
+        
+        tbody.innerHTML += `
+            <tr data-id="${linea.id}">
+                <td style="padding: 8px;">
+                    <select style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" 
+                            onchange="actualizarLineaSalida(${linea.id}, 'id_inventario', this)">
+                        <option value="">-- Seleccione --</option>
+                        ${optionsProductos}
+                    </select>
+                </td>
+                <td style="padding: 8px; text-align: right; color: ${linea.stock_disponible < linea.cantidad ? 'red' : 'green'}; font-weight: bold;">
+                    ${linea.stock_disponible.toFixed(2)}
+                </td>
+                <td style="padding: 8px;">
+                    <input type="number" step="0.01" min="0" max="${linea.stock_disponible}" value="${linea.cantidad}" 
+                           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: right;"
+                           onchange="actualizarLineaSalidaCantidad(${linea.id}, this.value)">
+                </td>
+                <td style="padding: 8px; text-align: right;">Bs. ${linea.costo_unitario.toFixed(2)}</td>
+                <td style="padding: 8px; text-align: right;">Bs. ${linea.subtotal.toFixed(2)}</td>
+                <td style="padding: 8px; text-align: center;">
+                    <button type="button" onclick="eliminarLineaSalida(${linea.id})" 
+                            style="background: #dc3545; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function actualizarLineaSalida(id, campo, select) {
+    const linea = lineasSalida.find(l => l.id === id);
+    if (!linea) return;
+    
+    const option = select.selectedOptions[0];
+    linea.id_inventario = select.value;
+    linea.stock_disponible = parseFloat(option?.dataset.stock || 0);
+    linea.costo_unitario = parseFloat(option?.dataset.costo || 0);
+    linea.subtotal = linea.cantidad * linea.costo_unitario;
+    
+    calcularTotalesSalida();
+    renderLineasSalida();
+}
+
+function actualizarLineaSalidaCantidad(id, valor) {
+    const linea = lineasSalida.find(l => l.id === id);
+    if (!linea) return;
+    
+    linea.cantidad = parseFloat(valor) || 0;
+    linea.subtotal = linea.cantidad * linea.costo_unitario;
+    
+    calcularTotalesSalida();
+    renderLineasSalida();
+}
+
+function eliminarLineaSalida(id) {
+    lineasSalida = lineasSalida.filter(l => l.id !== id);
+    if (lineasSalida.length === 0) agregarLineaSalida();
+    renderLineasSalida();
+    calcularTotalesSalida();
+}
+
+function calcularTotalesSalida() {
+    let total = 0;
+    lineasSalida.forEach(linea => {
+        total += linea.subtotal;
+    });
+    document.getElementById('salidaTotal').textContent = `Bs. ${total.toFixed(2)}`;
+}
+
+async function guardarSalida() {
+    const lineasValidas = lineasSalida.filter(l => l.id_inventario && l.cantidad > 0);
+    
+    if (lineasValidas.length === 0) {
+        alert('⚠️ Agregue al menos un producto con cantidad válida');
+        return;
+    }
+    
+    // Validar stock
+    for (const linea of lineasValidas) {
+        if (linea.cantidad > linea.stock_disponible) {
+            alert(`⚠️ Stock insuficiente. Disponible: ${linea.stock_disponible}`);
+            return;
+        }
+    }
+    
+    const docNumero = document.getElementById('salidaDocNumero').value.trim();
+    if (!docNumero) {
+        alert('⚠️ Ingrese el número de documento');
+        return;
+    }
+    
+    const payload = {
+        action: 'multiproducto',
+        tipo_movimiento: document.getElementById('salidaTipoMov').value,
+        documento_tipo: 'SALIDA',
+        documento_numero: docNumero,
+        proveedor: document.getElementById('salidaDestino').value,
+        fecha: document.getElementById('salidaFecha').value,
+        observaciones: document.getElementById('salidaObservaciones').value,
+        lineas: lineasValidas.map(l => ({
+            id_inventario: l.id_inventario,
+            cantidad: l.cantidad,
+            costo_unitario: l.costo_unitario
+        }))
+    };
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ ${data.message}\n\nDocumento: ${docNumero}`);
+            closeModalSalida();
+            cargarDashboard();
+            if (tipoSeleccionado) {
+                seleccionarTipo(tipoSeleccionado.id_tipo_inventario);
+            }
+        } else {
+            alert('❌ ' + (data.message || 'Error al guardar'));
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error de conexión');
+    }
+}
+
+// ========== MODAL HISTORIAL ==========
+function abrirModalHistorial() {
+    const hoy = new Date();
+    const hace30dias = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    document.getElementById('historialFechaHasta').value = hoy.toISOString().split('T')[0];
+    document.getElementById('historialFechaDesde').value = hace30dias.toISOString().split('T')[0];
+    document.getElementById('historialTipoMov').value = '';
+    document.getElementById('historialBuscar').value = '';
+    
+    document.getElementById('historialBody').innerHTML = 
+        '<tr><td colspan="7" style="text-align: center; padding: 30px;">Use los filtros y presione Buscar</td></tr>';
+    
+    document.getElementById('modalHistorial').classList.add('show');
+    
+    // Cargar automáticamente
+    buscarHistorial();
+}
+
+function closeModalHistorial() {
+    document.getElementById('modalHistorial').classList.remove('show');
+}
+
+async function buscarHistorial() {
+    const fechaDesde = document.getElementById('historialFechaDesde').value;
+    const fechaHasta = document.getElementById('historialFechaHasta').value;
+    const tipoMov = document.getElementById('historialTipoMov').value;
+    const buscar = document.getElementById('historialBuscar').value;
+    
+    let url = `${baseUrl}/api/inventarios.php?action=historial`;
+    if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
+    if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
+    if (tipoMov) url += `&tipo_movimiento=${tipoMov}`;
+    if (buscar) url += `&buscar=${encodeURIComponent(buscar)}`;
+    if (tipoSeleccionado) url += `&tipo_id=${tipoSeleccionado.id_tipo_inventario}`;
+    
+    document.getElementById('historialBody').innerHTML = 
+        '<tr><td colspan="7" style="text-align: center; padding: 30px;"><i class="fas fa-spinner fa-spin"></i> Buscando...</td></tr>';
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderHistorial(data.documentos || []);
+        } else {
+            document.getElementById('historialBody').innerHTML = 
+                `<tr><td colspan="7" style="text-align: center; padding: 30px; color: red;">${data.message}</td></tr>`;
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('historialBody').innerHTML = 
+            '<tr><td colspan="7" style="text-align: center; padding: 30px; color: red;">Error de conexión</td></tr>';
+    }
+}
+
+function renderHistorial(documentos) {
+    const tbody = document.getElementById('historialBody');
+    
+    if (documentos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 30px;">No se encontraron documentos</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = documentos.map(doc => {
+        const esEntrada = doc.tipo_movimiento && doc.tipo_movimiento.includes('ENTRADA');
+        const esAnulado = doc.estado === 'ANULADO';
+        const fecha = doc.fecha ? new Date(doc.fecha).toLocaleDateString('es-BO') : '-';
+        
+        return `
+            <tr style="${esAnulado ? 'opacity: 0.6; text-decoration: line-through;' : ''}">
+                <td style="padding: 12px;">${fecha}</td>
+                <td style="padding: 12px;"><strong>${doc.documento_numero}</strong><br><small>${doc.documento_tipo || ''}</small></td>
+                <td style="padding: 12px;">
+                    <span style="color: ${esEntrada ? '#28a745' : '#dc3545'};">
+                        ${esEntrada ? '↓' : '↑'} ${(doc.tipo_movimiento || '').replace('ENTRADA_', '').replace('SALIDA_', '')}
+                    </span>
+                </td>
+                <td style="padding: 12px;">${doc.observaciones ? doc.observaciones.substring(0, 30) : '-'}</td>
+                <td style="padding: 12px; text-align: right;">Bs. ${parseFloat(doc.total_documento || 0).toFixed(2)}</td>
+                <td style="padding: 12px;"><span class="${esAnulado ? 'badge-anulado' : 'badge-activo'}">${doc.estado || 'ACTIVO'}</span></td>
+                <td style="padding: 12px; text-align: center;">
+                    <button onclick="verDetalleDocumento('${doc.documento_numero}')" 
+                            style="background: #17a2b8; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;"
+                            title="Ver detalle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ========== MODAL DETALLE DOCUMENTO ==========
+async function verDetalleDocumento(docNumero) {
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php?action=documento_detalle&documento=${encodeURIComponent(docNumero)}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            documentoActual = data;
+            renderDetalleDocumento(data);
+            document.getElementById('modalDetalleDoc').classList.add('show');
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al cargar documento');
+    }
+}
+
+function renderDetalleDocumento(data) {
+    const cabecera = data.cabecera;
+    const lineas = data.lineas || [];
+    const esAnulado = cabecera.estado === 'ANULADO';
+    
+    document.getElementById('detalleDocTitulo').innerHTML = 
+        `<i class="fas fa-file-alt"></i> Documento: ${cabecera.documento_numero}`;
+    
+    document.getElementById('btnAnularDoc').style.display = esAnulado ? 'none' : 'inline-block';
+    
+    const fecha = cabecera.fecha ? new Date(cabecera.fecha).toLocaleDateString('es-BO') : '-';
+    
+    let html = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+            <div>
+                <p><strong>Tipo:</strong> ${cabecera.documento_tipo || '-'}</p>
+                <p><strong>Fecha:</strong> ${fecha}</p>
+                <p><strong>Movimiento:</strong> ${cabecera.tipo_movimiento || '-'}</p>
+            </div>
+            <div>
+                <p><strong>Usuario:</strong> ${cabecera.usuario || 'N/A'}</p>
+                <p><strong>Estado:</strong> <span class="${esAnulado ? 'badge-anulado' : 'badge-activo'}">${cabecera.estado || 'ACTIVO'}</span></p>
+                <p><strong>Obs:</strong> ${cabecera.observaciones || '-'}</p>
+            </div>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #343a40; color: white;">
+                    <th style="padding: 10px;">Código</th>
+                    <th style="padding: 10px;">Producto</th>
+                    <th style="padding: 10px; text-align: right;">Cantidad</th>
+                    <th style="padding: 10px; text-align: right;">Costo Unit.</th>
+                    <th style="padding: 10px; text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${lineas.map(l => `
+                    <tr style="border-bottom: 1px solid #dee2e6;">
+                        <td style="padding: 10px;">${l.producto_codigo || l.codigo || '-'}</td>
+                        <td style="padding: 10px;">${l.producto_nombre || l.nombre || '-'}</td>
+                        <td style="padding: 10px; text-align: right;">${parseFloat(l.cantidad).toFixed(2)}</td>
+                        <td style="padding: 10px; text-align: right;">Bs. ${parseFloat(l.costo_unitario).toFixed(2)}</td>
+                        <td style="padding: 10px; text-align: right;">Bs. ${parseFloat(l.costo_total || l.cantidad * l.costo_unitario).toFixed(2)}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+            <tfoot>
+                <tr style="background: #e9ecef; font-weight: bold;">
+                    <td colspan="4" style="padding: 12px; text-align: right;">TOTAL:</td>
+                    <td style="padding: 12px; text-align: right;">Bs. ${parseFloat(cabecera.total_documento || 0).toFixed(2)}</td>
+                </tr>
+            </tfoot>
+        </table>
+    `;
+    
+    document.getElementById('detalleDocContenido').innerHTML = html;
+}
+
+function closeModalDetalleDoc() {
+    document.getElementById('modalDetalleDoc').classList.remove('show');
+}
+
+async function anularDocumento() {
+    if (!documentoActual) return;
+    
+    const confirmacion = confirm(`⚠️ ¿Está seguro de ANULAR el documento ${documentoActual.cabecera.documento_numero}?\n\nEsta acción revertirá todos los movimientos de stock asociados.`);
+    
+    if (!confirmacion) return;
+    
+    const motivo = prompt('Ingrese el motivo de la anulación:');
+    if (!motivo) {
+        alert('Debe ingresar un motivo para anular');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'anular_documento',
+                documento_numero: documentoActual.cabecera.documento_numero,
+                motivo: motivo
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ ${data.message}`);
+            closeModalDetalleDoc();
+            buscarHistorial();
+            cargarDashboard();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('❌ Error al anular documento');
+    }
+}
+
+function imprimirDocumento() {
+    if (!documentoActual) return;
+    
+    const contenido = document.getElementById('detalleDocContenido').innerHTML;
+    const ventana = window.open('', '_blank');
+    ventana.document.write(`
+        <html>
+        <head>
+            <title>Documento ${documentoActual.cabecera.documento_numero}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; }
+                h1 { font-size: 1.2rem; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 8px; }
+                th { background: #f5f5f5; }
+                .badge-activo { background: #28a745; color: white; padding: 2px 8px; border-radius: 10px; }
+                .badge-anulado { background: #dc3545; color: white; padding: 2px 8px; border-radius: 10px; }
+            </style>
+        </head>
+        <body>
+            <h1>HERMEN LTDA.</h1>
+            <h2>Documento: ${documentoActual.cabecera.documento_numero}</h2>
+            ${contenido}
+            <script>window.print();<\/script>
+        </body>
+        </html>
+    `);
+    ventana.document.close();
+}
+
+// ========== UTILIDADES ==========
+function generarNumeroDocumento(prefijo) {
+    const fecha = new Date();
+    const año = fecha.getFullYear().toString().substr(-2);
+    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dia = String(fecha.getDate()).padStart(2, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `${prefijo}-${año}${mes}${dia}-${random}`;
+}
+
+// ========== FUNCIONES PLACEHOLDER PARA OTROS MODALES ==========
+// Estas se implementarán después
+
+function closeModalDevolucion() {
+    document.getElementById('modalDevolucion').classList.remove('show');
+}
+
+function closeModalReportes() {
+    document.getElementById('modalReportes').classList.remove('show');
+}
+
+function closeModalProveedores() {
+    document.getElementById('modalProveedores').classList.remove('show');
+}
+
+function closeModalFormProveedor() {
+    document.getElementById('modalFormProveedor').classList.remove('show');
+}
+
+console.log('✅ Funciones de modales v1.6.5 cargadas correctamente');
+
+
 
 </script>
 

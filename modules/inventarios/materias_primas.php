@@ -189,7 +189,7 @@ require_once '../../includes/header.php';
     <!-- SUBCATEGORÍAS -->
     <div id="subcategoriasSection" style="display: none;">
         <h4 style="margin-bottom: 10px;"><i class="fas fa-folder"></i> Subcategorías de <span id="subcategoriaTitulo"></span></h4>
-        <div class="subcategorias-grid" id="subcategoriasGrid"></div>
+        <div class="categorias-grid" id="subcategoriasGrid"></div>
     </div>
 
     <!-- PRODUCTOS -->

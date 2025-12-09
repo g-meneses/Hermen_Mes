@@ -30,8 +30,11 @@ async function cargarKPIs() {
             const totales = d.totales || {};
             const numCategorias = d.resumen ? d.resumen.length : 0;
             
+            // Redondear valor para evitar errores de precisión flotante
+            const valorRedondeado = Math.round(parseFloat(totales.valor || 0) * 100) / 100;
+            
             document.getElementById('kpiItems').textContent = totales.items || 0;
-            document.getElementById('kpiValor').textContent = 'Bs. ' + formatNumber(totales.valor || 0, 2);
+            document.getElementById('kpiValor').textContent = 'Bs. ' + formatNumber(valorRedondeado, 2);
             document.getElementById('kpiAlertas').textContent = totales.alertas || 0;
             document.getElementById('kpiCategorias').textContent = numCategorias;
         }
@@ -101,7 +104,7 @@ function renderCategorias() {
             <div class="categoria-stats">
                 <div><div class="cat-stat-value">${c.total_items || 0}</div><div class="cat-stat-label">Items</div></div>
                 <div><div class="cat-stat-value alerta">${c.alertas || 0}</div><div class="cat-stat-label">Alertas</div></div>
-                <div><div class="cat-stat-value">Bs.${formatNumber(Math.round(c.valor_total || 0), 0)}</div><div class="cat-stat-label">Valor</div></div>
+                <div><div class="cat-stat-value">Bs.${formatNumber(c.valor_total || 0, 2)}</div><div class="cat-stat-label">Valor</div></div>
             </div>
         </div>
     `).join('');
@@ -121,7 +124,30 @@ async function seleccionarCategoria(idCategoria) {
         console.log('Respuesta subcategorías:', d);
         
         if (d.success && d.subcategorias && d.subcategorias.length > 0) {
-            subcategorias = d.subcategorias;
+            subcategorias = d.subcategorias.map(s => ({
+                ...s,
+                total_items: 0,
+                valor_total: 0
+            }));
+            
+            // Calcular totales por subcategoría usando productosCompletos
+            productosCompletos.forEach(prod => {
+                if (prod.id_categoria == idCategoria && prod.id_subcategoria) {
+                    const sub = subcategorias.find(s => s.id_subcategoria == prod.id_subcategoria);
+                    if (sub) {
+                        sub.total_items++;
+                        const stock = parseFloat(prod.stock_actual) || 0;
+                        const costo = parseFloat(prod.costo_promedio || prod.costo_unitario) || 0;
+                        sub.valor_total += stock * costo;
+                    }
+                }
+            });
+            
+            // Redondear valores
+            subcategorias.forEach(s => {
+                s.valor_total = Math.round(s.valor_total * 100) / 100;
+            });
+            
             mostrarSubcategorias();
         } else {
             // No hay subcategorías, cargar productos directamente
@@ -139,8 +165,16 @@ async function seleccionarCategoria(idCategoria) {
 function mostrarSubcategorias() {
     document.getElementById('subcategoriaTitulo').textContent = categoriaSeleccionada.nombre;
     document.getElementById('subcategoriasGrid').innerHTML = subcategorias.map(s => `
-        <div class="subcategoria-chip ${subcategoriaSeleccionada?.id_subcategoria == s.id_subcategoria ? 'active' : ''}" onclick="seleccionarSubcategoria(${s.id_subcategoria})">
-            ${s.nombre} <span style="opacity:0.7;">(${s.total_items || 0})</span>
+        <div class="categoria-card ${subcategoriaSeleccionada?.id_subcategoria == s.id_subcategoria ? 'active' : ''}" onclick="seleccionarSubcategoria(${s.id_subcategoria})">
+            <div class="categoria-header">
+                <div class="categoria-nombre">${s.nombre}</div>
+                <span class="categoria-badge">${s.total_items || 0}</span>
+            </div>
+            <div class="categoria-stats">
+                <div><div class="cat-stat-value">${s.total_items || 0}</div><div class="cat-stat-label">Items</div></div>
+                <div><div class="cat-stat-value alerta">0</div><div class="cat-stat-label">Alertas</div></div>
+                <div><div class="cat-stat-value">Bs.${formatNumber(s.valor_total || 0, 2)}</div><div class="cat-stat-label">Valor</div></div>
+            </div>
         </div>
     `).join('');
     document.getElementById('subcategoriasSection').style.display = 'block';
@@ -188,6 +222,7 @@ function renderProductos() {
         const stock = parseFloat(p.stock_actual) || 0;
         const stockMin = parseFloat(p.stock_minimo) || 0;
         const costo = parseFloat(p.costo_promedio || p.costo_unitario) || 0;
+        const valor = Math.round(stock * costo * 100) / 100; // Redondear para evitar errores de precisión
         let estado = 'ok', estadoTxt = 'OK';
         if (stock <= 0) { estado = 'sin-stock'; estadoTxt = 'Sin Stock'; }
         else if (stock <= stockMin) { estado = 'critico'; estadoTxt = 'Crítico'; }
@@ -200,7 +235,7 @@ function renderProductos() {
             <td>${p.unidad_abrev || '-'}</td>
             <td><span class="stock-badge ${estado}">${estadoTxt}</span></td>
             <td style="text-align:right;">Bs. ${formatNumber(costo, 2)}</td>
-            <td style="text-align:right;">Bs. ${formatNumber(stock * costo, 2)}</td>
+            <td style="text-align:right;">Bs. ${formatNumber(valor, 2)}</td>
             <td>
                 <button class="btn-icon kardex" onclick="verKardex(${p.id_inventario})" title="Kardex"><i class="fas fa-book"></i></button>
                 <button class="btn-icon editar" onclick="editarItem(${p.id_inventario})" title="Editar"><i class="fas fa-edit"></i></button>
@@ -652,14 +687,14 @@ function generarNumeroDoc(prefijo) {
 }
 
 function formatNumber(n, d = 2) {
-    if (n === null || n === undefined || isNaN(n)) return '0';
-    const num = parseFloat(n);
-    // Formatear con separador de miles (punto) y decimales (coma) estilo boliviano
-    // O usar formato simple sin locale
-    const fixed = num.toFixed(d);
-    const parts = fixed.split('.');
-    // Agregar separador de miles
+    if (n === null || n === undefined || isNaN(n)) return '0.00';
+    // Primero redondear para evitar errores de precisión flotante
+    const num = Math.round(parseFloat(n) * 100) / 100;
+    // Separar parte entera y decimal
+    const parts = num.toFixed(d).split('.');
+    // Agregar separador de miles (coma) a la parte entera
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    // Unir con punto decimal
     return parts.join('.');
 }
 

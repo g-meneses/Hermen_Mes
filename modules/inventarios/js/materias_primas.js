@@ -76,6 +76,11 @@ async function cargarCategorias() {
                         }
                     }
                 });
+                
+                // Redondear valores para evitar errores de precisión flotante
+                categorias.forEach(cat => {
+                    cat.valor_total = Math.round(cat.valor_total * 100) / 100;
+                });
             }
             
             renderCategorias();
@@ -96,7 +101,7 @@ function renderCategorias() {
             <div class="categoria-stats">
                 <div><div class="cat-stat-value">${c.total_items || 0}</div><div class="cat-stat-label">Items</div></div>
                 <div><div class="cat-stat-value alerta">${c.alertas || 0}</div><div class="cat-stat-label">Alertas</div></div>
-                <div><div class="cat-stat-value">Bs.${formatNumber(c.valor_total || 0, 0)}</div><div class="cat-stat-label">Valor</div></div>
+                <div><div class="cat-stat-value">Bs.${formatNumber(Math.round(c.valor_total || 0), 0)}</div><div class="cat-stat-label">Valor</div></div>
             </div>
         </div>
     `).join('');

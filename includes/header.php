@@ -51,6 +51,10 @@ if (!isLoggedIn()) {
                     <a href="proveedores.php">
                         <i class="fas fa-truck"></i> Proveedores
                     </a>
+
+                    <a href="ingresos_mp.php" class="btn-action btn-ingreso">
+                        <i class="fas fa-arrow-down"></i> Ver Ingresos
+                    </a>
                     
                     <?php if (hasRole(['admin', 'coordinador', 'gerencia', 'tejedor'])): ?>
                     <li class="menu-section">

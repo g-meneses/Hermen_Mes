@@ -137,6 +137,129 @@ require_once '../../includes/header.php';
     .mp-header { flex-direction: column; }
     .form-row { grid-template-columns: 1fr; }
 }
+
+/* Modal extra grande */
+.modal-content.xlarge { max-width: 1100px; }
+
+/* Info Proveedor Box */
+.info-proveedor-box {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+}
+
+/* Filtros productos */
+.filtros-productos {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+/* Tabla de líneas mejorada */
+.tabla-ingreso-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+}
+
+.tabla-lineas {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.tabla-lineas th {
+    background: #343a40;
+    color: white;
+    padding: 10px 8px;
+    text-align: center;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.tabla-lineas td {
+    padding: 8px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+}
+
+.tabla-lineas input, .tabla-lineas select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.tabla-lineas input[type="number"] {
+    text-align: right;
+}
+
+.tabla-lineas .col-producto { min-width: 250px; }
+.tabla-lineas .col-unidad { width: 60px; text-align: center; }
+.tabla-lineas .col-cantidad { width: 90px; }
+.tabla-lineas .col-costo { width: 100px; }
+.tabla-lineas .col-iva { width: 80px; background: #fff3cd; }
+.tabla-lineas .col-total { width: 100px; }
+.tabla-lineas .col-acciones { width: 50px; }
+
+.tabla-lineas .valor-calculado {
+    background: #e9ecef;
+    text-align: right;
+    padding-right: 10px;
+    font-weight: 500;
+}
+
+.tabla-lineas .valor-iva {
+    background: #fff3cd;
+    text-align: right;
+    padding-right: 10px;
+}
+
+/* Totales mejorados */
+.totales-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 350px;
+    margin-left: auto;
+}
+
+.total-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.total-item.total-final {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    font-size: 1.1rem;
+}
+
+.total-label { font-weight: 500; }
+.total-value { font-weight: 700; }
+.total-value.iva { color: #856404; }
+
+/* Badges */
+.badge-tipo { padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+.badge-tipo.local { background: #d4edda; color: #155724; }
+.badge-tipo.import { background: #cce5ff; color: #004085; }
+.badge-moneda { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+.badge-moneda.bob { background: #fff3cd; color: #856404; }
+.badge-moneda.usd { background: #d1ecf1; color: #0c5460; }
 </style>
 
 <div class="mp-module">
@@ -251,36 +374,121 @@ require_once '../../includes/header.php';
 
 <!-- Modal Ingreso -->
 <div class="modal" id="modalIngreso">
-    <div class="modal-content large">
+    <div class="modal-content xlarge">
         <div class="modal-header" style="background: linear-gradient(135deg, #28a745, #20c997); color: white;">
             <h3><i class="fas fa-arrow-down"></i> Ingreso de Materias Primas</h3>
             <button class="modal-close" onclick="cerrarModal('modalIngreso')" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
         <div class="modal-body">
+            <!-- Fila 1: Documento y Fecha -->
             <div class="form-row">
-                <div class="form-group"><label>Documento Nº</label><input type="text" id="ingresoDocumento" readonly></div>
-                <div class="form-group"><label>Fecha</label><input type="date" id="ingresoFecha"></div>
+                <div class="form-group">
+                    <label>Documento Nº</label>
+                    <input type="text" id="ingresoDocumento" readonly style="background:#e9ecef; font-weight:bold;">
+                </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="ingresoFecha">
+                </div>
             </div>
+            
+            <!-- Fila 2: Filtro Tipo Proveedor y Proveedor -->
             <div class="form-row">
-                <div class="form-group"><label>Proveedor</label><select id="ingresoProveedor"></select></div>
-                <div class="form-group"><label>Nº Factura</label><input type="text" id="ingresoReferencia"></div>
+                <div class="form-group">
+                    <label>Tipo Proveedor</label>
+                    <select id="ingresoTipoProveedor" onchange="filtrarProveedoresIngreso()">
+                        <option value="TODOS">📋 Todos los proveedores</option>
+                        <option value="LOCAL">🇧🇴 Proveedores Locales</option>
+                        <option value="IMPORTACION">🌎 Proveedores Importación</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Proveedor</label>
+                    <select id="ingresoProveedor" onchange="actualizarInfoProveedor()"></select>
+                </div>
             </div>
-            <div class="checkbox-iva">
-                <input type="checkbox" id="ingresoConFactura" onchange="recalcularIngreso()">
-                <label for="ingresoConFactura"><strong>Con Factura</strong> - Deducir IVA 13%</label>
+            
+            <!-- Info Proveedor (se muestra al seleccionar) -->
+            <div id="infoProveedorBox" class="info-proveedor-box" style="display:none;">
+                <span id="infoProveedorTipo" class="badge-tipo"></span>
+                <span id="infoProveedorMoneda" class="badge-moneda"></span>
+                <span id="infoProveedorPago"></span>
             </div>
+            
+            <!-- Fila 3: Nº Factura y Checkbox -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nº Factura / Documento</label>
+                    <input type="text" id="ingresoReferencia" placeholder="Ej: FAC-001234">
+                </div>
+                <div class="form-group" style="display:flex; align-items:flex-end;">
+                    <div class="checkbox-iva" style="margin:0; flex:1;">
+                        <input type="checkbox" id="ingresoConFactura" onchange="toggleModoFactura()">
+                        <label for="ingresoConFactura"><strong>Con Factura</strong> - Incluir IVA 13%</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Separador -->
+            <hr style="margin: 20px 0; border-color: #e9ecef;">
+            
+            <!-- Filtro de Productos por Categoría/Subcategoría -->
+            <div class="filtros-productos">
+                <h4 style="margin-bottom:10px;"><i class="fas fa-filter"></i> Filtrar Productos</h4>
+                <div class="form-row" style="margin-bottom:15px;">
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="ingresoFiltroCat" onchange="filtrarProductosIngreso()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Subcategoría</label>
+                        <select id="ingresoFiltroSubcat" onchange="filtrarProductosIngreso()">
+                            <option value="">Todas las subcategorías</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabla de Líneas -->
             <h4><i class="fas fa-list"></i> Líneas de Ingreso</h4>
-            <table class="tabla-lineas">
-                <thead><tr><th>Producto</th><th>Cantidad</th><th>Costo Unit.</th><th>Costo Neto</th><th>Subtotal</th><th></th></tr></thead>
-                <tbody id="ingresoLineasBody"></tbody>
-            </table>
-            <button class="btn btn-primary" onclick="agregarLineaIngreso()"><i class="fas fa-plus"></i> Agregar Línea</button>
-            <div class="totales-box" style="margin-top: 15px;">
-                <p>Total Neto: <strong id="ingresoTotalNeto">Bs. 0.00</strong></p>
-                <p>IVA 13%: <strong id="ingresoIVA">Bs. 0.00</strong></p>
-                <p class="total-final">TOTAL: <span id="ingresoTotal">Bs. 0.00</span></p>
+            <div class="tabla-ingreso-container">
+                <table class="tabla-lineas" id="tablaLineasIngreso">
+                    <thead id="theadIngreso">
+                        <!-- Se genera dinámicamente según Con Factura -->
+                    </thead>
+                    <tbody id="ingresoLineasBody"></tbody>
+                </table>
             </div>
-            <div class="form-group" style="margin-top: 15px;"><label>Observaciones</label><textarea id="ingresoObservaciones"></textarea></div>
+            
+            <button class="btn btn-primary" onclick="agregarLineaIngreso()" style="margin-top:10px;">
+                <i class="fas fa-plus"></i> Agregar Línea
+            </button>
+            
+            <!-- Totales -->
+            <div class="totales-box" style="margin-top: 20px;">
+                <div class="totales-grid">
+                    <div class="total-item">
+                        <span class="total-label">Total Neto:</span>
+                        <span class="total-value" id="ingresoTotalNeto">Bs. 0.00</span>
+                    </div>
+                    <div class="total-item" id="rowIVA" style="display:none;">
+                        <span class="total-label">IVA 13%:</span>
+                        <span class="total-value iva" id="ingresoIVA">Bs. 0.00</span>
+                    </div>
+                    <div class="total-item total-final">
+                        <span class="total-label">TOTAL DOCUMENTO:</span>
+                        <span class="total-value" id="ingresoTotal">Bs. 0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Observaciones -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Observaciones</label>
+                <textarea id="ingresoObservaciones" placeholder="Notas adicionales sobre este ingreso..."></textarea>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="cerrarModal('modalIngreso')">Cancelar</button>

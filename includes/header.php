@@ -48,6 +48,9 @@ if (!isLoggedIn()) {
                             <span>Inventarios</span>
                         </a>
                     </li>
+                    <a href="proveedores.php">
+                        <i class="fas fa-truck"></i> Proveedores
+                    </a>
                     
                     <?php if (hasRole(['admin', 'coordinador', 'gerencia', 'tejedor'])): ?>
                     <li class="menu-section">

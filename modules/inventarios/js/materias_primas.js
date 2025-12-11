@@ -546,12 +546,57 @@ async function guardarItem() {
 function abrirModalIngreso() {
     document.getElementById('ingresoDocumento').value = generarNumeroDoc('ING-MP');
     document.getElementById('ingresoFecha').value = new Date().toISOString().split('T')[0];
-    document.getElementById('ingresoProveedor').innerHTML = '<option value="">Seleccione...</option>' + 
-        proveedores.map(p => `<option value="${p.id_proveedor}">${p.nombre}</option>`).join('');
+    
+    // Poblar select de proveedores agrupados por tipo
+    const selectProv = document.getElementById('ingresoProveedor');
+    
+    // Separar por tipo
+    const locales = proveedores.filter(p => p.tipo === 'LOCAL');
+    const importacion = proveedores.filter(p => p.tipo === 'IMPORTACION');
+    
+    let optionsHtml = '<option value="">Seleccione proveedor...</option>';
+    
+    if (locales.length > 0) {
+        optionsHtml += '<optgroup label="🇧🇴 Proveedores Locales">';
+        locales.forEach(p => {
+            const nombre = p.nombre_comercial || p.razon_social;
+            optionsHtml += `<option value="${p.id_proveedor}" data-moneda="${p.moneda}">${p.codigo} - ${nombre}</option>`;
+        });
+        optionsHtml += '</optgroup>';
+    }
+    
+    if (importacion.length > 0) {
+        optionsHtml += '<optgroup label="🌎 Proveedores Importación">';
+        importacion.forEach(p => {
+            const nombre = p.nombre_comercial || p.razon_social;
+            optionsHtml += `<option value="${p.id_proveedor}" data-moneda="${p.moneda}">${p.codigo} - ${nombre} (${p.pais})</option>`;
+        });
+        optionsHtml += '</optgroup>';
+    }
+    
+    selectProv.innerHTML = optionsHtml;
+    
+    // Reset otros campos
     document.getElementById('ingresoConFactura').checked = false;
+    document.getElementById('ingresoReferencia').value = '';
+    document.getElementById('ingresoObservaciones').value = '';
+    
     lineasIngreso = [];
     renderLineasIngreso();
+    actualizarMonedaIngreso();
     document.getElementById('modalIngreso').classList.add('show');
+}
+
+// Actualizar indicador de moneda cuando cambia el proveedor
+function actualizarMonedaIngreso() {
+    const select = document.getElementById('ingresoProveedor');
+    const selectedOption = select.options[select.selectedIndex];
+    const moneda = selectedOption?.dataset?.moneda || 'BOB';
+    
+    // Actualizar etiquetas de moneda en el modal
+    document.querySelectorAll('.moneda-label').forEach(el => {
+        el.textContent = moneda === 'USD' ? 'USD' : 'Bs.';
+    });
 }
 
 function agregarLineaIngreso() {
@@ -977,7 +1022,7 @@ function generarNumeroDoc(prefijo) {
     return `${prefijo}-${anio}${mes}${dia}-${rand}`;
 }
 
-console.log('✅ Módulo Materias Primas v1.6 cargado');
-console.log('   - Modal Editar usa datos locales');
-console.log('   - Subcategorías con conteo correcto');
-console.log('   - Card "Ver Todos" y "Sin Clasificar"');
+console.log('✅ Módulo Materias Primas v1.7 cargado');
+console.log('   - Proveedores integrados al modal Ingreso');
+console.log('   - Select agrupado por tipo (Local/Import)');
+console.log('   - Modal Editar funcionando');

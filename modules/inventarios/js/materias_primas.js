@@ -542,95 +542,317 @@ async function guardarItem() {
     }
 }
 
-// ========== MODAL INGRESO ==========
+// ========== MODAL INGRESO MEJORADO v2.0 ==========
+let productosFiltrados = []; // Productos filtrados por categoría/subcategoría
+let modoConFactura = false;
+let contadorDocIngreso = 0;
+
 function abrirModalIngreso() {
-    document.getElementById('ingresoDocumento').value = generarNumeroDoc('ING-MP');
+    // Generar número de documento automático
+    generarNumeroDocumentoIngreso();
+    
+    // Fecha actual
     document.getElementById('ingresoFecha').value = new Date().toISOString().split('T')[0];
     
-    // Poblar select de proveedores agrupados por tipo
-    const selectProv = document.getElementById('ingresoProveedor');
+    // Reset filtro tipo proveedor
+    document.getElementById('ingresoTipoProveedor').value = 'TODOS';
+    filtrarProveedoresIngreso();
     
-    // Separar por tipo
-    const locales = proveedores.filter(p => p.tipo === 'LOCAL');
-    const importacion = proveedores.filter(p => p.tipo === 'IMPORTACION');
+    // Poblar filtros de categorías
+    poblarFiltrosCategorias();
     
-    let optionsHtml = '<option value="">Seleccione proveedor...</option>';
-    
-    if (locales.length > 0) {
-        optionsHtml += '<optgroup label="🇧🇴 Proveedores Locales">';
-        locales.forEach(p => {
-            const nombre = p.nombre_comercial || p.razon_social;
-            optionsHtml += `<option value="${p.id_proveedor}" data-moneda="${p.moneda}">${p.codigo} - ${nombre}</option>`;
-        });
-        optionsHtml += '</optgroup>';
-    }
-    
-    if (importacion.length > 0) {
-        optionsHtml += '<optgroup label="🌎 Proveedores Importación">';
-        importacion.forEach(p => {
-            const nombre = p.nombre_comercial || p.razon_social;
-            optionsHtml += `<option value="${p.id_proveedor}" data-moneda="${p.moneda}">${p.codigo} - ${nombre} (${p.pais})</option>`;
-        });
-        optionsHtml += '</optgroup>';
-    }
-    
-    selectProv.innerHTML = optionsHtml;
-    
-    // Reset otros campos
+    // Reset checkbox factura
     document.getElementById('ingresoConFactura').checked = false;
+    modoConFactura = false;
+    
+    // Reset campos
     document.getElementById('ingresoReferencia').value = '';
     document.getElementById('ingresoObservaciones').value = '';
+    document.getElementById('infoProveedorBox').style.display = 'none';
     
+    // Reset líneas
     lineasIngreso = [];
+    productosFiltrados = [...productosCompletos];
+    
+    // Renderizar
+    toggleModoFactura();
     renderLineasIngreso();
-    actualizarMonedaIngreso();
+    
     document.getElementById('modalIngreso').classList.add('show');
 }
 
-// Actualizar indicador de moneda cuando cambia el proveedor
-function actualizarMonedaIngreso() {
-    const select = document.getElementById('ingresoProveedor');
-    const selectedOption = select.options[select.selectedIndex];
-    const moneda = selectedOption?.dataset?.moneda || 'BOB';
+async function generarNumeroDocumentoIngreso() {
+    // Formato: ING-MP-YYYYMMDD-XXX
+    const hoy = new Date();
+    const fecha = hoy.toISOString().split('T')[0].replace(/-/g, '');
     
-    // Actualizar etiquetas de moneda en el modal
-    document.querySelectorAll('.moneda-label').forEach(el => {
-        el.textContent = moneda === 'USD' ? 'USD' : 'Bs.';
+    // Obtener último número del día (simulado, idealmente vendría del servidor)
+    contadorDocIngreso++;
+    const numero = String(contadorDocIngreso).padStart(3, '0');
+    
+    document.getElementById('ingresoDocumento').value = `ING-MP-${fecha}-${numero}`;
+}
+
+function filtrarProveedoresIngreso() {
+    const tipo = document.getElementById('ingresoTipoProveedor').value;
+    const select = document.getElementById('ingresoProveedor');
+    
+    let provFiltrados = proveedores;
+    if (tipo !== 'TODOS') {
+        provFiltrados = proveedores.filter(p => p.tipo === tipo);
+    }
+    
+    // Agrupar por tipo
+    const locales = provFiltrados.filter(p => p.tipo === 'LOCAL');
+    const importacion = provFiltrados.filter(p => p.tipo === 'IMPORTACION');
+    
+    let html = '<option value="">Seleccione proveedor...</option>';
+    
+    if (locales.length > 0) {
+        html += '<optgroup label="🇧🇴 Proveedores Locales">';
+        locales.forEach(p => {
+            const nombre = p.nombre_comercial || p.razon_social;
+            html += `<option value="${p.id_proveedor}" data-tipo="${p.tipo}" data-moneda="${p.moneda}" data-pago="${p.condicion_pago}">${p.codigo} - ${nombre}</option>`;
+        });
+        html += '</optgroup>';
+    }
+    
+    if (importacion.length > 0) {
+        html += '<optgroup label="🌎 Proveedores Importación">';
+        importacion.forEach(p => {
+            const nombre = p.nombre_comercial || p.razon_social;
+            html += `<option value="${p.id_proveedor}" data-tipo="${p.tipo}" data-moneda="${p.moneda}" data-pago="${p.condicion_pago}">${p.codigo} - ${nombre} (${p.pais})</option>`;
+        });
+        html += '</optgroup>';
+    }
+    
+    select.innerHTML = html;
+    document.getElementById('infoProveedorBox').style.display = 'none';
+}
+
+function actualizarInfoProveedor() {
+    const select = document.getElementById('ingresoProveedor');
+    const opt = select.options[select.selectedIndex];
+    
+    if (!opt || !opt.value) {
+        document.getElementById('infoProveedorBox').style.display = 'none';
+        return;
+    }
+    
+    const tipo = opt.dataset.tipo;
+    const moneda = opt.dataset.moneda;
+    const pago = opt.dataset.pago;
+    
+    document.getElementById('infoProveedorTipo').textContent = tipo === 'LOCAL' ? '🇧🇴 Local' : '🌎 Importación';
+    document.getElementById('infoProveedorTipo').className = `badge-tipo ${tipo === 'LOCAL' ? 'local' : 'import'}`;
+    
+    document.getElementById('infoProveedorMoneda').textContent = moneda;
+    document.getElementById('infoProveedorMoneda').className = `badge-moneda ${moneda.toLowerCase()}`;
+    
+    document.getElementById('infoProveedorPago').textContent = `Condición: ${pago || 'Contado'}`;
+    
+    document.getElementById('infoProveedorBox').style.display = 'flex';
+}
+
+function poblarFiltrosCategorias() {
+    const selectCat = document.getElementById('ingresoFiltroCat');
+    selectCat.innerHTML = '<option value="">Todas las categorías</option>' +
+        categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
+    
+    document.getElementById('ingresoFiltroSubcat').innerHTML = '<option value="">Todas las subcategorías</option>';
+}
+
+async function filtrarProductosIngreso() {
+    const catId = document.getElementById('ingresoFiltroCat').value;
+    const subcatId = document.getElementById('ingresoFiltroSubcat').value;
+    
+    // Actualizar subcategorías si hay categoría seleccionada
+    if (catId) {
+        try {
+            const r = await fetch(`${baseUrl}/api/inventarios.php?action=subcategorias&categoria_id=${catId}`);
+            const d = await r.json();
+            const selectSubcat = document.getElementById('ingresoFiltroSubcat');
+            selectSubcat.innerHTML = '<option value="">Todas las subcategorías</option>';
+            if (d.success && d.subcategorias) {
+                d.subcategorias.forEach(s => {
+                    selectSubcat.innerHTML += `<option value="${s.id_subcategoria}">${s.nombre}</option>`;
+                });
+            }
+        } catch (e) { console.error(e); }
+    } else {
+        document.getElementById('ingresoFiltroSubcat').innerHTML = '<option value="">Todas las subcategorías</option>';
+    }
+    
+    // Filtrar productos
+    productosFiltrados = productosCompletos.filter(p => {
+        if (catId && p.id_categoria != catId) return false;
+        if (subcatId && p.id_subcategoria != subcatId) return false;
+        return true;
     });
+    
+    // Re-renderizar líneas con productos filtrados
+    renderLineasIngreso();
+}
+
+function toggleModoFactura() {
+    modoConFactura = document.getElementById('ingresoConFactura').checked;
+    
+    // Mostrar/ocultar fila de IVA en totales
+    document.getElementById('rowIVA').style.display = modoConFactura ? 'flex' : 'none';
+    
+    // Actualizar encabezado de tabla
+    const thead = document.getElementById('theadIngreso');
+    
+    if (modoConFactura) {
+        thead.innerHTML = `
+            <tr>
+                <th class="col-producto">Producto</th>
+                <th class="col-unidad">Unid.</th>
+                <th class="col-cantidad">Cantidad</th>
+                <th class="col-costo">Costo Neto</th>
+                <th class="col-costo">Costo Unit.</th>
+                <th class="col-iva">IVA 13%</th>
+                <th class="col-total">Costo Doc.</th>
+                <th class="col-total">Subtotal</th>
+                <th class="col-acciones"></th>
+            </tr>`;
+    } else {
+        thead.innerHTML = `
+            <tr>
+                <th class="col-producto">Producto</th>
+                <th class="col-unidad">Unid.</th>
+                <th class="col-cantidad">Cantidad</th>
+                <th class="col-costo">Costo Neto</th>
+                <th class="col-costo">Costo Unit.</th>
+                <th class="col-total">Subtotal</th>
+                <th class="col-acciones"></th>
+            </tr>`;
+    }
+    
+    renderLineasIngreso();
 }
 
 function agregarLineaIngreso() {
-    lineasIngreso.push({ id_inventario: '', cantidad: 0, costo_unitario: 0 });
+    lineasIngreso.push({ 
+        id_inventario: '', 
+        cantidad: 0, 
+        costo_neto: 0,      // Costo sin IVA (se ingresa)
+        costo_unitario: 0,  // Costo calculado con 4 decimales
+        unidad: ''
+    });
     renderLineasIngreso();
 }
 
 function renderLineasIngreso() {
     const tbody = document.getElementById('ingresoLineasBody');
-    const conFactura = document.getElementById('ingresoConFactura').checked;
+    
+    if (lineasIngreso.length === 0) {
+        const cols = modoConFactura ? 9 : 7;
+        tbody.innerHTML = `<tr><td colspan="${cols}" style="text-align:center;padding:30px;color:#6c757d;">
+            <i class="fas fa-inbox" style="font-size:2rem;margin-bottom:10px;display:block;opacity:0.3;"></i>
+            Haga clic en "Agregar Línea" para comenzar
+        </td></tr>`;
+        recalcularIngreso();
+        return;
+    }
     
     tbody.innerHTML = lineasIngreso.map((l, i) => {
-        const costoNeto = conFactura ? l.costo_unitario / 1.13 : l.costo_unitario;
-        const subtotal = l.cantidad * costoNeto;
-        return `<tr>
-            <td>
-                <select onchange="actualizarLineaIngreso(${i}, 'id_inventario', this.value)">
-                    <option value="">Seleccione...</option>
-                    ${productosCompletos.map(p => `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>${p.codigo} - ${p.nombre}</option>`).join('')}
-                </select>
-            </td>
-            <td><input type="number" step="0.01" value="${l.cantidad}" onchange="actualizarLineaIngreso(${i}, 'cantidad', this.value)"></td>
-            <td><input type="number" step="0.01" value="${l.costo_unitario}" onchange="actualizarLineaIngreso(${i}, 'costo_unitario', this.value)"></td>
-            <td style="text-align:right;">Bs. ${formatNum(costoNeto)}</td>
-            <td style="text-align:right;">Bs. ${formatNum(subtotal)}</td>
-            <td><button class="btn-icon" style="background:#dc3545;color:white;" onclick="eliminarLineaIngreso(${i})"><i class="fas fa-trash"></i></button></td>
-        </tr>`;
+        // Buscar producto para obtener unidad
+        const prod = productosCompletos.find(p => p.id_inventario == l.id_inventario);
+        const unidad = prod ? (prod.unidad_abrev || prod.abreviatura || prod.unidad || 'Kg') : '-';
+        
+        // Cálculos
+        const costoNeto = toNum(l.costo_neto);
+        const cantidad = toNum(l.cantidad);
+        
+        let costoUnitario, iva, costoDoc, subtotal;
+        
+        if (modoConFactura) {
+            // Con factura: Costo Neto + 13% = Costo Documento
+            iva = costoNeto * 0.13;
+            costoDoc = costoNeto + iva;
+            costoUnitario = costoNeto; // El costo unitario real es el neto
+            subtotal = cantidad * costoDoc;
+        } else {
+            // Sin factura: Costo Neto = Costo Unitario
+            costoUnitario = costoNeto;
+            subtotal = cantidad * costoNeto;
+        }
+        
+        // Guardar costo unitario calculado
+        lineasIngreso[i].costo_unitario = costoUnitario;
+        
+        if (modoConFactura) {
+            return `<tr>
+                <td class="col-producto">
+                    <select onchange="actualizarLineaIngreso(${i}, 'id_inventario', this.value)">
+                        <option value="">Seleccione producto...</option>
+                        ${productosFiltrados.map(p => `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>${p.codigo} - ${p.nombre}</option>`).join('')}
+                    </select>
+                </td>
+                <td class="col-unidad" style="text-align:center;font-weight:500;">${unidad}</td>
+                <td class="col-cantidad">
+                    <input type="number" step="0.01" min="0" value="${cantidad || ''}" 
+                           onchange="actualizarLineaIngreso(${i}, 'cantidad', this.value)" 
+                           placeholder="0.00">
+                </td>
+                <td class="col-costo">
+                    <input type="number" step="0.0001" min="0" value="${costoNeto || ''}" 
+                           onchange="actualizarLineaIngreso(${i}, 'costo_neto', this.value)" 
+                           placeholder="0.0000">
+                </td>
+                <td class="valor-calculado">${formatNum(costoUnitario, 4)}</td>
+                <td class="valor-iva">${formatNum(iva, 4)}</td>
+                <td class="valor-calculado">${formatNum(costoDoc, 4)}</td>
+                <td class="valor-calculado" style="font-weight:700;">${formatNum(subtotal)}</td>
+                <td class="col-acciones">
+                    <button class="btn-icon" style="background:#dc3545;color:white;" onclick="eliminarLineaIngreso(${i})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        } else {
+            return `<tr>
+                <td class="col-producto">
+                    <select onchange="actualizarLineaIngreso(${i}, 'id_inventario', this.value)">
+                        <option value="">Seleccione producto...</option>
+                        ${productosFiltrados.map(p => `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>${p.codigo} - ${p.nombre}</option>`).join('')}
+                    </select>
+                </td>
+                <td class="col-unidad" style="text-align:center;font-weight:500;">${unidad}</td>
+                <td class="col-cantidad">
+                    <input type="number" step="0.01" min="0" value="${cantidad || ''}" 
+                           onchange="actualizarLineaIngreso(${i}, 'cantidad', this.value)" 
+                           placeholder="0.00">
+                </td>
+                <td class="col-costo">
+                    <input type="number" step="0.0001" min="0" value="${costoNeto || ''}" 
+                           onchange="actualizarLineaIngreso(${i}, 'costo_neto', this.value)" 
+                           placeholder="0.0000">
+                </td>
+                <td class="valor-calculado">${formatNum(costoUnitario, 4)}</td>
+                <td class="valor-calculado" style="font-weight:700;">${formatNum(subtotal)}</td>
+                <td class="col-acciones">
+                    <button class="btn-icon" style="background:#dc3545;color:white;" onclick="eliminarLineaIngreso(${i})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+        }
     }).join('');
     
     recalcularIngreso();
 }
 
 function actualizarLineaIngreso(index, campo, valor) {
-    lineasIngreso[index][campo] = campo === 'id_inventario' ? valor : toNum(valor);
+    if (campo === 'id_inventario') {
+        lineasIngreso[index].id_inventario = valor;
+        // Obtener unidad del producto
+        const prod = productosCompletos.find(p => p.id_inventario == valor);
+        lineasIngreso[index].unidad = prod ? (prod.unidad_abrev || prod.abreviatura || 'Kg') : '';
+    } else {
+        lineasIngreso[index][campo] = toNum(valor);
+    }
     renderLineasIngreso();
 }
 
@@ -640,27 +862,53 @@ function eliminarLineaIngreso(index) {
 }
 
 function recalcularIngreso() {
-    const conFactura = document.getElementById('ingresoConFactura').checked;
-    let totalNeto = 0, totalBruto = 0;
+    let totalNeto = 0;
+    let totalIVA = 0;
+    let totalDoc = 0;
     
     lineasIngreso.forEach(l => {
-        const costoNeto = conFactura ? l.costo_unitario / 1.13 : l.costo_unitario;
-        totalNeto += l.cantidad * costoNeto;
-        totalBruto += l.cantidad * l.costo_unitario;
+        const cantidad = toNum(l.cantidad);
+        const costoNeto = toNum(l.costo_neto);
+        
+        if (modoConFactura) {
+            const iva = costoNeto * 0.13;
+            const costoDoc = costoNeto + iva;
+            totalNeto += cantidad * costoNeto;
+            totalIVA += cantidad * iva;
+            totalDoc += cantidad * costoDoc;
+        } else {
+            totalNeto += cantidad * costoNeto;
+            totalDoc = totalNeto;
+        }
     });
     
-    const iva = conFactura ? totalBruto - totalNeto : 0;
+    // Obtener moneda del proveedor seleccionado
+    const selectProv = document.getElementById('ingresoProveedor');
+    const opt = selectProv.options[selectProv.selectedIndex];
+    const moneda = opt?.dataset?.moneda === 'USD' ? 'USD' : 'Bs.';
     
-    document.getElementById('ingresoTotalNeto').textContent = 'Bs. ' + formatNum(totalNeto);
-    document.getElementById('ingresoIVA').textContent = 'Bs. ' + formatNum(iva);
-    document.getElementById('ingresoTotal').textContent = 'Bs. ' + formatNum(totalBruto);
+    document.getElementById('ingresoTotalNeto').textContent = `${moneda} ${formatNum(totalNeto)}`;
+    document.getElementById('ingresoIVA').textContent = `${moneda} ${formatNum(totalIVA)}`;
+    document.getElementById('ingresoTotal').textContent = `${moneda} ${formatNum(totalDoc)}`;
 }
 
 async function guardarIngreso() {
-    if (lineasIngreso.length === 0) { alert('Agregue al menos una línea'); return; }
-    if (lineasIngreso.some(l => !l.id_inventario || l.cantidad <= 0)) { alert('Complete todos los campos'); return; }
+    // Validaciones
+    if (lineasIngreso.length === 0) { 
+        alert('❌ Agregue al menos una línea de ingreso'); 
+        return; 
+    }
     
-    const conFactura = document.getElementById('ingresoConFactura').checked;
+    if (!document.getElementById('ingresoProveedor').value) {
+        alert('❌ Seleccione un proveedor');
+        return;
+    }
+    
+    const lineasIncompletas = lineasIngreso.some(l => !l.id_inventario || l.cantidad <= 0 || l.costo_neto <= 0);
+    if (lineasIncompletas) { 
+        alert('❌ Complete todos los campos de las líneas (Producto, Cantidad y Costo)'); 
+        return; 
+    }
     
     const data = {
         action: 'movimiento',
@@ -668,17 +916,22 @@ async function guardarIngreso() {
         documento_tipo: 'INGRESO',
         documento_numero: document.getElementById('ingresoDocumento').value,
         fecha: document.getElementById('ingresoFecha').value,
-        id_proveedor: document.getElementById('ingresoProveedor').value || null,
+        id_proveedor: document.getElementById('ingresoProveedor').value,
         referencia: document.getElementById('ingresoReferencia').value || null,
-        con_factura: conFactura,
+        con_factura: modoConFactura,
         observaciones: document.getElementById('ingresoObservaciones').value,
-        lineas: lineasIngreso.map(l => ({
-            id_inventario: l.id_inventario,
-            cantidad: l.cantidad,
-            costo_unitario: conFactura ? l.costo_unitario / 1.13 : l.costo_unitario,
-            costo_con_iva: l.costo_unitario
-        }))
+        lineas: lineasIngreso.map(l => {
+            const costoNeto = toNum(l.costo_neto);
+            return {
+                id_inventario: l.id_inventario,
+                cantidad: toNum(l.cantidad),
+                costo_unitario: costoNeto, // Costo neto (sin IVA)
+                costo_con_iva: modoConFactura ? costoNeto * 1.13 : costoNeto
+            };
+        })
     };
+    
+    console.log('Guardando ingreso:', data);
     
     try {
         const r = await fetch(`${baseUrl}/api/inventarios.php`, {
@@ -687,6 +940,7 @@ async function guardarIngreso() {
             body: JSON.stringify(data)
         });
         const d = await r.json();
+        
         if (d.success) {
             alert('✅ ' + d.message);
             cerrarModal('modalIngreso');
@@ -696,9 +950,10 @@ async function guardarIngreso() {
         }
     } catch (e) {
         console.error('Error:', e);
-        alert('Error al guardar');
+        alert('❌ Error al guardar el ingreso');
     }
 }
+
 
 // ========== MODAL SALIDA ==========
 function abrirModalSalida() {
@@ -1022,7 +1277,8 @@ function generarNumeroDoc(prefijo) {
     return `${prefijo}-${anio}${mes}${dia}-${rand}`;
 }
 
-console.log('✅ Módulo Materias Primas v1.7 cargado');
-console.log('   - Proveedores integrados al modal Ingreso');
-console.log('   - Select agrupado por tipo (Local/Import)');
-console.log('   - Modal Editar funcionando');
+console.log('✅ Módulo Materias Primas v1.8 cargado');
+console.log('   - Modal Ingreso mejorado v2.0');
+console.log('   - Filtros por tipo proveedor y categoría');
+console.log('   - Cálculo IVA con columnas dinámicas');
+console.log('   - Costos con 4 decimales');

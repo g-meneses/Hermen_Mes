@@ -1,20 +1,44 @@
-            </main>
-            
-            <!-- Footer -->
-            <footer class="footer">
-                <div class="footer-content">
-                    <p>&copy; <?php echo date('Y'); ?> Hermen Ltda. - Sistema MES de Producción</p>
-                    <p>Línea: <strong>Poliamida</strong> | Versión 1.0</p>
-                </div>
-            </footer>
-        </div>
+</div>
+            <!-- Fin Page Container -->
+        </main>
+        <!-- Fin Main Content -->
     </div>
+    <!-- Fin Layout -->
     
-    <script src="<?php echo SITE_URL; ?>/assets/js/main.js"></script>
-    <?php if (isset($extraJS)): ?>
-        <?php foreach($extraJS as $js): ?>
-            <script src="<?php echo SITE_URL . '/' . $js; ?>"></script>
-        <?php endforeach; ?>
-    <?php endif; ?>
+    <script>
+    // Función para toggle de submenús
+    function toggleSubmenu(element) {
+        const submenu = element.nextElementSibling;
+        const arrow = element.querySelector('.menu-arrow');
+        
+        if (submenu && submenu.classList.contains('submenu')) {
+            submenu.classList.toggle('open');
+            if (arrow) {
+                arrow.classList.toggle('rotated');
+            }
+        }
+    }
+
+    // Abrir submenús del ítem activo al cargar
+    document.addEventListener('DOMContentLoaded', function() {
+        const activeLink = document.querySelector('.menu-link.active');
+        if (activeLink) {
+            let parent = activeLink.parentElement;
+            while (parent) {
+                if (parent.classList.contains('submenu')) {
+                    parent.classList.add('open');
+                    const parentLink = parent.previousElementSibling;
+                    if (parentLink) {
+                        const arrow = parentLink.querySelector('.menu-arrow');
+                        if (arrow) {
+                            arrow.classList.add('rotated');
+                        }
+                    }
+                }
+                parent = parent.parentElement;
+            }
+        }
+    });
+    </script>
 </body>
 </html>

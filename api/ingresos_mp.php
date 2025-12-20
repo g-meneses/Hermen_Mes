@@ -39,6 +39,7 @@ try {
                     $proveedor = $_GET['proveedor'] ?? null;
                     $estado = $_GET['estado'] ?? 'todos';
                     
+<<<<<<< HEAD
                     // Consulta directa sin depender de la vista
                     $sql = "SELECT 
                                 d.id_documento,
@@ -68,15 +69,30 @@ try {
                     
                     if ($proveedor) {
                         $sql .= " AND d.id_proveedor = ?";
+=======
+                    $sql = "SELECT * FROM v_documentos_ingreso WHERE fecha_documento BETWEEN ? AND ?";
+                    $params = [$desde, $hasta];
+                    
+                    if ($proveedor) {
+                        $sql .= " AND id_proveedor = ?";
+>>>>>>> 2f7b19d6f90c5a8ef2d1da2551cee379e430cb81
                         $params[] = $proveedor;
                     }
                     
                     if ($estado !== 'todos') {
+<<<<<<< HEAD
                         $sql .= " AND d.estado = ?";
                         $params[] = $estado;
                     }
                     
                     $sql .= " ORDER BY d.fecha_documento DESC, d.id_documento DESC";
+=======
+                        $sql .= " AND estado = ?";
+                        $params[] = $estado;
+                    }
+                    
+                    $sql .= " ORDER BY fecha_documento DESC, id_documento DESC";
+>>>>>>> 2f7b19d6f90c5a8ef2d1da2551cee379e430cb81
                     
                     $stmt = $db->prepare($sql);
                     $stmt->execute($params);
@@ -86,8 +102,7 @@ try {
                     echo json_encode([
                         'success' => true,
                         'documentos' => $documentos,
-                        'total' => count($documentos),
-                        'debug' => ['desde' => $desde, 'hasta' => $hasta, 'sql_rows' => count($documentos)]
+                        'total' => count($documentos)
                     ]);
                     break;
                     
@@ -99,18 +114,8 @@ try {
                         exit();
                     }
                     
-                    // Documento principal (sin usar vista)
-                    $stmt = $db->prepare("
-                        SELECT 
-                            d.*,
-                            p.codigo AS proveedor_codigo,
-                            p.razon_social AS proveedor_nombre,
-                            p.nombre_comercial AS proveedor_comercial,
-                            p.tipo AS proveedor_tipo
-                        FROM documentos_inventario d
-                        LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
-                        WHERE d.id_documento = ?
-                    ");
+                    // Documento principal
+                    $stmt = $db->prepare("SELECT * FROM v_documentos_ingreso WHERE id_documento = ?");
                     $stmt->execute([$id]);
                     $documento = $stmt->fetch(PDO::FETCH_ASSOC);
                     

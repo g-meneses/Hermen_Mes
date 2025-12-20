@@ -259,24 +259,9 @@ async function cargarDocumentos() {
     try {
         let url = `${baseUrl}/api/ingresos_mp.php?action=list&desde=${desde}&hasta=${hasta}&estado=${estado}`;
         if(prov) url += `&proveedor=${prov}`;
-        
-        console.log('Cargando documentos, URL:', url);
-        
-        const r = await fetch(url); 
-        const d = await r.json();
-        
-        console.log('Respuesta documentos:', d);
-        
-        if(d.success) { 
-            documentos = d.documentos || [];
-            console.log('Documentos cargados:', documentos.length);
-            renderDocumentos(); 
-        } else {
-            console.error('Error al cargar documentos:', d.message);
-        }
-    } catch(e){
-        console.error('Error fetch documentos:', e);
-    }
+        const r = await fetch(url); const d = await r.json();
+        if(d.success) { documentos = d.documentos; renderDocumentos(); }
+    } catch(e){}
 }
 
 async function cargarResumen() {

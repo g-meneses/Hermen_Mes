@@ -72,7 +72,7 @@ function formatNum(value, decimals = 2) {
 // ========== KPIs ==========
 async function cargarKPIs() {
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=resumen&tipo_id=${TIPO_ID}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=resumen&tipo_id=${TIPO_ID}`);
         const d = await r.json();
         console.log('Respuesta KPIs:', d);
         if (d.success) {
@@ -90,7 +90,7 @@ async function cargarKPIs() {
 // ========== CATEGORÍAS ==========
 async function cargarCategorias() {
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=categorias&tipo_id=${TIPO_ID}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias&tipo_id=${TIPO_ID}`);
         const d = await r.json();
         console.log('Respuesta Categorías:', d);
         
@@ -104,7 +104,7 @@ async function cargarCategorias() {
                 valor_total: 0
             }));
             
-            const rProd = await fetch(`${baseUrl}/api/inventarios.php?action=list&tipo_id=${TIPO_ID}`);
+            const rProd = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list&tipo_id=${TIPO_ID}`);
             const dProd = await rProd.json();
             
             if (dProd.success && dProd.inventarios) {
@@ -158,7 +158,7 @@ async function seleccionarCategoria(idCategoria) {
     console.log('Categoría seleccionada:', categoriaSeleccionada);
     
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=subcategorias&categoria_id=${idCategoria}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${idCategoria}`);
         const d = await r.json();
         console.log('Respuesta subcategorías:', d);
         
@@ -311,7 +311,7 @@ async function cargarProductosSinSubcategoria(idCategoria) {
 async function cargarProductosCategoria(idCategoria) {
     mostrarProductosSection(categoriaSeleccionada.nombre);
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=list&tipo_id=${TIPO_ID}&categoria_id=${idCategoria}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list&tipo_id=${TIPO_ID}&categoria_id=${idCategoria}`);
         const d = await r.json();
         console.log('=== DEBUG Productos ===');
         console.log('Primer producto:', d.inventarios?.[0]);
@@ -322,7 +322,7 @@ async function cargarProductosCategoria(idCategoria) {
 async function cargarProductosSubcategoria(idSubcategoria) {
     mostrarProductosSection(subcategoriaSeleccionada.nombre);
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=list&subcategoria_id=${idSubcategoria}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list&subcategoria_id=${idSubcategoria}`);
         const d = await r.json();
         console.log('=== DEBUG Productos Subcategoría ===');
         console.log('Primer producto:', d.inventarios?.[0]);
@@ -402,7 +402,7 @@ function filtrarProductos() {
 // ========== DATOS AUXILIARES ==========
 async function cargarUnidades() {
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=unidades`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=unidades`);
         const d = await r.json();
         if (d.success) unidades = d.unidades || [];
     } catch (e) { console.error('Error:', e); }
@@ -418,7 +418,7 @@ async function cargarProveedores() {
 
 async function cargarTodosProductos() {
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=list&tipo_id=${TIPO_ID}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list&tipo_id=${TIPO_ID}`);
         const d = await r.json();
         if (d.success) productosCompletos = d.inventarios || [];
     } catch (e) { console.error('Error:', e); }
@@ -477,7 +477,7 @@ async function cargarSubcategoriasItem() {
     if (!catId) return;
     
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=subcategorias&categoria_id=${catId}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
         const d = await r.json();
         if (d.success && d.subcategorias) {
             d.subcategorias.forEach(s => {
@@ -521,7 +521,7 @@ async function guardarItem() {
     console.log('Guardando item:', data);
     
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -669,7 +669,7 @@ async function filtrarProductosIngreso() {
     // Actualizar subcategorías si hay categoría seleccionada
     if (catId) {
         try {
-            const r = await fetch(`${baseUrl}/api/inventarios.php?action=subcategorias&categoria_id=${catId}`);
+            const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
             const d = await r.json();
             const selectSubcat = document.getElementById('ingresoFiltroSubcat');
             selectSubcat.innerHTML = '<option value="">Todas las subcategorías</option>';
@@ -934,7 +934,7 @@ async function guardarIngreso() {
     console.log('Guardando ingreso:', data);
     
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -1049,7 +1049,7 @@ async function guardarSalida() {
     };
     
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -1082,7 +1082,7 @@ async function buscarHistorial() {
     const desde = document.getElementById('historialDesde').value;
     const hasta = document.getElementById('historialHasta').value;
     const tipo = document.getElementById('historialTipo').value;
-    let url = `${baseUrl}/api/inventarios.php?action=historial&tipo_id=${TIPO_ID}`;
+    let url = `${baseUrl}/api/centro_inventarios.php?action=historial&tipo_id=${TIPO_ID}`;
     if (desde) url += `&fecha_desde=${desde}`;
     if (hasta) url += `&fecha_hasta=${hasta}`;
     if (tipo) url += `&tipo_movimiento=${tipo}`;
@@ -1120,7 +1120,7 @@ function renderHistorial(docs) {
 // ========== MODAL DETALLE ==========
 async function verDetalleDocumento(docNumero) {
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=documento_detalle&documento=${encodeURIComponent(docNumero)}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=documento_detalle&documento=${encodeURIComponent(docNumero)}`);
         const d = await r.json();
         if (d.success) { 
             documentoActual = d; 
@@ -1174,7 +1174,7 @@ async function anularDocumento() {
     if (!motivo) { alert('Ingrese motivo'); return; }
     
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST', 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -1224,7 +1224,7 @@ function imprimirDocumento() {
 // ========== MODAL KARDEX ==========
 async function verKardex(id) {
     try {
-        const r = await fetch(`${baseUrl}/api/inventarios.php?action=kardex&id=${id}`);
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=kardex&id=${id}`);
         const d = await r.json();
         if (d.success) { 
             renderKardex(d); 

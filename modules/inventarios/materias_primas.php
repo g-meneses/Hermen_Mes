@@ -8,7 +8,7 @@ require_once '../../config/database.php';
 if (!isLoggedIn()) { redirect('index.php'); }
 
 $pageTitle = 'Materias Primas - Inventarios';
-$currentPage = 'inventarios';
+$currentPage = 'materias_primas';
 
 $db = getDB();
 $stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'MP' AND activo = 1");

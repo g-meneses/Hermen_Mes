@@ -17,8 +17,8 @@ if (!isLoggedIn()) {
     redirect('index.php');
 }
 
-$pageTitle = 'Inventarios';
-$currentPage = 'inventarios';
+$pageTitle = 'Centro de Inventarios';
+$currentPage = 'centro_inventarios';
 require_once '../../includes/header.php';
 ?>
 
@@ -2238,7 +2238,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ========== CARGA DE DATOS ==========
 async function cargarDashboard() {
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=resumen`);
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=resumen`);
         const data = await response.json();
         
         if (data.success) {
@@ -2261,14 +2261,14 @@ async function cargarDashboard() {
 async function cargarCatalogos() {
     try {
         // Cargar unidades de medida
-        const resUnidades = await fetch(`${baseUrl}/api/inventarios.php?action=unidades`);
+        const resUnidades = await fetch(`${baseUrl}/api/centro_inventarios.php?action=unidades`);
         const dataUnidades = await resUnidades.json();
         if (dataUnidades.success) {
             unidadesMedida = dataUnidades.unidades;
         }
         
         // Cargar ubicaciones
-        const resUbicaciones = await fetch(`${baseUrl}/api/inventarios.php?action=ubicaciones`);
+        const resUbicaciones = await fetch(`${baseUrl}/api/centro_inventarios.php?action=ubicaciones`);
         const dataUbicaciones = await resUbicaciones.json();
         if (dataUbicaciones.success) {
             ubicaciones = dataUbicaciones.ubicaciones;
@@ -2361,7 +2361,7 @@ async function cargarCategoriasDelTipo(idTipo) {
     
     try {
         // Obtener categorías con sus valores
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=categorias_resumen&tipo_id=${idTipo}`);
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias_resumen&tipo_id=${idTipo}`);
         const data = await response.json();
         
         if (data.success && data.categorias) {
@@ -2369,12 +2369,12 @@ async function cargarCategoriasDelTipo(idTipo) {
             renderCategorias(data.categorias);
         } else {
             // Si no hay endpoint especial, cargar categorías básicas
-            const resCat = await fetch(`${baseUrl}/api/inventarios.php?action=categorias&tipo_id=${idTipo}`);
+            const resCat = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias&tipo_id=${idTipo}`);
             const dataCat = await resCat.json();
             
             if (dataCat.success) {
                 // Cargar productos para calcular totales por categoría
-                const resProd = await fetch(`${baseUrl}/api/inventarios.php?action=list&tipo_id=${idTipo}`);
+                const resProd = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list&tipo_id=${idTipo}`);
                 const dataProd = await resProd.json();
                 
                 if (dataProd.success) {
@@ -2473,7 +2473,7 @@ async function seleccionarCategoria(idCategoria) {
     
     // Verificar si la categoría tiene subcategorías
     try {
-        const response = await fetch(baseUrl + '/api/inventarios.php?action=subcategorias_resumen&categoria_id=' + idCategoria);
+        const response = await fetch(baseUrl + '/api/centro_inventarios.php?action=subcategorias_resumen&categoria_id=' + idCategoria);
         const data = await response.json();
         
         if (data.success && data.subcategorias && data.subcategorias.length > 0) {
@@ -2562,7 +2562,7 @@ async function seleccionarSubcategoria(idSubcategoria) {
     
     // Cargar productos de la subcategoría desde la API
     try {
-        var response = await fetch(baseUrl + '/api/inventarios.php?action=list&subcategoria_id=' + idSubcategoria);
+        var response = await fetch(baseUrl + '/api/centro_inventarios.php?action=list&subcategoria_id=' + idSubcategoria);
         var data = await response.json();
         
         if (data.success) {
@@ -2593,7 +2593,7 @@ async function cargarProductosCategoria(idCategoria) {
     
     // Cargar productos de la categoría desde la API
     try {
-        var response = await fetch(baseUrl + '/api/inventarios.php?action=list&tipo_id=' + tipoSeleccionado.id_tipo_inventario + '&categoria_id=' + idCategoria);
+        var response = await fetch(baseUrl + '/api/centro_inventarios.php?action=list&tipo_id=' + tipoSeleccionado.id_tipo_inventario + '&categoria_id=' + idCategoria);
         var data = await response.json();
         
         if (data.success) {
@@ -2820,7 +2820,7 @@ async function cargarSelectCategorias() {
     document.getElementById('idSubcategoria').innerHTML = '<option value="">Sin subcategoría</option>';
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=categorias&tipo_id=${tipoSeleccionado.id_tipo_inventario}`);
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias&tipo_id=${tipoSeleccionado.id_tipo_inventario}`);
         const data = await response.json();
         
         if (data.success) {
@@ -2846,7 +2846,7 @@ async function cargarSubcategoriasParaItem() {
     select.innerHTML = '<option value="">Cargando...</option>';
     
     try {
-        var response = await fetch(baseUrl + '/api/inventarios.php?action=subcategorias&categoria_id=' + categoriaId);
+        var response = await fetch(baseUrl + '/api/centro_inventarios.php?action=subcategorias&categoria_id=' + categoriaId);
         var data = await response.json();
         
         if (data.success && data.subcategorias.length > 0) {
@@ -2912,7 +2912,7 @@ async function guardarInventario() {
     }
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -2939,7 +2939,7 @@ async function guardarInventario() {
 
 async function editarItem(idInventario) {
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=detalle&id=${idInventario}`);
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=detalle&id=${idInventario}`);
         const data = await response.json();
         
         if (data.success && data.item) {
@@ -2996,7 +2996,7 @@ async function verKardex(idInventario) {
     modal.classList.add('show');
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=kardex&id=${idInventario}`);
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=kardex&id=${idInventario}`);
         const data = await response.json();
         
         if (data.success) {
@@ -3101,7 +3101,7 @@ async function cargarTiposConfig() {
     lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Cargando...</span></div>';
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=tipos`);
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=tipos`);
         const data = await response.json();
         
         if (data.success) {
@@ -3200,7 +3200,7 @@ async function guardarTipo() {
     }
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -3241,7 +3241,7 @@ async function cargarCategoriasPorTipo() {
     lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Cargando...</span></div>';
     
     try {
-        let url = `${baseUrl}/api/inventarios.php?action=categorias`;
+        let url = `${baseUrl}/api/centro_inventarios.php?action=categorias`;
         if (tipoId) {
             url += `&tipo_id=${tipoId}`;
         }
@@ -3355,7 +3355,7 @@ async function guardarCategoria() {
     }
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -3390,7 +3390,7 @@ async function cargarSubcategoriasConfig() {
     
     // Cargar todas las categorías para el filtro
     try {
-        var response = await fetch(baseUrl + '/api/inventarios.php?action=categorias');
+        var response = await fetch(baseUrl + '/api/centro_inventarios.php?action=categorias');
         var data = await response.json();
         
         if (data.success) {
@@ -3417,7 +3417,7 @@ async function cargarSubcategoriasPorCategoria() {
     lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><span>Cargando...</span></div>';
     
     try {
-        var url = baseUrl + '/api/inventarios.php?action=subcategorias';
+        var url = baseUrl + '/api/centro_inventarios.php?action=subcategorias';
         if (categoriaId) {
             url += '&categoria_id=' + categoriaId;
         }
@@ -3526,7 +3526,7 @@ async function guardarSubcategoria() {
     }
     
     try {
-        var response = await fetch(baseUrl + '/api/inventarios.php', {
+        var response = await fetch(baseUrl + '/api/centro_inventarios.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -3579,7 +3579,7 @@ function openModalHistoricoContextual() {
 // ========== CARGAR DATOS PARA MODALES ==========
 async function cargarProductosParaMovimientos() {
     try {
-        let url = `${baseUrl}/api/inventarios.php?action=list`;
+        let url = `${baseUrl}/api/centro_inventarios.php?action=list`;
         if (tipoSeleccionado) {
             url += `&tipo_id=${tipoSeleccionado.id_tipo_inventario}`;
         }
@@ -3787,7 +3787,7 @@ async function guardarIngreso() {
     };
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -3965,7 +3965,7 @@ async function guardarSalida() {
     };
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -4018,7 +4018,7 @@ async function buscarHistorial() {
     const tipoMov = document.getElementById('historialTipoMov').value;
     const buscar = document.getElementById('historialBuscar').value;
     
-    let url = `${baseUrl}/api/inventarios.php?action=historial`;
+    let url = `${baseUrl}/api/centro_inventarios.php?action=historial`;
     if (fechaDesde) url += `&fecha_desde=${fechaDesde}`;
     if (fechaHasta) url += `&fecha_hasta=${fechaHasta}`;
     if (tipoMov) url += `&tipo_movimiento=${tipoMov}`;
@@ -4085,7 +4085,7 @@ function renderHistorial(documentos) {
 // ========== MODAL DETALLE DOCUMENTO ==========
 async function verDetalleDocumento(docNumero) {
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php?action=documento_detalle&documento=${encodeURIComponent(docNumero)}`);
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=documento_detalle&documento=${encodeURIComponent(docNumero)}`);
         const data = await response.json();
         
         if (data.success) {
@@ -4178,7 +4178,7 @@ async function anularDocumento() {
     }
     
     try {
-        const response = await fetch(`${baseUrl}/api/inventarios.php`, {
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

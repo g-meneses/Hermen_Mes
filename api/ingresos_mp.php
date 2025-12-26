@@ -2,7 +2,7 @@
 /**
  * API de Ingresos de Materias Primas
  * Sistema MES Hermen Ltda.
- * Versión: 1.0
+ * Versión: 1.1 - Sin conflictos Git
  */
 
 ob_start();
@@ -39,7 +39,6 @@ try {
                     $proveedor = $_GET['proveedor'] ?? null;
                     $estado = $_GET['estado'] ?? 'todos';
                     
-<<<<<<< HEAD
                     // Consulta directa sin depender de la vista
                     $sql = "SELECT 
                                 d.id_documento,
@@ -69,30 +68,15 @@ try {
                     
                     if ($proveedor) {
                         $sql .= " AND d.id_proveedor = ?";
-=======
-                    $sql = "SELECT * FROM v_documentos_ingreso WHERE fecha_documento BETWEEN ? AND ?";
-                    $params = [$desde, $hasta];
-                    
-                    if ($proveedor) {
-                        $sql .= " AND id_proveedor = ?";
->>>>>>> 2f7b19d6f90c5a8ef2d1da2551cee379e430cb81
                         $params[] = $proveedor;
                     }
                     
                     if ($estado !== 'todos') {
-<<<<<<< HEAD
                         $sql .= " AND d.estado = ?";
                         $params[] = $estado;
                     }
                     
                     $sql .= " ORDER BY d.fecha_documento DESC, d.id_documento DESC";
-=======
-                        $sql .= " AND estado = ?";
-                        $params[] = $estado;
-                    }
-                    
-                    $sql .= " ORDER BY fecha_documento DESC, id_documento DESC";
->>>>>>> 2f7b19d6f90c5a8ef2d1da2551cee379e430cb81
                     
                     $stmt = $db->prepare($sql);
                     $stmt->execute($params);
@@ -115,7 +99,16 @@ try {
                     }
                     
                     // Documento principal
-                    $stmt = $db->prepare("SELECT * FROM v_documentos_ingreso WHERE id_documento = ?");
+                    $stmt = $db->prepare("
+                        SELECT 
+                            d.*,
+                            p.codigo AS proveedor_codigo,
+                            p.razon_social AS proveedor_nombre,
+                            p.nombre_comercial AS proveedor_comercial
+                        FROM documentos_inventario d
+                        LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
+                        WHERE d.id_documento = ?
+                    ");
                     $stmt->execute([$id]);
                     $documento = $stmt->fetch(PDO::FETCH_ASSOC);
                     
@@ -178,10 +171,18 @@ try {
                     
                     // Últimos 5 ingresos
                     $stmtUlt = $db->prepare("
-                        SELECT id_documento, numero_documento, fecha_documento, 
-                               proveedor_comercial, proveedor_nombre, total, estado
-                        FROM v_documentos_ingreso 
-                        ORDER BY fecha_documento DESC, id_documento DESC 
+                        SELECT 
+                            d.id_documento, 
+                            d.numero_documento, 
+                            d.fecha_documento, 
+                            p.nombre_comercial AS proveedor_comercial, 
+                            p.razon_social AS proveedor_nombre, 
+                            d.total, 
+                            d.estado
+                        FROM documentos_inventario d
+                        LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
+                        WHERE d.tipo_documento = 'INGRESO'
+                        ORDER BY d.fecha_documento DESC, d.id_documento DESC 
                         LIMIT 5
                     ");
                     $stmtUlt->execute();
@@ -329,7 +330,7 @@ try {
                         $conFactura = $data['con_factura'] ?? false;
                         
                         foreach ($data['lineas'] as $linea) {
-                            $subtotalLinea = floatval($linea['subtotal'] ?? ($linea['cantidad'] * $linea['costo_unitario']));
+                            $subtotalLinea = floatval($linea['subtotal'] ?? 0);
                             $totalDocumento += $subtotalLinea;
                             
                             if ($conFactura) {
@@ -374,8 +375,8 @@ try {
                         // Insertar líneas y actualizar stock
                         $stmtLinea = $db->prepare("
                             INSERT INTO documentos_inventario_detalle (
-                                id_documento, id_inventario, cantidad, costo_unitario, costo_con_iva, subtotal
-                            ) VALUES (?, ?, ?, ?, ?, ?)
+                                id_documento, id_inventario, cantidad, costo_unitario, subtotal
+                            ) VALUES (?, ?, ?, ?, ?)
                         ");
                         
                         $stmtStock = $db->prepare("
@@ -399,10 +400,8 @@ try {
                         
                         foreach ($data['lineas'] as $linea) {
                             $cantidad = floatval($linea['cantidad']);
-                            $subtotalLinea = floatval($linea['subtotal'] ?? 0);
-                            $costoConIva = $cantidad > 0 ? $subtotalLinea / $cantidad : 0;
-                            // Costo IVA = Costo Bruto * 0.87
-                            $costoUnit = $conFactura ? $costoConIva * 0.87 : $costoConIva;
+                            $costoUnit = floatval($linea['costo_unitario']);
+                            $subtotalLinea = floatval($linea['subtotal']);
                             
                             // Insertar línea
                             $stmtLinea->execute([
@@ -410,7 +409,6 @@ try {
                                 $linea['id_inventario'],
                                 $cantidad,
                                 $costoUnit,       // Costo sin IVA (para inventario)
-                                $costoConIva,     // Costo bruto (del documento)
                                 $subtotalLinea    // Subtotal del documento
                             ]);
                             

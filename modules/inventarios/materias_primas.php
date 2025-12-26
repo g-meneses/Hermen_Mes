@@ -23,7 +23,7 @@ $tipoIcono = $tipoInventario['icono'] ?? 'fa-box';
 require_once '../../includes/header.php';
 ?>
 
-<link rel="stylesheet" href="css/inventario_tipo.css">
+<!--<link rel="stylesheet" href="css/inventario_tipo.css"> -->
 <style>
 :root { --tipo-color: <?php echo $tipoColor; ?>; }
 

@@ -1,0 +1,119 @@
+[33mcommit 7a8f9f972db883cce7bf0f319cd0c70fec038547[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: g-meneses <gmeneses.alpire@gmail.com>
+Date:   Sat Dec 13 22:02:11 2025 -0400
+
+    Avances en materias primas
+
+[33mcommit 592038fa030b2f0ceb2e2ed98efac03d2b312cfe[m
+Author: g-meneses <gmeneses.alpire@gmail.com>
+Date:   Wed Dec 10 23:19:02 2025 -0400
+
+    Incorporación del proveedor  y enlace a Ingresos de Materias Primas
+
+[33mcommit c20e210bae4ee6e35b2f7117282a59a51396228d[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Wed Dec 10 18:06:43 2025 -0400
+
+    Materias primas, solucionado el tema de cifras  y edicion del item
+
+[33mcommit 6018e3d9438e2441b6f77e2667246b0723a88b27[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Tue Dec 9 17:54:22 2025 -0400
+
+    Mejora de cards en subcategorias y correción de cifras en el detalle
+
+[33mcommit e77806a0978355cfee3ac732335d0f92f4f274e5[m
+Author: g-meneses <gmeneses.alpire@gmail.com>
+Date:   Mon Dec 8 23:35:39 2025 -0400
+
+    mejorando  los decimales en materias primas
+
+[33mcommit 960dcce3d872299cfb8d6fd319a07196f37d484c[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Mon Dec 8 18:12:00 2025 -0400
+
+    feat(inventarios): add Materias Primas module for complete inventory management
+
+[33mcommit e0e0403a8edabfc0287c695c9f4ad858e0e79b2a[m
+Author: g-meneses <gmeneses.alpire@gmail.com>
+Date:   Wed Dec 3 22:23:37 2025 -0400
+
+    nuevo entrono inventarios
+
+[33mcommit ab14d709d3df3c319a11d36fc692a490a3c05e95[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Wed Dec 3 18:19:23 2025 -0400
+
+    Refactor code structure for improved readability and maintainability
+
+[33mcommit cdb3a5648b15af55f7ab9a27f4faaa4b2198f2b3[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Tue Dec 2 17:57:17 2025 -0400
+
+    dashboard inventarios
+
+[33mcommit 6403db0cda40645d2195f8e188f165b4b7c3e391[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Mon Dec 1 18:24:02 2025 -0400
+
+    feat: Add multiproduct movement functionality to inventory management
+    
+    - Implemented a modal for handling multiple product entries in inventory.
+    - Added validation for required fields and stock availability.
+    - Enhanced database interactions to support multiple product movements in a single transaction.
+    - Updated UI styles for the multiproduct modal and table.
+    - Included calculations for subtotal and IVA in the multiproduct entry process.
+
+[33mcommit 0c0c390570ec4be17bf4c0bcae2e08608d03701b[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Fri Nov 28 17:21:19 2025 -0400
+
+    Inventarios Kardex
+
+[33mcommit 8519e329258a83fe7c423cdd3cc4776b5a251fa9[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Thu Nov 27 17:40:26 2025 -0400
+
+    INCLUSION DE MODULO DE INVENTARIOS
+
+[33mcommit 4312f459bb73595217190a9a8b05c38d8fa8be03[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Wed Nov 26 15:01:19 2025 -0400
+
+    Modal Reistro de producción finalizado
+
+[33mcommit 74dc550462033d60f45c7a89b3279dffb22ca62c[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Tue Nov 25 18:36:57 2025 -0400
+
+    modal tejido  251125
+
+[33mcommit ffc60b5d84de04ad486535a2a97e201152cc0872[m
+Author: g-meneses <gmeneses.alpire@gmail.com>
+Date:   Tue Nov 25 00:10:38 2025 -0400
+
+    modal tejedores funcionando
+
+[33mcommit d66bb5c0fffaca5292f6a94c5dd28ab4ccfd4616[m
+Author: g-meneses <gmeneses.alpire@gmail.com>
+Date:   Mon Nov 24 23:55:21 2025 -0400
+
+    mejorar el modal produccion tejido 1
+
+[33mcommit b6bc9ea66a6d1516f683c70f213cbe8ae898bdf7[m
+Author: g-meneses <gmeneses.alpire@gmail.com>
+Date:   Sun Nov 23 23:29:04 2025 -0400
+
+    cambio en el formato del formulario principal
+
+[33mcommit 2a412cfddc08c988ad7d95918c9985147f83f939[m
+Author: Gary Hermen <gmeneses.alpire@gmail.com>
+Date:   Sun Nov 23 18:11:26 2025 -0400
+
+    se corrigieron la conexion con la DB, no estaba descargando el formulario
+
+[33mcommit b3953cfa8c18426807c40b72839adf3ca8a776b4[m
+Author: g-meneses <gmeneses.alpire@gmail.com>
+Date:   Sun Nov 16 21:57:04 2025 -0400
+
+    Primer commit del proyecto Hermen MES

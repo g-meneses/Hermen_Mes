@@ -593,12 +593,12 @@ function toggleModoFactura() {
             </tr>`;
     } else {
         thead.innerHTML = `
-            <tr >
+            <tr>
                 <th style="min-width:250px;">PRODUCTO</th>
                 <th style="width:60px; text-align:center;">UNID.</th>
-                <th style="width:100px; background:#343A40; text-align:center;">CANTIDAD</th>
-                <th style="width:140px; background:#343A40; text-align:center;">VALOR TOTAL<br>DEL ITEM</th>
-                <th style="width:130px; background:#343A40; text-align:center;">COSTO UNITARIO</th>
+                <th style="width:100px; background:#fff3cd; text-align:center;">CANTIDAD</th>
+                <th style="width:140px; background:#fff3cd; text-align:center;">VALOR TOTAL<br>DEL ITEM</th>
+                <th style="width:130px; background:#d4edda; text-align:center;">COSTO UNITARIO</th>
                 <th style="width:50px;"></th>
             </tr>`;
     }
@@ -854,8 +854,302 @@ async function guardarIngreso() {
 // ========== MODALES SALIDA, HISTORIAL, DETALLE, KARDEX ==========
 // (Aquí irían las funciones de los otros modales - las omito por espacio pero están en el original)
 
+// ========== MODAL SALIDA ==========
+
+let productosFiltradosSalida = [];
+
 function abrirModalSalida() {
-    alert('Modal Salida - Por implementar');
+    // Tipo por defecto
+    document.getElementById('salidaTipo').value = 'PRODUCCION';
+    
+    // Generar número según tipo
+    actualizarNumeroSalida();
+    
+    // Fecha actual
+    document.getElementById('salidaFecha').value = new Date().toISOString().split('T')[0];
+    
+    // Reset referencia y observaciones
+    document.getElementById('salidaReferencia').value = '';
+    document.getElementById('salidaObservaciones').value = '';
+    
+    // Poblar filtros de categorías
+    poblarFiltrosCategoriasSalida();
+    
+    // Reset líneas
+    lineasSalida = [];
+    productosFiltradosSalida = productosCompletos.filter(p => toNum(p.stock_actual) > 0);
+    
+    // Renderizar
+    renderLineasSalida();
+    
+    document.getElementById('modalSalida').classList.add('show');
+}
+
+// Event listener para cambio de tipo
+document.addEventListener('DOMContentLoaded', function() {
+    const selectTipo = document.getElementById('salidaTipo');
+    if (selectTipo) {
+        selectTipo.addEventListener('change', function() {
+            if (this.value === 'DEVOLUCION') {
+                // Cerrar modal normal y abrir modal de devolución
+                cerrarModal('modalSalida');
+                setTimeout(() => abrirModalDevolucion(), 300);
+            }
+        });
+    }
+});
+
+function poblarFiltrosCategoriasSalida() {
+    const selectCat = document.getElementById('salidaFiltroCat');
+    selectCat.innerHTML = '<option value="">Todas las categorías</option>' +
+        categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
+    
+    document.getElementById('salidaFiltroSubcat').innerHTML = '<option value="">Todas las subcategorías</option>';
+}
+
+async function filtrarProductosSalida() {
+    const catId = document.getElementById('salidaFiltroCat').value;
+    const subcatId = document.getElementById('salidaFiltroSubcat').value;
+    
+    // Si cambia categoría, actualizar subcategorías
+    if (catId) {
+        try {
+            const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
+            const d = await r.json();
+            if (d.success && d.subcategorias) {
+                const selectSubcat = document.getElementById('salidaFiltroSubcat');
+                selectSubcat.innerHTML = 
+                    '<option value="">Todas las subcategorías</option>' +
+                    d.subcategorias.map(s => `<option value="${s.id_subcategoria}">${s.nombre}</option>`).join('');
+                
+                // Restaurar valor si existe
+                if (subcatId) {
+                    selectSubcat.value = subcatId;
+                }
+            }
+        } catch (e) { console.error(e); }
+    } else {
+        document.getElementById('salidaFiltroSubcat').innerHTML = '<option value="">Todas las subcategorías</option>';
+    }
+    
+    // Filtrar productos con stock > 0
+    productosFiltradosSalida = productosCompletos.filter(p => {
+        if (toNum(p.stock_actual) <= 0) return false;
+        if (catId && p.id_categoria != catId) return false;
+        if (subcatId && p.id_subcategoria != subcatId) return false;
+        return true;
+    });
+    
+    renderLineasSalida();
+}
+
+function actualizarNumeroSalida() {
+    const tipo = document.getElementById('salidaTipo').value;
+    const prefijos = {
+        'PRODUCCION': 'SMP-PR',
+        'VENTA': 'SMP-V',
+        'MUESTRAS': 'SMP-M',
+        'AJUSTE': 'SMP-A',
+        'DEVOLUCION': 'SMP-DV'
+    };
+    const prefijo = prefijos[tipo] || 'SAL-MP';
+    document.getElementById('salidaDocumento').value = generarNumeroDoc(prefijo);
+    
+    // Mostrar/ocultar indicador de motivo obligatorio
+    const motivoObligatorio = document.getElementById('motivoObligatorio');
+    if (motivoObligatorio) {
+        motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
+    }
+}
+
+function agregarLineaSalida() {
+    lineasSalida.push({ 
+        id_inventario: '', 
+        cantidad: 0,
+        stock_disponible: 0,
+        costo_unitario: 0
+    });
+    renderLineasSalida();
+}
+
+function renderLineasSalida() {
+    const tbody = document.getElementById('salidaLineasBody');
+    
+    if (lineasSalida.length === 0) {
+        agregarLineaSalida();
+        return;
+    }
+    
+    tbody.innerHTML = lineasSalida.map((l, i) => {
+        const prod = productosCompletos.find(p => p.id_inventario == l.id_inventario);
+        const stockDisp = prod ? toNum(prod.stock_actual) : 0;
+        const cpp = prod ? (toNum(prod.costo_promedio) || toNum(prod.costo_unitario)) : 0;
+        const unidad = prod ? (prod.unidad_abrev || prod.abreviatura || prod.unidad || 'kg') : '-';
+        const cantidad = toNum(l.cantidad);
+        const subtotal = cantidad * cpp;
+        
+        return `
+            <tr>
+                <td>
+                    <select id="salProd_${i}" onchange="seleccionarProductoSalida(${i})" style="width:100%; padding:6px;">
+                        <option value="">Seleccione producto...</option>
+                        ${productosFiltradosSalida.map(p => 
+                            `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>
+                                ${p.codigo} - ${p.nombre}
+                            </option>`
+                        ).join('')}
+                    </select>
+                </td>
+                <td style="text-align:right; font-weight:600; color:#28a745;">${formatNum(stockDisp, 2)}</td>
+                <td style="text-align:center; font-weight:600; color:#495057;">${unidad}</td>
+                <td>
+                    <input type="number" id="salCant_${i}" value="${cantidad || ''}" step="0.01" max="${stockDisp}"
+                           style="width:100%; padding:6px; background:#fff3cd; text-align:right;" 
+                           onchange="calcularLineaSalida(${i})" placeholder="0.00">
+                </td>
+                <td style="background:#f8f9fa; text-align:right; padding-right:10px; font-weight:500;">
+                    Bs. ${formatNum(cpp, 4)}
+                </td>
+                <td style="background:#f8f9fa; text-align:right; padding-right:10px; font-weight:600;">
+                    Bs. ${formatNum(subtotal, 2)}
+                </td>
+                <td style="text-align:center;">
+                    <button type="button" onclick="eliminarLineaSalida(${i})" 
+                            style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>`;
+    }).join('');
+    
+    recalcularSalida();
+}
+
+function seleccionarProductoSalida(index) {
+    const select = document.getElementById(`salProd_${index}`);
+    const idInventario = select.value;
+    
+    lineasSalida[index].id_inventario = idInventario;
+    
+    // Obtener stock disponible
+    if (idInventario) {
+        const prod = productosCompletos.find(p => p.id_inventario == idInventario);
+        if (prod) {
+            lineasSalida[index].stock_disponible = toNum(prod.stock_actual);
+            lineasSalida[index].costo_unitario = toNum(prod.costo_promedio) || toNum(prod.costo_unitario);
+        }
+    }
+    
+    renderLineasSalida();
+}
+
+function calcularLineaSalida(index) {
+    const cantidad = toNum(document.getElementById(`salCant_${index}`).value);
+    const stockDisp = lineasSalida[index].stock_disponible || 0;
+    
+    // Validar que no exceda el stock
+    if (cantidad > stockDisp) {
+        alert(`⚠️ Stock insuficiente. Disponible: ${formatNum(stockDisp)}`);
+        document.getElementById(`salCant_${index}`).value = stockDisp;
+        lineasSalida[index].cantidad = stockDisp;
+    } else {
+        lineasSalida[index].cantidad = cantidad;
+    }
+    
+    renderLineasSalida();
+}
+
+function eliminarLineaSalida(index) {
+    if (lineasSalida.length === 1) {
+        alert('Debe haber al menos una línea');
+        return;
+    }
+    lineasSalida.splice(index, 1);
+    renderLineasSalida();
+}
+
+function recalcularSalida() {
+    let total = 0;
+    
+    lineasSalida.forEach(l => {
+        const cantidad = toNum(l.cantidad);
+        const cpp = toNum(l.costo_unitario);
+        total += cantidad * cpp;
+    });
+    
+    document.getElementById('salidaTotal').textContent = 'Bs. ' + formatNum(total, 2);
+}
+
+async function guardarSalida() {
+    // Validaciones
+    const tipo = document.getElementById('salidaTipo').value;
+    
+    if (lineasSalida.length === 0) {
+        alert('⚠️ Agregue al menos una línea');
+        return;
+    }
+    
+    // Validar que todas las líneas tengan producto y cantidad
+    for (let i = 0; i < lineasSalida.length; i++) {
+        if (!lineasSalida[i].id_inventario) {
+            alert(`⚠️ Seleccione un producto en la línea ${i + 1}`);
+            return;
+        }
+        if (lineasSalida[i].cantidad <= 0) {
+            alert(`⚠️ Ingrese cantidad en la línea ${i + 1}`);
+            return;
+        }
+        
+        // Validar stock
+        const prod = productosCompletos.find(p => p.id_inventario == lineasSalida[i].id_inventario);
+        const stockDisp = prod ? toNum(prod.stock_actual) : 0;
+        if (lineasSalida[i].cantidad > stockDisp) {
+            alert(`⚠️ Stock insuficiente para ${prod.nombre}. Disponible: ${formatNum(stockDisp)}`);
+            return;
+        }
+    }
+    
+    // Validar motivo para ajustes
+    if (tipo === 'AJUSTE' && !document.getElementById('salidaObservaciones').value.trim()) {
+        alert('⚠️ El motivo es obligatorio para ajustes de inventario');
+        return;
+    }
+    
+    const data = {
+        action: 'crear',
+        fecha: document.getElementById('salidaFecha').value,
+        tipo_salida: tipo,
+        referencia: document.getElementById('salidaReferencia').value,
+        observaciones: document.getElementById('salidaObservaciones').value,
+        lineas: lineasSalida.map(l => ({
+            id_inventario: l.id_inventario,
+            cantidad: l.cantidad,
+            costo_unitario: l.costo_unitario
+        }))
+    };
+    
+    console.log('Guardando salida:', data);
+    
+    try {
+        const r = await fetch(`${baseUrl}/api/salidas_mp.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const d = await r.json();
+        console.log('Respuesta:', d);
+        
+        if (d.success) {
+            alert('✅ ' + d.message);
+            cerrarModal('modalSalida');
+            cargarDatos();
+        } else {
+            alert('❌ ' + d.message);
+        }
+    } catch (e) {
+        console.error('Error:', e);
+        alert('Error al guardar la salida');
+    }
 }
 
 function abrirModalHistorial() {

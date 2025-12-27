@@ -24,6 +24,7 @@ require_once '../../includes/header.php';
 ?>
 
 <!--<link rel="stylesheet" href="css/inventario_tipo.css"> -->
+ 
 <style>
 :root { --tipo-color: <?php echo $tipoColor; ?>; }
 
@@ -260,6 +261,136 @@ require_once '../../includes/header.php';
 .badge-moneda { padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
 .badge-moneda.bob { background: #fff3cd; color: #856404; }
 .badge-moneda.usd { background: #d1ecf1; color: #0c5460; }
+
+/* ========================================
+   ESTILOS PARA MODAL DE DEVOLUCIÓN
+   ======================================== */
+
+.ingreso-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.ingreso-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+    transform: translateY(-2px);
+}
+
+.ingreso-card.selected {
+    border-color: #28a745;
+    background: #f0f9f4;
+    box-shadow: 0 4px 12px rgba(40,167,69,0.2);
+}
+
+.ingreso-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.ingreso-numero {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1a1a2e;
+}
+
+.ingreso-fecha {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 4px;
+}
+
+.badge-factura {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge-factura.con {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-factura.sin {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.ingreso-proveedor {
+    font-size: 0.9rem;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.ingreso-proveedor i {
+    color: #6c757d;
+    margin-right: 6px;
+}
+
+.ingreso-total {
+    font-size: 0.95rem;
+    color: #6c757d;
+    padding-top: 8px;
+    border-top: 1px solid #e9ecef;
+}
+
+.ingreso-total strong {
+    color: #1a1a2e;
+}
+
+.ingresos-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* Scrollbar personalizado */
+.ingresos-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ingresos-container::-webkit-scrollbar-track {
+    background: #e9ecef;
+    border-radius: 4px;
+}
+
+.ingresos-container::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 4px;
+}
+
+.ingresos-container::-webkit-scrollbar-thumb:hover {
+    background: #495057;
+}
+
+#seccionLineasDevolucion {
+    margin-top: 25px;
+}
+
+/* Encabezados de tabla - texto negro en fondos de colores */
+.tabla-lineas thead th {
+    color: #ffffff !important;
+}
+
+.tabla-lineas thead th[style*="background:#fff3cd"],
+.tabla-lineas thead th[style*="background:#d4edda"],
+.tabla-lineas thead th[style*="background:#fff9e6"] {
+    color: #212529 !important;
+    font-weight: 700 !important;
+}
 </style>
 
 <div class="mp-module">
@@ -497,7 +628,7 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
-<!-- Modal Salida -->
+<!-- Modal Salida - ACTUALIZADO -->
 <div class="modal" id="modalSalida">
     <div class="modal-content large">
         <div class="modal-header" style="background: linear-gradient(135deg, #dc3545, #c82333); color: white;">
@@ -505,30 +636,96 @@ require_once '../../includes/header.php';
             <button class="modal-close" onclick="cerrarModal('modalSalida')" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
         <div class="modal-body">
+            <!-- Fila 1: Documento y Fecha -->
             <div class="form-row">
-                <div class="form-group"><label>Documento Nº</label><input type="text" id="salidaDocumento" readonly></div>
-                <div class="form-group"><label>Fecha</label><input type="date" id="salidaFecha"></div>
+                <div class="form-group">
+                    <label>Documento Nº</label>
+                    <input type="text" id="salidaDocumento" readonly style="background:#e9ecef; font-weight:bold;">
+                </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="salidaFecha">
+                </div>
             </div>
+            
+            <!-- Fila 2: Tipo de Salida y Referencia -->
             <div class="form-row">
-                <div class="form-group"><label>Tipo de Salida</label>
-                    <select id="salidaTipo">
-                        <option value="SALIDA_PRODUCCION">Producción</option>
-                        <option value="SALIDA_AJUSTE">Ajuste</option>
-                        <option value="SALIDA_MERMA">Merma</option>
+                <div class="form-group">
+                    <label>Tipo de Salida</label>
+                    <select id="salidaTipo" onchange="actualizarNumeroSalida()">
+                        <option value="PRODUCCION">📦 Producción (entrega a tejido)</option>
+                        <option value="VENTA">💰 Venta de Materias Primas</option>
+                        <option value="MUESTRAS">🔬 Desarrollo de Muestras/Prototipos</option>
+                        <option value="AJUSTE">⚙️ Ajuste de Inventario</option>
+                        <option value="DEVOLUCION">↩️ Devolución a Proveedor</option>
                     </select>
                 </div>
-                <div class="form-group"><label>Referencia</label><input type="text" id="salidaReferencia"></div>
+                <div class="form-group">
+                    <label>Referencia</label>
+                    <input type="text" id="salidaReferencia" placeholder="Ej: OF-123, Cliente XYZ">
+                </div>
             </div>
+            
+            <!-- Separador -->
+            <hr style="margin: 20px 0; border-color: #e9ecef;">
+            
+            <!-- Filtro de Productos por Categoría/Subcategoría -->
+            <div class="filtros-productos">
+                <h4 style="margin-bottom:10px;"><i class="fas fa-filter"></i> Filtrar Productos</h4>
+                <div class="form-row" style="margin-bottom:15px;">
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="salidaFiltroCat" onchange="filtrarProductosSalida()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Subcategoría</label>
+                        <select id="salidaFiltroSubcat" onchange="filtrarProductosSalida()">
+                            <option value="">Todas las subcategorías</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabla de Líneas -->
             <h4><i class="fas fa-list"></i> Líneas de Salida</h4>
-            <table class="tabla-lineas">
-                <thead><tr><th>Producto</th><th>Stock Disp.</th><th>Cantidad</th><th>Costo CPP</th><th>Subtotal</th><th></th></tr></thead>
-                <tbody id="salidaLineasBody"></tbody>
-            </table>
-            <button class="btn btn-primary" onclick="agregarLineaSalida()"><i class="fas fa-plus"></i> Agregar Línea</button>
-            <div class="totales-box" style="margin-top: 15px;">
-                <p class="total-final">TOTAL: <span id="salidaTotal">Bs. 0.00</span></p>
+            <div class="tabla-ingreso-container">
+                <table class="tabla-lineas" id="tablaLineasSalida">
+                    <thead>
+                        <tr>
+                            <th style="min-width:250px;">PRODUCTO</th>
+                            <th style="width:120px; text-align:center;">STOCK DISPONIBLE</th>
+                            <th style="width:60px; text-align:center;">UNID.</th>
+                            <th style="width:100px; background:#fff3cd; text-align:center;">CANTIDAD</th>
+                            <th style="width:130px; text-align:center;">CPP</th>
+                            <th style="width:120px; text-align:center;">SUBTOTAL</th>
+                            <th style="width:50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="salidaLineasBody"></tbody>
+                </table>
             </div>
-            <div class="form-group" style="margin-top: 15px;"><label>Observaciones</label><textarea id="salidaObservaciones"></textarea></div>
+            
+            <button class="btn btn-primary" onclick="agregarLineaSalida()" style="margin-top:10px;">
+                <i class="fas fa-plus"></i> Agregar Línea
+            </button>
+            
+            <!-- Totales -->
+            <div class="totales-box" style="margin-top: 20px;">
+                <div class="totales-grid">
+                    <div class="total-item total-final">
+                        <span class="total-label">TOTAL SALIDA:</span>
+                        <span class="total-value" id="salidaTotal">Bs. 0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Observaciones -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Observaciones / Motivo <span id="motivoObligatorio" style="color:#dc3545; display:none;">*</span></label>
+                <textarea id="salidaObservaciones" placeholder="Notas adicionales sobre esta salida..."></textarea>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="cerrarModal('modalSalida')">Cancelar</button>
@@ -536,7 +733,6 @@ require_once '../../includes/header.php';
         </div>
     </div>
 </div>
-
 <!-- Modal Historial -->
 <div class="modal" id="modalHistorial">
     <div class="modal-content large">
@@ -593,6 +789,108 @@ require_once '../../includes/header.php';
         </div>
     </div>
 </div>
+<!-- Modal Devolución a Proveedor -->
+<div class="modal" id="modalDevolucion">
+    <div class="modal-content xlarge">
+        <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #5a32a3); color: white;">
+            <h3><i class="fas fa-undo"></i> Devolución a Proveedor</h3>
+            <button class="modal-close" onclick="cerrarModal('modalDevolucion')" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Información del Documento -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Documento Nº</label>
+                    <input type="text" id="devolucionDocumento" readonly style="background:#e9ecef; font-weight:bold;">
+                </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="devolucionFecha">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Referencia</label>
+                <input type="text" id="devolucionReferencia" placeholder="Ej: Hilo defectuoso, Error en entrega">
+            </div>
+            
+            <!-- Separador -->
+            <hr style="margin: 20px 0; border-color: #e9ecef;">
+            
+            <!-- Paso 1: Seleccionar Ingreso -->
+            <h4><i class="fas fa-search"></i> Paso 1: Seleccione el ingreso a devolver</h4>
+            <p style="color:#6c757d; font-size:0.9rem; margin-bottom:15px;">
+                Haga clic en el ingreso del cual desea devolver productos
+            </p>
+            
+            <div class="ingresos-container" id="ingresosDisponibles">
+                <p style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando ingresos...</p>
+            </div>
+            
+            <!-- Separador -->
+            <hr style="margin: 25px 0; border-color: #e9ecef;">
+            
+            <!-- Paso 2: Líneas del Ingreso -->
+            <div id="seccionLineasDevolucion" style="display:none;">
+                <h4><i class="fas fa-list"></i> Paso 2: Indique las cantidades a devolver</h4>
+                <p style="color:#6c757d; font-size:0.9rem; margin-bottom:15px;">
+                    Las cantidades se valoran al <strong>costo de adquisición original</strong>
+                    ${document.getElementById('devolucionFecha') ? '' : '(con IVA si corresponde)'}
+                </p>
+                
+                <div class="tabla-ingreso-container">
+                    <table class="tabla-lineas">
+                        <thead id="theadDevolucion">
+                            <tr>
+                                <th style="min-width:250px;">PRODUCTO</th>
+                                <th style="width:100px; text-align:center;">CANT.<br>ORIGINAL</th>
+                                <th style="width:100px; text-align:center;">DEVUELTO<br>ANTES</th>
+                                <th style="width:100px; text-align:center; background:#d4edda;">DISPONIBLE</th>
+                                <th style="width:60px; text-align:center;">UNID.</th>
+                                <th style="width:100px; background:#fff3cd; text-align:center;">CANTIDAD<br>A DEVOLVER</th>
+                                <th style="width:120px; text-align:center;">COSTO ADQ.<br>(NETO)</th>
+                                <th style="width:100px; background:#fff9e6; text-align:center;" id="colIVADev">IVA 13%</th>
+                                <th style="width:120px; background:#d4edda; text-align:center;">SUBTOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="devolucionLineasBody"></tbody>
+                    </table>
+                </div>
+                
+                <!-- Totales -->
+                <div class="totales-box" style="margin-top: 20px;">
+                    <div class="totales-grid">
+                        <div class="total-item">
+                            <span class="total-label">Total Neto:</span>
+                            <span class="total-value" id="devolucionTotalNeto">Bs. 0.00</span>
+                        </div>
+                        <div class="total-item" id="rowDevIVA" style="display:none;">
+                            <span class="total-label">IVA 13%:</span>
+                            <span class="total-value iva" id="devolucionIVA">Bs. 0.00</span>
+                        </div>
+                        <div class="total-item total-final">
+                            <span class="total-label">TOTAL A RECLAMAR:</span>
+                            <span class="total-value" id="devolucionTotal">Bs. 0.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Observaciones -->
+                <div class="form-group" style="margin-top: 15px;">
+                    <label>Observaciones / Motivo de Devolución</label>
+                    <textarea id="devolucionObservaciones" placeholder="Describa el motivo de la devolución..."></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="cerrarModal('modalDevolucion')">Cancelar</button>
+            <button class="btn btn-success" onclick="guardarDevolucion()">
+                <i class="fas fa-check"></i> Registrar Devolución
+            </button>
+        </div>
+    </div>
+</div>
 
 <script src="js/materias_primas.js"></script>
+<script src="js/devolucion_proveedor.js"></script> 
 <?php require_once '../../includes/footer.php'; ?>

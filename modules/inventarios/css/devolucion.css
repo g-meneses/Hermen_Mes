@@ -1,0 +1,117 @@
+/* ========================================
+   ESTILOS PARA MODAL DE DEVOLUCIÓN
+   ======================================== */
+
+.ingreso-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.ingreso-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+    transform: translateY(-2px);
+}
+
+.ingreso-card.selected {
+    border-color: #28a745;
+    background: #f0f9f4;
+    box-shadow: 0 4px 12px rgba(40,167,69,0.2);
+}
+
+.ingreso-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.ingreso-numero {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1a1a2e;
+}
+
+.ingreso-fecha {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 4px;
+}
+
+.badge-factura {
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge-factura.con {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-factura.sin {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.ingreso-proveedor {
+    font-size: 0.9rem;
+    color: #495057;
+    margin-bottom: 8px;
+}
+
+.ingreso-proveedor i {
+    color: #6c757d;
+    margin-right: 6px;
+}
+
+.ingreso-total {
+    font-size: 0.95rem;
+    color: #6c757d;
+    padding-top: 8px;
+    border-top: 1px solid #e9ecef;
+}
+
+.ingreso-total strong {
+    color: #1a1a2e;
+}
+
+.ingresos-container {
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+/* Scrollbar personalizado */
+.ingresos-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ingresos-container::-webkit-scrollbar-track {
+    background: #e9ecef;
+    border-radius: 4px;
+}
+
+.ingresos-container::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 4px;
+}
+
+.ingresos-container::-webkit-scrollbar-thumb:hover {
+    background: #495057;
+}
+
+#seccionLineasDevolucion {
+    margin-top: 25px;
+}

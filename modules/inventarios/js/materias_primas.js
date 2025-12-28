@@ -1152,13 +1152,44 @@ async function guardarSalida() {
     }
 }
 
+
+// ========== INTEGRACIÓN CON HISTORIAL_MOVIMIENTOS.JS ==========
+
 function abrirModalHistorial() {
-    alert('Modal Historial - Por implementar');
+    console.log('🔍 Abriendo modal historial...');
+    
+    if (typeof buscarHistorial !== 'function') {
+        console.error('❌ historial_movimientos.js NO está cargado');
+        alert('⚠️ Error: El módulo de historial no está cargado.\n\nVerifique que historial_movimientos.js esté incluido en materias_primas.php');
+        return;
+    }
+    
+    console.log('✅ Módulo historial detectado');
+    
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    
+    document.getElementById('historialDesde').value = primerDia.toISOString().split('T')[0];
+    document.getElementById('historialHasta').value = hoy.toISOString().split('T')[0];
+    document.getElementById('historialTipo').value = '';
+    document.getElementById('historialEstado').value = 'todos';
+    
+    console.log('📊 Cargando historial...');
+    buscarHistorial();
+    
+    document.getElementById('modalHistorial').classList.add('show');
+    console.log('✅ Modal historial abierto');
 }
 
-function verKardex(id) {
-    alert('Modal Kardex - Por implementar');
+function verKardex(id, codigo, nombre) {
+    console.log(`📖 Ver Kardex: ${id} - ${codigo} - ${nombre}`);
+    alert(`Kardex de: ${codigo} - ${nombre}\n\nID: ${id}\n\n(Por implementar en próxima versión)`);
 }
+
+// Exportar funciones globales para historial_movimientos.js
+window.formatNum = formatNum;
+window.toNum = toNum;
+window.baseUrl = baseUrl;
 
 // ========== UTILIDADES ==========
 function cerrarModal(id) { 
@@ -1174,8 +1205,9 @@ function generarNumeroDoc(prefijo) {
     return `${prefijo}-${anio}${mes}${dia}-${rand}`;
 }
 
-console.log('✅ Módulo Materias Primas v1.9 cargado');
+console.log('✅ Módulo Materias Primas v2.1 CORREGIDO cargado');
 console.log('   - Modal Ingreso mejorado v2.0');
 console.log('   - Filtros por tipo proveedor y categoría');
 console.log('   - Cálculo IVA con columnas dinámicas');
 console.log('   - Costos con 4 decimales');
+console.log('   - Integración Historial: ✅');

@@ -2,7 +2,7 @@
 /**
  * API de Ingresos de Materias Primas
  * Sistema MES Hermen Ltda.
- * Versión: 1.1 - Sin conflictos Git
+ * VersiÃ³n: 1.0
  */
 
 ob_start();
@@ -39,6 +39,7 @@ try {
                     $proveedor = $_GET['proveedor'] ?? null;
                     $estado = $_GET['estado'] ?? 'todos';
                     
+
                     // Consulta directa sin depender de la vista
                     $sql = "SELECT 
                                 d.id_documento,
@@ -65,6 +66,7 @@ try {
                             WHERE d.tipo_documento = 'INGRESO' 
                             AND d.fecha_documento BETWEEN ? AND ?";
                     $params = [$desde, $hasta];
+                    
                     
                     if ($proveedor) {
                         $sql .= " AND d.id_proveedor = ?";
@@ -98,20 +100,21 @@ try {
                         exit();
                     }
                     
-                    // Documento principal
+                    
+                    // Documento principal - Consulta directa sin vista
                     $stmt = $db->prepare("
                         SELECT 
                             d.*,
                             p.codigo AS proveedor_codigo,
                             p.razon_social AS proveedor_nombre,
-                            p.nombre_comercial AS proveedor_comercial
+                            p.nombre_comercial AS proveedor_comercial,
+                            p.tipo AS proveedor_tipo
                         FROM documentos_inventario d
                         LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
                         WHERE d.id_documento = ?
                     ");
                     $stmt->execute([$id]);
                     $documento = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
                     if (!$documento) {
                         echo json_encode(['success' => false, 'message' => 'Documento no encontrado']);
                         exit();
@@ -141,7 +144,7 @@ try {
                     break;
                     
                 case 'siguiente_numero':
-                    // Obtener siguiente número de documento
+                    // Obtener siguiente nÃºmero de documento
                     $numero = generarNumeroDocumento($db, 'INGRESO', 'ING-MP');
                     ob_clean();
                     echo json_encode(['success' => true, 'numero' => $numero]);
@@ -169,20 +172,13 @@ try {
                     $stmt->execute([$TIPO_INVENTARIO_MP, $mes, $anio]);
                     $resumen = $stmt->fetch(PDO::FETCH_ASSOC);
                     
-                    // Últimos 5 ingresos
+                    // Ãšltimos 5 ingresos
                     $stmtUlt = $db->prepare("
-                        SELECT 
-                            d.id_documento, 
-                            d.numero_documento, 
-                            d.fecha_documento, 
-                            p.nombre_comercial AS proveedor_comercial, 
-                            p.razon_social AS proveedor_nombre, 
-                            d.total, 
-                            d.estado
-                        FROM documentos_inventario d
-                        LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
-                        WHERE d.tipo_documento = 'INGRESO'
-                        ORDER BY d.fecha_documento DESC, d.id_documento DESC 
+                        SELECT d.id_documento, d.numero_documento, d.fecha_documento, 
+                               p.nombre_comercial AS proveedor_comercial, p.razon_social AS proveedor_nombre, total, estado
+                        FROM documentos_inventario d LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor 
+                        WHERE d.tipo_documento = 'INGRESO' AND d.id_tipo_inventario = 1
+                        ORDER BY fecha_documento DESC, id_documento DESC 
                         LIMIT 5
                     ");
                     $stmtUlt->execute();
@@ -238,7 +234,7 @@ try {
                     break;
                     
                 case 'categorias':
-                    // Categorías de materias primas
+                    // CategorÃ­as de materias primas
                     $stmt = $db->prepare("
                         SELECT id_categoria, codigo, nombre 
                         FROM categorias_inventario 
@@ -296,7 +292,7 @@ try {
                     
                 default:
                     ob_clean();
-                    echo json_encode(['success' => false, 'message' => 'Acción no válida']);
+                    echo json_encode(['success' => false, 'message' => 'AcciÃ³n no vÃ¡lida']);
             }
             break;
             
@@ -313,24 +309,24 @@ try {
                     }
                     
                     if (empty($data['lineas']) || count($data['lineas']) === 0) {
-                        echo json_encode(['success' => false, 'message' => 'Agregue al menos una línea']);
+                        echo json_encode(['success' => false, 'message' => 'Agregue al menos una lÃ­nea']);
                         exit();
                     }
                     
                     $db->beginTransaction();
                     
                     try {
-                        // Generar número de documento
+                        // Generar nÃºmero de documento
                         $numeroDoc = generarNumeroDocumento($db, 'INGRESO', 'ING-MP');
                         
-                        // Calcular totales desde las líneas
+                        // Calcular totales desde las lÃ­neas
                         $totalDocumento = 0;
                         $totalNeto = 0;
                         $iva = 0;
                         $conFactura = $data['con_factura'] ?? false;
                         
                         foreach ($data['lineas'] as $linea) {
-                            $subtotalLinea = floatval($linea['subtotal'] ?? 0);
+                            $subtotalLinea = floatval($linea['subtotal'] ?? ($linea['cantidad'] * $linea['costo_unitario']));
                             $totalDocumento += $subtotalLinea;
                             
                             if ($conFactura) {
@@ -372,11 +368,11 @@ try {
                         
                         $idDocumento = $db->lastInsertId();
                         
-                        // Insertar líneas y actualizar stock
+                        // Insertar lÃ­neas y actualizar stock
                         $stmtLinea = $db->prepare("
                             INSERT INTO documentos_inventario_detalle (
-                                id_documento, id_inventario, cantidad, costo_unitario, subtotal
-                            ) VALUES (?, ?, ?, ?, ?)
+                                id_documento, id_inventario, cantidad, costo_unitario, costo_con_iva, subtotal
+                            ) VALUES (?, ?, ?, ?, ?, ?)
                         ");
                         
                         $stmtStock = $db->prepare("
@@ -400,15 +396,18 @@ try {
                         
                         foreach ($data['lineas'] as $linea) {
                             $cantidad = floatval($linea['cantidad']);
-                            $costoUnit = floatval($linea['costo_unitario']);
-                            $subtotalLinea = floatval($linea['subtotal']);
+                            $subtotalLinea = floatval($linea['subtotal'] ?? 0);
+                            $costoConIva = $cantidad > 0 ? $subtotalLinea / $cantidad : 0;
+                            // Costo IVA = Costo Bruto * 0.87
+                            $costoUnit = $conFactura ? $costoConIva * 0.87 : $costoConIva;
                             
-                            // Insertar línea
+                            // Insertar lÃ­nea
                             $stmtLinea->execute([
                                 $idDocumento,
                                 $linea['id_inventario'],
                                 $cantidad,
                                 $costoUnit,       // Costo sin IVA (para inventario)
+                                $costoConIva,     // Costo bruto (del documento)
                                 $subtotalLinea    // Subtotal del documento
                             ]);
                             
@@ -471,7 +470,7 @@ try {
                     $db->beginTransaction();
                     
                     try {
-                        // Verificar que el documento existe y está confirmado
+                        // Verificar que el documento existe y estÃ¡ confirmado
                         $stmt = $db->prepare("SELECT * FROM documentos_inventario WHERE id_documento = ? AND estado = 'CONFIRMADO'");
                         $stmt->execute([$id]);
                         $doc = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -492,7 +491,7 @@ try {
                         foreach ($lineas as $linea) {
                             $stmtRevert->execute([$linea['cantidad'], $linea['id_inventario']]);
                             
-                            // Registrar en Kardex la reversión
+                            // Registrar en Kardex la reversiÃ³n
                             $stmtStockAct = $db->prepare("SELECT stock_actual FROM inventarios WHERE id_inventario = ?");
                             $stmtStockAct->execute([$linea['id_inventario']]);
                             $stockActual = floatval($stmtStockAct->fetchColumn());
@@ -513,7 +512,7 @@ try {
                                 $linea['subtotal'],
                                 $stockActual + $linea['cantidad'],
                                 $stockActual,
-                                'Anulación: ' . $motivo,
+                                'AnulaciÃ³n: ' . $motivo,
                                 $_SESSION['user_id'] ?? null
                             ]);
                         }
@@ -542,13 +541,13 @@ try {
                     
                 default:
                     ob_clean();
-                    echo json_encode(['success' => false, 'message' => 'Acción no válida']);
+                    echo json_encode(['success' => false, 'message' => 'AcciÃ³n no vÃ¡lida']);
             }
             break;
             
         default:
             ob_clean();
-            echo json_encode(['success' => false, 'message' => 'Método no permitido']);
+            echo json_encode(['success' => false, 'message' => 'MÃ©todo no permitido']);
     }
     
 } catch(PDOException $e) {
@@ -568,7 +567,7 @@ try {
 }
 
 /**
- * Genera el siguiente número de documento
+ * Genera el siguiente nÃºmero de documento
  */
 function generarNumeroDocumento($db, $tipo, $prefijo) {
     $anio = date('Y');

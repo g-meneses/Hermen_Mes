@@ -44,6 +44,7 @@ try {
                                 d.fecha_documento,
                                 d.tipo_documento,
                                 d.referencia_externa,
+                                d.tipo_salida,
                                 d.total,
                                 d.estado,
                                 d.observaciones,
@@ -180,6 +181,52 @@ try {
                     foreach ($detalle as &$linea) {
                         $linea['cantidad_disponible'] = $linea['cantidad_original'] - $linea['cantidad_devuelta'];
                     }
+                    
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'documento' => $documento,
+                        'detalle' => $detalle
+                    ]);
+                    break;
+                    
+                case 'get':
+                    // Obtener un documento de salida con su detalle
+                    $id = $_GET['id'] ?? null;
+                    if (!$id) {
+                        echo json_encode(['success' => false, 'message' => 'ID requerido']);
+                        exit();
+                    }
+                    
+                    // Documento principal
+                    $stmt = $db->prepare("
+                        SELECT 
+                            d.*
+                        FROM documentos_inventario d
+                        WHERE d.id_documento = ? AND d.tipo_documento = 'SALIDA'
+                    ");
+                    $stmt->execute([$id]);
+                    $documento = $stmt->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$documento) {
+                        echo json_encode(['success' => false, 'message' => 'Documento no encontrado']);
+                        exit();
+                    }
+                    
+                    // Detalle del documento
+                    $stmtDet = $db->prepare("
+                        SELECT 
+                            dd.*,
+                            i.codigo AS producto_codigo,
+                            i.nombre AS producto_nombre,
+                            um.abreviatura AS unidad
+                        FROM documentos_inventario_detalle dd
+                        JOIN inventarios i ON dd.id_inventario = i.id_inventario
+                        LEFT JOIN unidades_medida um ON i.id_unidad = um.id_unidad
+                        WHERE dd.id_documento = ?
+                    ");
+                    $stmtDet->execute([$id]);
+                    $detalle = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
                     
                     ob_clean();
                     echo json_encode([
@@ -399,6 +446,87 @@ try {
                             'message' => "Salida $numeroDoc registrada exitosamente",
                             'id_documento' => $idDocumento,
                             'numero_documento' => $numeroDoc
+                        ]);
+                        
+                    } catch (Exception $e) {
+                        $db->rollBack();
+                        throw $e;
+                    }
+                    break;
+                    
+                case 'anular':
+                    $id = $data['id_documento'] ?? null;
+                    $motivo = $data['motivo'] ?? 'Sin especificar';
+                    
+                    if (!$id) {
+                        echo json_encode(['success' => false, 'message' => 'ID requerido']);
+                        exit();
+                    }
+                    
+                    $db->beginTransaction();
+                    
+                    try {
+                        // Verificar que el documento existe y está confirmado
+                        $stmt = $db->prepare("SELECT * FROM documentos_inventario WHERE id_documento = ? AND estado = 'CONFIRMADO'");
+                        $stmt->execute([$id]);
+                        $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        if (!$doc) {
+                            echo json_encode(['success' => false, 'message' => 'Documento no encontrado o ya anulado']);
+                            exit();
+                        }
+                        
+                        // Obtener detalle para revertir stock (sumar de vuelta)
+                        $stmtDet = $db->prepare("SELECT * FROM documentos_inventario_detalle WHERE id_documento = ?");
+                        $stmtDet->execute([$id]);
+                        $lineas = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        // Revertir stock (sumar porque fue una salida)
+                        $stmtRevert = $db->prepare("UPDATE inventarios SET stock_actual = stock_actual + ? WHERE id_inventario = ?");
+                        
+                        foreach ($lineas as $linea) {
+                            $stmtRevert->execute([$linea['cantidad'], $linea['id_inventario']]);
+                            
+                            // Registrar en Kardex la reversión
+                            $stmtStockAct = $db->prepare("SELECT stock_actual FROM inventarios WHERE id_inventario = ?");
+                            $stmtStockAct->execute([$linea['id_inventario']]);
+                            $stockActual = floatval($stmtStockAct->fetchColumn());
+                            
+                            $stmtKardex = $db->prepare("
+                                INSERT INTO kardex_inventario (
+                                    id_inventario, fecha_movimiento, tipo_movimiento, id_documento,
+                                    documento_referencia, cantidad, costo_unitario, costo_total,
+                                    stock_anterior, stock_posterior, observaciones, creado_por
+                                ) VALUES (?, NOW(), 'ENTRADA', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ");
+                            $stmtKardex->execute([
+                                $linea['id_inventario'],
+                                $id,
+                                $doc['numero_documento'] . ' (ANULADO)',
+                                $linea['cantidad'],
+                                $linea['costo_unitario'],
+                                $linea['subtotal'],
+                                $stockActual - $linea['cantidad'],
+                                $stockActual,
+                                'Anulación: ' . $motivo,
+                                $_SESSION['user_id'] ?? null
+                            ]);
+                        }
+                        
+                        // Marcar documento como anulado
+                        $stmtAnular = $db->prepare("
+                            UPDATE documentos_inventario 
+                            SET estado = 'ANULADO', fecha_anulacion = NOW(), observaciones = CONCAT(COALESCE(observaciones, ''), '\nANULADO: ', ?), actualizado_por = ?
+                            WHERE id_documento = ?
+                        ");
+                        $stmtAnular->execute([$motivo, $_SESSION['user_id'] ?? null, $id]);
+                        
+                        $db->commit();
+                        
+                        ob_clean();
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Documento anulado exitosamente'
                         ]);
                         
                     } catch (Exception $e) {

@@ -391,6 +391,129 @@ require_once '../../includes/header.php';
     color: #212529 !important;
     font-weight: 700 !important;
 }
+/* ========================================
+   ESTILOS PARA MODAL DE HISTORIAL
+   ======================================== */
+
+/* Badges de tipo de movimiento */
+.badge-tipo-mov {
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.badge-tipo-mov.ingreso {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.badge-tipo-mov.produccion {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.badge-tipo-mov.venta {
+    background: linear-gradient(135deg, #17a2b8, #117a8b);
+    color: white;
+}
+
+.badge-tipo-mov.muestras {
+    background: linear-gradient(135deg, #6f42c1, #5a32a3);
+    color: white;
+}
+
+.badge-tipo-mov.ajuste {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: #212529;
+}
+
+.badge-tipo-mov.devolucion {
+    background: linear-gradient(135deg, #fd7e14, #e8590c);
+    color: white;
+}
+
+.badge-tipo-mov.salida {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+/* Badges de estado */
+.badge-estado {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.badge-estado.confirmado {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-estado.anulado {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.badge-estado.pendiente {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* Botones de acciones */
+.btn-icon.ver {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-icon.ver:hover {
+    background: #138496;
+}
+
+.btn-icon.anular {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-icon.anular:hover {
+    background: #c82333;
+}
+
+/* Tabla de detalle */
+.tabla-detalle {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 0.9rem;
+}
+
+.tabla-detalle thead th {
+    background: #343a40;
+    color: white;
+    padding: 12px 10px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.tabla-detalle tbody td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.tabla-detalle tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.tabla-detalle tfoot td {
+    padding: 15px 10px;
+    font-size: 1rem;
+}
 </style>
 
 <div class="mp-module">
@@ -736,23 +859,99 @@ require_once '../../includes/header.php';
 <!-- Modal Historial -->
 <div class="modal" id="modalHistorial">
     <div class="modal-content large">
-        <div class="modal-header">
+        <div class="modal-header" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white;">
             <h3><i class="fas fa-history"></i> Historial de Movimientos</h3>
-            <button class="modal-close" onclick="cerrarModal('modalHistorial')">&times;</button>
+            <button class="modal-close" onclick="cerrarModal('modalHistorial')" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
         <div class="modal-body">
+            <!-- Filtros -->
             <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <div class="form-group" style="flex:1; min-width: 120px;"><label>Desde</label><input type="date" id="historialDesde"></div>
-                <div class="form-group" style="flex:1; min-width: 120px;"><label>Hasta</label><input type="date" id="historialHasta"></div>
-                <div class="form-group" style="flex:1; min-width: 120px;"><label>Tipo</label>
-                    <select id="historialTipo"><option value="">Todos</option><option value="ENTRADA">Entradas</option><option value="SALIDA">Salidas</option></select>
+                <div class="form-group" style="flex:1; min-width: 150px;">
+                    <label style="font-size:0.85rem; font-weight:600;">Desde</label>
+                    <input type="date" id="historialDesde" style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
                 </div>
-                <div class="form-group" style="align-self: flex-end;"><button class="btn btn-primary" onclick="buscarHistorial()"><i class="fas fa-search"></i> Buscar</button></div>
+                <div class="form-group" style="flex:1; min-width: 150px;">
+                    <label style="font-size:0.85rem; font-weight:600;">Hasta</label>
+                    <input type="date" id="historialHasta" style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                </div>
+                <div class="form-group" style="flex:1; min-width: 150px;">
+                    <label style="font-size:0.85rem; font-weight:600;">Tipo</label>
+                    <select id="historialTipo" style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                        <option value="">📋 Todos los movimientos</option>
+                        <optgroup label="➕ ENTRADAS">
+                            <option value="INGRESO">📥 Ingresos</option>
+                        </optgroup>
+                        <optgroup label="➖ SALIDAS">
+                            <option value="SALIDA">📤 Todas las salidas</option>
+                            <option value="PRODUCCION">🏭 Producción</option>
+                            <option value="VENTA">💰 Venta</option>
+                            <option value="DEVOLUCION">↩️ Devolución</option>
+                            <option value="MUESTRAS">🎁 Muestras</option>
+                            <option value="AJUSTE">⚙️ Ajuste</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1; min-width: 150px;">
+                    <label style="font-size:0.85rem; font-weight:600;">Estado</label>
+                    <select id="historialEstado" style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                        <option value="todos">Todos</option>
+                        <option value="CONFIRMADO">Confirmados</option>
+                        <option value="ANULADO">Anulados</option>
+                    </select>
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                    <button class="btn btn-primary" onclick="buscarHistorial()" style="padding:9px 20px;">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
             </div>
-            <table class="productos-table">
-                <thead><tr><th>Fecha</th><th>Documento</th><th>Tipo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead>
-                <tbody id="historialBody"></tbody>
-            </table>
+            
+            <!-- Tabla -->
+            <div style="overflow-x: auto;">
+                <table class="productos-table">
+                    <thead>
+                        <tr>
+                            <th style="width:100px;">Fecha</th>
+                            <th style="width:180px;">Documento</th>
+                            <th style="width:150px;">Tipo</th>
+                            <th style="width:120px; text-align:right;">Total</th>
+                            <th style="width:120px; text-align:center;">Estado</th>
+                            <th>Observaciones</th>
+                            <th style="width:100px; text-align:center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historialBody">
+                        <tr>
+                            <td colspan="7" style="text-align:center; padding:30px; color:#6c757d;">
+                                <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i><br>
+                                Cargando...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="cerrarModal('modalHistorial')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle de Documento -->
+<div class="modal" id="modalDetalle">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="detalleTitulo"><i class="fas fa-file-alt"></i> Detalle de Documento</h3>
+            <button class="modal-close" onclick="cerrarModal('modalDetalle')">&times;</button>
+        </div>
+        <div class="modal-body" id="detalleContenido">
+            <!-- Se carga dinámicamente -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-danger" id="btnAnularDetalle" style="display:none;">
+                <i class="fas fa-ban"></i> Anular Documento
+            </button>
+            <button class="btn btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
         </div>
     </div>
 </div>
@@ -890,7 +1089,26 @@ require_once '../../includes/header.php';
         </div>
     </div>
 </div>
+<!-- Modal Detalle de Documento -->
+<div class="modal" id="modalDetalle">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="detalleTitulo"><i class="fas fa-file-alt"></i> Detalle de Documento</h3>
+            <button class="modal-close" onclick="cerrarModal('modalDetalle')">&times;</button>
+        </div>
+        <div class="modal-body" id="detalleContenido">
+            <!-- Se carga dinámicamente -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-danger" id="btnAnularDetalle" style="display:none;">
+                <i class="fas fa-ban"></i> Anular Documento
+            </button>
+            <button class="btn btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
+        </div>
+    </div>
+</div>
 
 <script src="js/materias_primas.js"></script>
 <script src="js/devolucion_proveedor.js"></script> 
+<script src="js/historial_movimientos.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

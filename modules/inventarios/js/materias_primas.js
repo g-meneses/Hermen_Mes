@@ -10,7 +10,8 @@ const TIPO_ID = document.querySelector('.mp-title-icon')?.dataset?.tipoId || 1;
 let categorias = [], subcategorias = [], productos = [], productosCompletos = [];
 let unidades = [], proveedores = [];
 let categoriaSeleccionada = null, subcategoriaSeleccionada = null;
-let lineasIngreso = [], lineasSalida = [];
+//let lineasIngreso = [],//
+let lineasSalida = [];
 let documentoActual = null;
 let productosFiltrados = [];
 let modoConFactura = false;

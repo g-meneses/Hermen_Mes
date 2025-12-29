@@ -524,6 +524,27 @@ require_once '../../includes/header.php';
 .alert-info i {
     font-size: 1.2rem;
 }
+
+/* Clase para ocultar elementos */
+.d-none {
+    display: none !important;
+}
+
+/* Mejoras visuales para las secciones dinámicas */
+#seccionArea, #seccionMotivo, #seccionAutorizacion, #seccionUbicacion {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 </style>
 
 <div class="mp-module">
@@ -644,19 +665,24 @@ require_once '../../includes/header.php';
             <button class="modal-close" onclick="cerrarModal('modalIngreso')" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
         <div class="modal-body">
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- NUEVA SECCIÓN: TIPO DE INGRESO -->
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <div class="form-row">
-                <div class="form-group" style="flex: 2;">
-                    <label>📋 Tipo de Ingreso *</label>
-                    <select id="ingresoTipoIngreso" onchange="cambiarTipoIngreso()" style="padding:10px; border:2px solid #28a745; border-radius:8px; font-weight:600;">
-                        <option value="COMPRA">🛒 Compra a Proveedor</option>
-                        <option value="DEVOLUCION_PRODUCCION">↩️ Devolución de Producción</option>
-                        <option value="AJUSTE_POSITIVO">⚙️ Ajuste Positivo</option>
-                        <option value="INGRESO_INICIAL">📦 Ingreso Inicial</option>
+            
+            <!-- ⭐ SELECTOR DE TIPO DE INGRESO -->
+            <div class="form-row" style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                <div class="form-group" style="flex: 1; margin: 0;">
+                    <label style="color: white; font-weight: 600; font-size: 0.95rem;">
+                        <i class="fas fa-clipboard-list"></i> Tipo de Ingreso 
+                        <span style="color: #ffe066;">*</span>
+                    </label>
+                    <select id="ingresoTipoIngreso" required class="form-control" 
+                            onchange="cambiarTipoIngreso()" 
+                            style="font-size: 1.05rem; font-weight: 500; padding: 12px;">
+                        <option value="">Seleccione tipo de ingreso...</option>
                     </select>
                 </div>
+            </div>
+            
+            <!-- Fila 1: Documento y Fecha -->
+            <div class="form-row">
                 <div class="form-group">
                     <label>Documento Nº</label>
                     <input type="text" id="ingresoDocumento" readonly style="background:#e9ecef; font-weight:bold;">
@@ -667,11 +693,8 @@ require_once '../../includes/header.php';
                 </div>
             </div>
             
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- SECCIÓN CONDICIONAL: COMPRA (mostrar solo si tipo = COMPRA) -->
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <div id="seccionCompra">
-                <!-- Filtro Tipo Proveedor y Proveedor -->
+            <!-- ⭐ SECCIÓN PROVEEDOR (se muestra/oculta dinámicamente) -->
+            <div id="seccionProveedor" class="d-none">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Tipo Proveedor</label>
@@ -683,18 +706,22 @@ require_once '../../includes/header.php';
                     </div>
                     <div class="form-group">
                         <label>Proveedor</label>
-                        <select id="ingresoProveedor" onchange="actualizarInfoProveedor()"></select>
+                        <select id="ingresoProveedor" onchange="actualizarInfoProveedor()">
+                            <option value="">Seleccione proveedor...</option>
+                        </select>
                     </div>
                 </div>
                 
-                <!-- Info Proveedor -->
+                <!-- Info Proveedor (se muestra al seleccionar) -->
                 <div id="infoProveedorBox" class="info-proveedor-box" style="display:none;">
                     <span id="infoProveedorTipo" class="badge-tipo"></span>
                     <span id="infoProveedorMoneda" class="badge-moneda"></span>
                     <span id="infoProveedorPago"></span>
                 </div>
-                
-                <!-- Nº Factura y Checkbox -->
+            </div>
+            
+            <!-- ⭐ SECCIÓN FACTURA (se muestra/oculta) -->
+            <div id="seccionFactura" class="d-none">
                 <div class="form-row">
                     <div class="form-group">
                         <label>Nº Factura / Documento</label>
@@ -709,61 +736,53 @@ require_once '../../includes/header.php';
                 </div>
             </div>
             
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- SECCIÓN CONDICIONAL: DEVOLUCIÓN DE PRODUCCIÓN -->
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <div id="seccionDevolucion" style="display:none;">
+            <!-- ⭐ SECCIÓN ÁREA DE PRODUCCIÓN (para devoluciones) -->
+            <div id="seccionArea" class="d-none" style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>🔍 Documento de Salida Original</label>
-                        <input type="text" id="ingresoDocumentoOrigen" placeholder="Buscar documento de salida...">
-                        <small style="color:#6c757d;">Ingrese el número del documento de salida que generó esta devolución</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Referencia</label>
-                        <input type="text" id="ingresoReferenciaDevolucion" placeholder="Ej: Sobrante de Producción">
-                    </div>
-                </div>
-            </div>
-            
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- SECCIÓN CONDICIONAL: AJUSTE POSITIVO -->
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <div id="seccionAjuste" style="display:none;">
-                <div class="alert-info" style="background:#e7f3ff; padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid #17a2b8;">
-                    <strong><i class="fas fa-info-circle"></i> Ajuste Positivo:</strong>
-                    Use este tipo de ingreso para corregir diferencias encontradas en inventario físico o para agregar stock sin documento de compra.
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Motivo del Ajuste *</label>
-                        <select id="ingresoMotivoAjuste">
-                            <option value="">Seleccione...</option>
-                            <option value="INVENTARIO_FISICO">Diferencia en inventario físico</option>
-                            <option value="ERROR_SISTEMA">Corrección de error de sistema</option>
-                            <option value="MERMA_RECUPERADA">Merma recuperada</option>
-                            <option value="OTRO">Otro motivo</option>
+                    <div class="form-group" style="flex: 1;">
+                        <label>🏭 Área que Devuelve <span class="text-danger">*</span></label>
+                        <select id="ingresoArea" class="form-control">
+                            <option value="">Seleccione área...</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Referencia</label>
-                        <input type="text" id="ingresoReferenciaAjuste" placeholder="Ej: Acta de inventario Nº 001">
+                    <div class="form-group" style="flex: 1;">
+                        <label>👤 Responsable Entrega</label>
+                        <input type="text" id="ingresoResponsableEntrega" class="form-control" placeholder="Nombre del operario">
                     </div>
                 </div>
             </div>
             
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <!-- SECCIÓN CONDICIONAL: INGRESO INICIAL -->
-            <!-- ═══════════════════════════════════════════════════════ -->
-            <div id="seccionIngresoInicial" style="display:none;">
-                <div class="alert-info" style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid #ffc107;">
-                    <strong><i class="fas fa-exclamation-triangle"></i> Ingreso Inicial:</strong>
-                    Use este tipo solo para la carga inicial de inventario al implementar el sistema. No debe usarse para operaciones normales.
+            <!-- ⭐ SECCIÓN MOTIVO (para devoluciones y ajustes) -->
+            <div id="seccionMotivo" class="d-none" style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div class="form-group" style="margin: 0;">
+                    <label>📋 Motivo <span class="text-danger">*</span></label>
+                    <select id="ingresoMotivo" class="form-control">
+                        <option value="">Seleccione motivo...</option>
+                    </select>
                 </div>
+            </div>
+            
+            <!-- ⭐ SECCIÓN AUTORIZACIÓN (para ajustes) -->
+            <div id="seccionAutorizacion" class="d-none" style="background: #f8d7da; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div class="form-group" style="margin: 0;">
+                    <label>✅ Autorizado Por <span class="text-danger">*</span></label>
+                    <select id="ingresoAutorizadoPor" class="form-control">
+                        <option value="">Seleccione usuario...</option>
+                        <!-- Se llenará con usuarios con permisos de autorización -->
+                    </select>
+                </div>
+            </div>
+            
+            <!-- ⭐ SECCIÓN UBICACIÓN (para inventario inicial) -->
+            <div id="seccionUbicacion" class="d-none" style="background: #d1ecf1; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Referencia</label>
-                        <input type="text" id="ingresoReferenciaInicial" placeholder="Ej: Inventario inicial 2025">
+                    <div class="form-group" style="flex: 1;">
+                        <label>📍 Ubicación / Almacén</label>
+                        <input type="text" id="ingresoUbicacion" class="form-control" placeholder="Ej: Almacén Principal">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>👤 Responsable Conteo</label>
+                        <input type="text" id="ingresoResponsableConteo" class="form-control" placeholder="Nombre">
                     </div>
                 </div>
             </div>
@@ -795,7 +814,7 @@ require_once '../../includes/header.php';
             <div class="tabla-ingreso-container">
                 <table class="tabla-lineas" id="tablaLineasIngreso">
                     <thead id="theadIngreso">
-                        <!-- Se genera dinámicamente según Con Factura -->
+                        <!-- Se genera dinámicamente según tipo de ingreso -->
                     </thead>
                     <tbody id="ingresoLineasBody"></tbody>
                 </table>
@@ -1199,6 +1218,7 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
+<script src="js/materias_primas_dinamico.js"></script>
 <script src="js/materias_primas.js"></script>
 <script src="js/devolucion_proveedor.js"></script> 
 <script src="js/historial_movimientos.js"></script>

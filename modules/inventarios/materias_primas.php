@@ -514,6 +514,16 @@ require_once '../../includes/header.php';
     padding: 15px 10px;
     font-size: 1rem;
 }
+
+.alert-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert-info i {
+    font-size: 1.2rem;
+}
 </style>
 
 <div class="mp-module">
@@ -634,8 +644,19 @@ require_once '../../includes/header.php';
             <button class="modal-close" onclick="cerrarModal('modalIngreso')" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
         <div class="modal-body">
-            <!-- Fila 1: Documento y Fecha -->
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- NUEVA SECCIÓN: TIPO DE INGRESO -->
+            <!-- ═══════════════════════════════════════════════════════ -->
             <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label>📋 Tipo de Ingreso *</label>
+                    <select id="ingresoTipoIngreso" onchange="cambiarTipoIngreso()" style="padding:10px; border:2px solid #28a745; border-radius:8px; font-weight:600;">
+                        <option value="COMPRA">🛒 Compra a Proveedor</option>
+                        <option value="DEVOLUCION_PRODUCCION">↩️ Devolución de Producción</option>
+                        <option value="AJUSTE_POSITIVO">⚙️ Ajuste Positivo</option>
+                        <option value="INGRESO_INICIAL">📦 Ingreso Inicial</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Documento Nº</label>
                     <input type="text" id="ingresoDocumento" readonly style="background:#e9ecef; font-weight:bold;">
@@ -646,39 +667,103 @@ require_once '../../includes/header.php';
                 </div>
             </div>
             
-            <!-- Fila 2: Filtro Tipo Proveedor y Proveedor -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Tipo Proveedor</label>
-                    <select id="ingresoTipoProveedor" onchange="filtrarProveedoresIngreso()">
-                        <option value="TODOS">📋 Todos los proveedores</option>
-                        <option value="LOCAL">🇧🇴 Proveedores Locales</option>
-                        <option value="IMPORTACION">🌎 Proveedores Importación</option>
-                    </select>
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- SECCIÓN CONDICIONAL: COMPRA (mostrar solo si tipo = COMPRA) -->
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <div id="seccionCompra">
+                <!-- Filtro Tipo Proveedor y Proveedor -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo Proveedor</label>
+                        <select id="ingresoTipoProveedor" onchange="filtrarProveedoresIngreso()">
+                            <option value="TODOS">📋 Todos los proveedores</option>
+                            <option value="LOCAL">🇧🇴 Proveedores Locales</option>
+                            <option value="IMPORTACION">🌎 Proveedores Importación</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Proveedor</label>
+                        <select id="ingresoProveedor" onchange="actualizarInfoProveedor()"></select>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Proveedor</label>
-                    <select id="ingresoProveedor" onchange="actualizarInfoProveedor()"></select>
+                
+                <!-- Info Proveedor -->
+                <div id="infoProveedorBox" class="info-proveedor-box" style="display:none;">
+                    <span id="infoProveedorTipo" class="badge-tipo"></span>
+                    <span id="infoProveedorMoneda" class="badge-moneda"></span>
+                    <span id="infoProveedorPago"></span>
+                </div>
+                
+                <!-- Nº Factura y Checkbox -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nº Factura / Documento</label>
+                        <input type="text" id="ingresoReferencia" placeholder="Ej: FAC-001234">
+                    </div>
+                    <div class="form-group" style="display:flex; align-items:flex-end;">
+                        <div class="checkbox-iva" style="margin:0; flex:1;">
+                            <input type="checkbox" id="ingresoConFactura" onchange="toggleModoFactura()">
+                            <label for="ingresoConFactura"><strong>Con Factura</strong> - Incluir IVA 13%</label>
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <!-- Info Proveedor (se muestra al seleccionar) -->
-            <div id="infoProveedorBox" class="info-proveedor-box" style="display:none;">
-                <span id="infoProveedorTipo" class="badge-tipo"></span>
-                <span id="infoProveedorMoneda" class="badge-moneda"></span>
-                <span id="infoProveedorPago"></span>
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- SECCIÓN CONDICIONAL: DEVOLUCIÓN DE PRODUCCIÓN -->
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <div id="seccionDevolucion" style="display:none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>🔍 Documento de Salida Original</label>
+                        <input type="text" id="ingresoDocumentoOrigen" placeholder="Buscar documento de salida...">
+                        <small style="color:#6c757d;">Ingrese el número del documento de salida que generó esta devolución</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Referencia</label>
+                        <input type="text" id="ingresoReferenciaDevolucion" placeholder="Ej: Sobrante de Producción">
+                    </div>
+                </div>
             </div>
             
-            <!-- Fila 3: Nº Factura y Checkbox -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Nº Factura / Documento</label>
-                    <input type="text" id="ingresoReferencia" placeholder="Ej: FAC-001234">
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- SECCIÓN CONDICIONAL: AJUSTE POSITIVO -->
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <div id="seccionAjuste" style="display:none;">
+                <div class="alert-info" style="background:#e7f3ff; padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid #17a2b8;">
+                    <strong><i class="fas fa-info-circle"></i> Ajuste Positivo:</strong>
+                    Use este tipo de ingreso para corregir diferencias encontradas en inventario físico o para agregar stock sin documento de compra.
                 </div>
-                <div class="form-group" style="display:flex; align-items:flex-end;">
-                    <div class="checkbox-iva" style="margin:0; flex:1;">
-                        <input type="checkbox" id="ingresoConFactura" onchange="toggleModoFactura()">
-                        <label for="ingresoConFactura"><strong>Con Factura</strong> - Incluir IVA 13%</label>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Motivo del Ajuste *</label>
+                        <select id="ingresoMotivoAjuste">
+                            <option value="">Seleccione...</option>
+                            <option value="INVENTARIO_FISICO">Diferencia en inventario físico</option>
+                            <option value="ERROR_SISTEMA">Corrección de error de sistema</option>
+                            <option value="MERMA_RECUPERADA">Merma recuperada</option>
+                            <option value="OTRO">Otro motivo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Referencia</label>
+                        <input type="text" id="ingresoReferenciaAjuste" placeholder="Ej: Acta de inventario Nº 001">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <!-- SECCIÓN CONDICIONAL: INGRESO INICIAL -->
+            <!-- ═══════════════════════════════════════════════════════ -->
+            <div id="seccionIngresoInicial" style="display:none;">
+                <div class="alert-info" style="background:#fff3cd; padding:15px; border-radius:8px; margin-bottom:15px; border-left:4px solid #ffc107;">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Ingreso Inicial:</strong>
+                    Use este tipo solo para la carga inicial de inventario al implementar el sistema. No debe usarse para operaciones normales.
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Referencia</label>
+                        <input type="text" id="ingresoReferenciaInicial" placeholder="Ej: Inventario inicial 2025">
                     </div>
                 </div>
             </div>
@@ -878,9 +963,15 @@ require_once '../../includes/header.php';
                     <label style="font-size:0.85rem; font-weight:600;">Tipo</label>
                     <select id="historialTipo" style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
                         <option value="">📋 Todos los movimientos</option>
-                        <optgroup label="➕ ENTRADAS">
-                            <option value="INGRESO">📥 Ingresos</option>
+                        
+                        <optgroup label="➕ INGRESOS">
+                            <option value="INGRESO">📥 Todos los ingresos</option>
+                            <option value="COMPRA">🛒 Compras</option>
+                            <option value="DEVOLUCION_PRODUCCION">↩️ Devolución Producción</option>
+                            <option value="AJUSTE_POSITIVO">⚙️ Ajuste Positivo</option>
+                            <option value="INGRESO_INICIAL">📦 Ingreso Inicial</option>
                         </optgroup>
+                        
                         <optgroup label="➖ SALIDAS">
                             <option value="SALIDA">📤 Todas las salidas</option>
                             <option value="PRODUCCION">🏭 Producción</option>

@@ -1217,9 +1217,9 @@ require_once '../../includes/header.php';
         </div>
     </div>
 </div>
-
-<script src="js/materias_primas_dinamico.js"></script>
+<!-- Scripts -->
 <script src="js/materias_primas.js"></script>
+<script src="js/materias_primas_dinamico.js"></script>
 <script src="js/devolucion_proveedor.js"></script> 
 <script src="js/historial_movimientos.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

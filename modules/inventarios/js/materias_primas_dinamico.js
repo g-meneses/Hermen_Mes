@@ -25,7 +25,7 @@ let productosData = [];
 let categoriasData = [];
 let subcategoriasData = [];
 let unidadesMedida = [];
-let lineasIngreso = [];
+// let lineasIngreso = []; //
 
 // ========================================
 // FUNCIONES DE UTILIDAD

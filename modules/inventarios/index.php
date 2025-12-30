@@ -3550,7 +3550,7 @@ async function guardarSubcategoria() {
 // ========== VARIABLES GLOBALES ADICIONALES ==========
 let productosDisponibles = [];
 let proveedoresLista = [];
-let lineasIngreso = [];
+// let lineasIngreso = [];
 let lineasSalida = [];
 let documentoActual = null;
 let reporteActual = null;

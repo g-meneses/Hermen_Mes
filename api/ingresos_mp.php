@@ -256,11 +256,70 @@ try {
             
             switch ($action) {
                 case 'crear':
-                    // Validaciones
-                    if (empty($data['id_proveedor'])) {
+                     // ========================================
+                    // VALIDACIONES DINÁMICAS POR TIPO
+                    // ========================================
+                    
+                    // 1. Validar que venga el tipo de ingreso
+                    if (empty($data['id_tipo_ingreso'])) {
+                        echo json_encode(['success' => false, 'message' => 'Debe especificar el tipo de ingreso']);
+                        exit();
+                    }
+                      // 2. Obtener configuración del tipo
+                    $stmtTipo = $db->prepare("SELECT * FROM tipos_ingreso WHERE id_tipo_ingreso = ?");
+                    $stmtTipo->execute([$data['id_tipo_ingreso']]);
+                    $tipoConfig = $stmtTipo->fetch(PDO::FETCH_ASSOC);
+                    
+                    if (!$tipoConfig) {
+                        echo json_encode(['success' => false, 'message' => 'Tipo de ingreso no válido']);
+                        exit();
+                    }
+                    
+                    // 3. Validar según configuración del tipo
+                    
+                    // 3.1 Validar PROVEEDOR (solo si es requerido)
+                    if ($tipoConfig['requiere_proveedor'] && empty($data['id_proveedor'])) {
                         echo json_encode(['success' => false, 'message' => 'Seleccione un proveedor']);
                         exit();
                     }
+                     // 3.2 Validar ÁREA (solo si es requerido)
+                    if ($tipoConfig['requiere_area_produccion'] && empty($data['id_area_produccion'])) {
+                        echo json_encode(['success' => false, 'message' => 'Seleccione el área de producción']);
+                        exit();
+                    }
+                    
+                    // 3.3 Validar MOTIVO (solo si es requerido)
+                    if ($tipoConfig['requiere_motivo'] && empty($data['motivo_ingreso'])) {
+                        echo json_encode(['success' => false, 'message' => 'Seleccione el motivo']);
+                        exit();
+                    }
+                    
+                    // 3.4 Validar AUTORIZACIÓN (solo si es requerido)
+                    if ($tipoConfig['requiere_autorizacion'] && empty($data['autorizado_por'])) {
+                        echo json_encode(['success' => false, 'message' => 'Debe indicar quién autoriza']);
+                        exit();
+                    }
+                    
+                    // 3.5 Validar OBSERVACIONES (solo si son obligatorias)
+                    if ($tipoConfig['observaciones_obligatorias']) {
+                        $obs = trim($data['observaciones'] ?? '');
+                        $minCaracteres = intval($tipoConfig['minimo_caracteres_obs']);
+                        
+                        if (empty($obs) || strlen($obs) < $minCaracteres) {
+                            echo json_encode([
+                                'success' => false, 
+                                'message' => "Las observaciones son obligatorias (mínimo {$minCaracteres} caracteres)"
+                            ]);
+                            exit();
+                        }
+                    }
+                    
+                    // 4. Validar líneas
+                    if (empty($data['lineas']) || count($data['lineas']) === 0) {
+                        echo json_encode(['success' => false, 'message' => 'Agregue al menos una línea']);
+                        exit();
+                    }
+
                     
                     if (empty($data['lineas']) || count($data['lineas']) === 0) {
                         echo json_encode(['success' => false, 'message' => 'Agregue al menos una línea']);
@@ -294,14 +353,15 @@ try {
                         }
                         
                         // Insertar documento
-                        $stmt = $db->prepare("
+                       $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
                                 tipo_documento, numero_documento, fecha_documento,
-                                id_tipo_inventario, id_proveedor, referencia_externa,
-                                con_factura, moneda, subtotal, iva, total,
-                                observaciones, estado, creado_por
+                                id_tipo_inventario, id_tipo_ingreso, id_proveedor, 
+                                id_area_produccion, referencia_externa, motivo_ingreso,
+                                ubicacion_almacen, con_factura, moneda, subtotal, iva, total,
+                                observaciones, estado, creado_por, autorizado_por
                             ) VALUES (
-                                'INGRESO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
+                                'INGRESO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?, ?
                             )
                         ");
                         
@@ -309,15 +369,20 @@ try {
                             $numeroDoc,
                             $data['fecha'] ?? date('Y-m-d'),
                             $TIPO_INVENTARIO_MP,
-                            $data['id_proveedor'],
+                            $data['id_tipo_ingreso'],
+                            $data['id_proveedor'] ?? null,
+                            $data['id_area_produccion'] ?? null,
                             $data['referencia'] ?? null,
+                            $data['motivo_ingreso'] ?? null,
+                            $data['ubicacion_almacen'] ?? null,
                             $conFactura ? 1 : 0,
                             $data['moneda'] ?? 'BOB',
-                            $totalNeto,        // Subtotal neto (sin IVA)
-                            $iva,              // IVA
-                            $totalDocumento,   // Total documento
+                            $totalNeto,
+                            $iva,
+                            $totalDocumento,
                             $data['observaciones'] ?? null,
-                            $_SESSION['user_id'] ?? null
+                            $_SESSION['user_id'] ?? null,
+                            $data['autorizado_por'] ?? null
                         ]);
                         
                         $idDocumento = $db->lastInsertId();
@@ -374,16 +439,26 @@ try {
                             $stmtStockAnt->execute([$linea['id_inventario']]);
                             $stockAnterior = floatval($stmtStockAnt->fetchColumn());
                             
-                            // Actualizar stock e inventario (usar costo sin IVA para el inventario)
-                            $stmtStock->execute([
-                                $cantidad,           // Sumar al stock
-                                $costoUnit,          // Costo si stock era 0
-                                $cantidad,           // Para promedio
-                                $costoUnit,          // Para promedio
-                                $cantidad,           // Para promedio
-                                $costoUnit,          // Actualizar costo unitario
-                                $linea['id_inventario']
-                            ]);
+
+                            // Actualizar stock según si afecta CPP
+                            if ($tipoConfig['afecta_cpp']) {
+                                // Actualizar stock Y costo promedio
+                                $stmtStock->execute([
+                                    $cantidad,
+                                    $costoUnit,
+                                    $cantidad,
+                                    $costoUnit,
+                                    $cantidad,
+                                    $costoUnit,
+                                    $linea['id_inventario']
+                                ]);
+                            } else {
+                                // Solo actualizar stock, NO el costo
+                                $stmtSimple = $db->prepare("UPDATE inventarios SET stock_actual = stock_actual + ? WHERE id_inventario = ?");
+                                $stmtSimple->execute([$cantidad, $linea['id_inventario']]);
+                            }
+
+                        
                             
                             // Registrar en Kardex (con costo sin IVA)
                             $costoTotalNeto = $cantidad * $costoUnit;

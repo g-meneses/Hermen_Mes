@@ -11,7 +11,7 @@ let categorias = [], subcategorias = [], productos = [], productosCompletos = []
 let unidades = [], proveedores = [];
 let categoriaSeleccionada = null, subcategoriaSeleccionada = null;
 //let lineasIngreso = [],//
-let lineasSalida = [];
+    let lineasSalida = [];
 let documentoActual = null;
 let productosFiltrados = [];
 let modoConFactura = false;
@@ -788,67 +788,153 @@ function recalcularIngreso() {
 }
 
 async function guardarIngreso() {
-    const proveedor = document.getElementById('ingresoProveedor').value;
-    if (!proveedor) {
-        alert('⚠️ Seleccione un proveedor');
-        return;
-    }
-    
-    if (lineasIngreso.length === 0) {
-        alert('⚠️ Agregue al menos una línea');
-        return;
-    }
-    
-    for (let i = 0; i < lineasIngreso.length; i++) {
-        if (!lineasIngreso[i].id_inventario) {
-            alert(`⚠️ Seleccione un producto en la línea ${i + 1}`);
-            return;
-        }
-        if (lineasIngreso[i].cantidad <= 0) {
-            alert(`⚠️ Ingrese cantidad en la línea ${i + 1}`);
-            return;
-        }
-        if (lineasIngreso[i].valor_total_item <= 0) {
-            alert(`⚠️ Ingrese valor total en la línea ${i + 1}`);
-            return;
-        }
-    }
-    
-    const data = {
-        fecha: document.getElementById('ingresoFecha').value,
-        id_proveedor: proveedor,
-        referencia: document.getElementById('ingresoReferencia').value,
-        con_factura: modoConFactura,
-        observaciones: document.getElementById('ingresoObservaciones').value,
-        lineas: lineasIngreso.map(l => ({
-            id_inventario: l.id_inventario,
-            cantidad: l.cantidad,
-            costo_unitario: l.costo_unitario,
-            subtotal: l.subtotal
-        }))
-    };
-    
-    console.log('Guardando ingreso:', data);
-    
     try {
-        const r = await fetch(`${baseUrl}/api/ingresos_mp.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'crear', ...data })
-        });
-        const d = await r.json();
-        console.log('Respuesta:', d);
+        // 1. Obtener tipo de ingreso seleccionado
+        const tipoId = parseInt(document.getElementById('ingresoTipoIngreso').value);
         
-        if (d.success) {
-            alert('✅ ' + d.message);
-            cerrarModal('modalIngreso');
-            cargarDatos();
-        } else {
-            alert('❌ ' + d.message);
+        if (!tipoId) {
+            mostrarAlerta('Debe seleccionar un tipo de ingreso', 'error');
+            return;
         }
-    } catch (e) {
-        console.error('Error:', e);
-        alert('Error al guardar el ingreso');
+        
+        // 2. Obtener configuración del tipo
+        const config = tiposIngresoConfig[tipoId];
+        if (!config) {
+            mostrarAlerta('Configuración del tipo de ingreso no encontrada', 'error');
+            return;
+        }
+        
+        console.log('💾 Guardando ingreso tipo:', config.nombre);
+        
+        // 3. VALIDACIONES DINÁMICAS según tipo
+        
+        // 3.1 Validar PROVEEDOR (solo si es requerido)
+        if (config.requiere_proveedor) {
+            const proveedorId = document.getElementById('ingresoProveedor').value;
+            if (!proveedorId) {
+                mostrarAlerta('Seleccione un proveedor', 'error');
+                return;
+            }
+        }
+        
+        // 3.2 Validar ÁREA DE PRODUCCIÓN (solo si es requerido)
+        if (config.requiere_area_produccion) {
+            const areaId = document.getElementById('ingresoArea').value;
+            if (!areaId) {
+                mostrarAlerta('Seleccione el área que devuelve', 'error');
+                return;
+            }
+        }
+        
+        // 3.3 Validar MOTIVO (solo si es requerido)
+        if (config.requiere_motivo) {
+            const motivoId = document.getElementById('ingresoMotivo').value;
+            if (!motivoId) {
+                mostrarAlerta('Seleccione el motivo', 'error');
+                return;
+            }
+        }
+        
+        // 3.4 Validar AUTORIZACIÓN (solo si es requerido)
+        if (config.requiere_autorizacion) {
+            const autorizadoPor = document.getElementById('ingresoAutorizadoPor').value;
+            if (!autorizadoPor) {
+                mostrarAlerta('Seleccione quién autoriza', 'error');
+                return;
+            }
+        }
+        
+        // 3.5 Validar OBSERVACIONES (solo si son obligatorias)
+        if (config.observaciones_obligatorias) {
+            const obs = document.getElementById('ingresoObservaciones').value.trim();
+            if (!obs || obs.length < config.minimo_caracteres_obs) {
+                mostrarAlerta(`Las observaciones son obligatorias (mínimo ${config.minimo_caracteres_obs} caracteres)`, 'error');
+                return;
+            }
+        }
+        
+        // 4. Validar que haya líneas
+        if (!lineasIngreso || lineasIngreso.length === 0) {
+            mostrarAlerta('Debe agregar al menos una línea de productos', 'error');
+            return;
+        }
+        
+        // 5. Construir objeto de datos según tipo
+        const datosIngreso = {
+            action: 'crear',
+            id_tipo_ingreso: tipoId,
+            fecha: document.getElementById('ingresoFecha').value,
+            observaciones: document.getElementById('ingresoObservaciones').value || null,
+            lineas: lineasIngreso
+        };
+        
+        // 6. Agregar campos específicos según tipo
+        
+        // 6.1 COMPRA A PROVEEDOR
+        if (config.codigo === 'COMPRA') {
+            datosIngreso.id_proveedor = parseInt(document.getElementById('ingresoProveedor').value);
+            datosIngreso.referencia = document.getElementById('ingresoReferencia').value || null;
+            datosIngreso.con_factura = document.getElementById('ingresoConFactura').checked;
+            datosIngreso.moneda = 'BOB'; // O desde un campo si lo tienes
+        }
+        
+        // 6.2 INVENTARIO INICIAL
+        else if (config.codigo === 'INICIAL') {
+            datosIngreso.ubicacion_almacen = document.getElementById('ingresoUbicacion').value || null;
+            datosIngreso.responsable_conteo = document.getElementById('ingresoResponsableConteo').value || null;
+        }
+        
+        // 6.3 DEVOLUCIÓN DE PRODUCCIÓN
+        else if (config.codigo === 'DEVOLUCION_PROD') {
+            datosIngreso.id_area_produccion = parseInt(document.getElementById('ingresoArea').value);
+            datosIngreso.motivo_ingreso = document.getElementById('ingresoMotivo').value;
+            datosIngreso.responsable_entrega = document.getElementById('ingresoResponsableEntrega').value || null;
+        }
+        
+        // 6.4 AJUSTE POSITIVO
+        else if (config.codigo === 'AJUSTE_POS') {
+            datosIngreso.motivo_ingreso = document.getElementById('ingresoMotivo').value;
+            datosIngreso.autorizado_por = parseInt(document.getElementById('ingresoAutorizadoPor').value);
+        }
+        
+        console.log('📦 Datos a enviar:', datosIngreso);
+        
+        // 7. Enviar al servidor
+        const response = await fetch(`${BASE_URL_API}/ingresos_mp.php`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datosIngreso)
+        });
+        
+        const resultado = await response.json();
+        
+        if (resultado.success) {
+            mostrarAlerta(`Ingreso ${resultado.numero_documento} registrado exitosamente`, 'success');
+            cerrarModal('modalIngreso');
+            
+            // Recargar datos
+            if (typeof cargarDatos === 'function') {
+                cargarDatos();
+            }
+        } else {
+            mostrarAlerta(resultado.message || 'Error al registrar el ingreso', 'error');
+        }
+        
+    } catch (error) {
+        console.error('❌ Error en guardarIngreso:', error);
+        mostrarAlerta('Error al procesar el ingreso: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Cerrar modal
+ */
+function cerrarModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('show');
     }
 }
 

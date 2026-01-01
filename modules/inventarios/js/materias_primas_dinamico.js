@@ -174,16 +174,22 @@ async function cargarUnidadesMedida() {
 async function abrirModalIngreso() {
     console.log('📖 Abriendo modal de ingreso...');
     
+    // 1. PRIMERO: Cargar datos necesarios
+    await cargarProveedores();
+    await cargarCategoriasIngreso();
+    
+    // 2. DESPUÉS: Resetear formulario (esto limpia los selects)
     resetearFormularioIngreso();
+    
+    // 3. LUEGO: Obtener siguiente número
     await obtenerSiguienteNumero();
     
+    // 4. ESTABLECER FECHA ACTUAL
     const hoy = new Date().toISOString().split('T')[0];
     const fechaInput = document.getElementById('ingresoFecha');
     if (fechaInput) fechaInput.value = hoy;
     
-    await cargarProveedores();
-    await cargarCategoriasIngreso();
-    
+    // 5. ABRIR EL MODAL
     const modal = document.getElementById('modalIngreso');
     if (modal) modal.classList.add('show');
 }
@@ -213,7 +219,7 @@ function resetearFormularioIngreso() {
         'ingresoFecha': '',
         'ingresoObservaciones': '',
         'ingresoTipoProveedor': 'TODOS',
-        'ingresoProveedor': '',
+        // 'ingresoProveedor': '',  ← ❌ QUITAR ESTA LÍNEA (no resetear proveedor aquí)
         'ingresoReferencia': ''
     };
     
@@ -221,6 +227,12 @@ function resetearFormularioIngreso() {
         const campo = document.getElementById(id);
         if (campo) campo.value = campos[id];
     });
+    
+    // Resetear proveedor solo si NO hay datos cargados
+    const selectProveedor = document.getElementById('ingresoProveedor');
+    if (selectProveedor && proveedoresData.length === 0) {
+        selectProveedor.value = '';
+    }
     
     const checkbox = document.getElementById('ingresoConFactura');
     if (checkbox) checkbox.checked = false;
@@ -289,6 +301,11 @@ async function cambiarTipoIngreso() {
     mostrarSeccion('seccionProveedor', config.requiere_proveedor);
     setRequired('ingresoProveedor', config.requiere_proveedor);
     
+    // ⭐ NUEVO: Poblar proveedores si es requerido
+    if (config.requiere_proveedor) {
+        poblarSelectProveedores();
+    }
+    
     // 2. FACTURA
     mostrarSeccion('seccionFactura', config.requiere_factura);
     if (!config.requiere_factura) {
@@ -327,6 +344,41 @@ async function cambiarTipoIngreso() {
     
     // 8. ACTUALIZAR ENCABEZADOS DE TABLA
     actualizarEncabezadosTabla(config);
+}
+
+// ⭐ NUEVA FUNCIÓN: Poblar select de proveedores
+function poblarSelectProveedores() {
+    const selectProveedor = document.getElementById('ingresoProveedor');
+    
+    if (!selectProveedor) {
+        console.error('❌ Select de proveedor no encontrado');
+        return;
+    }
+    
+    console.log('📋 Poblando select de proveedores...', proveedoresData.length);
+    
+    // Limpiar opciones actuales
+    selectProveedor.innerHTML = '<option value="">Seleccione proveedor...</option>';
+    
+    // Verificar que hay proveedores cargados
+    if (!proveedoresData || proveedoresData.length === 0) {
+        console.warn('⚠️ No hay proveedores para mostrar');
+        return;
+    }
+    
+    // Agregar cada proveedor
+    proveedoresData.forEach(prov => {
+        const nombre = prov.nombre_comercial || prov.razon_social || 'Sin nombre';
+        const option = document.createElement('option');
+        option.value = prov.id_proveedor;
+        option.textContent = nombre;
+        option.dataset.tipo = prov.tipo || 'LOCAL';
+        option.dataset.moneda = prov.moneda || 'BOB';
+        option.dataset.pago = prov.condicion_pago || 'CONTADO';
+        selectProveedor.appendChild(option);
+    });
+    
+    console.log('✅ Select poblado con', selectProveedor.options.length - 1, 'proveedores');
 }
 
 function mostrarSeccion(seccionId, mostrar) {
@@ -458,12 +510,178 @@ function actualizarTotalesIngreso() {
 }
 
 async function cargarProveedores() {
-    console.log('Cargando proveedores...');
+    try {
+        const url = `${BASE_URL_API}/proveedores.php?action=list`;
+        console.log('🔄 Cargando proveedores desde:', url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.proveedores) {
+            proveedoresData = data.proveedores;
+            console.log('✅ Proveedores cargados:', proveedoresData.length);
+            
+            // Poblar select de proveedores
+            const selectProveedor = document.getElementById('ingresoProveedor');
+            if (selectProveedor) {
+                selectProveedor.innerHTML = '<option value="">Seleccione proveedor...</option>';
+                proveedoresData.forEach(prov => {
+                    const nombre = prov.nombre_comercial || prov.razon_social;
+                    selectProveedor.innerHTML += `
+                        <option value="${prov.id_proveedor}" 
+                                data-tipo="${prov.tipo}" 
+                                data-moneda="${prov.moneda || 'BOB'}" 
+                                data-pago="${prov.condicion_pago || 'CONTADO'}">
+                            ${nombre}
+                        </option>
+                    `;
+                });
+            }
+        } else {
+            console.warn('⚠️ No se encontraron proveedores');
+            proveedoresData = [];
+        }
+    } catch (error) {
+        logError('cargarProveedores', error);
+        proveedoresData = [];
+    }
 }
 
 async function cargarCategoriasIngreso() {
-    console.log('Cargando categorías...');
+    try {
+        const url = `${BASE_URL_API}/centro_inventarios.php?action=categorias&tipo_id=1`;
+        console.log('🔄 Cargando categorías desde:', url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success && data.categorias) {
+            categoriasData = data.categorias;
+            console.log('✅ Categorías cargadas:', categoriasData.length);
+            
+            // Poblar select de filtro de categorías
+            const selectCat = document.getElementById('ingresoFiltroCat');
+            if (selectCat) {
+                selectCat.innerHTML = '<option value="">Todas las categorías</option>';
+                categoriasData.forEach(cat => {
+                    selectCat.innerHTML += `<option value="${cat.id_categoria}">${cat.nombre}</option>`;
+                });
+            }
+        } else {
+            console.warn('⚠️ No se encontraron categorías');
+            categoriasData = [];
+        }
+    } catch (error) {
+        logError('cargarCategoriasIngreso', error);
+        categoriasData = [];
+    }
 }
 
+/**
+ * Filtrar proveedores por tipo (LOCAL o IMPORTACIÓN)
+ */
+function filtrarProveedoresIngreso() {
+    const tipo = document.getElementById('ingresoTipoProveedor')?.value || 'TODOS';
+    const select = document.getElementById('ingresoProveedor');
+    
+    if (!select) return;
+    
+    console.log('🔄 Filtrando proveedores por tipo:', tipo);
+    
+    // Limpiar select
+    select.innerHTML = '<option value="">Seleccione proveedor...</option>';
+    
+    // Verificar que hay proveedores
+    if (!proveedoresData || proveedoresData.length === 0) {
+        console.warn('⚠️ No hay proveedores para filtrar');
+        return;
+    }
+    
+    // Filtrar según tipo
+    let proveedoresFiltrados = proveedoresData;
+    
+    if (tipo !== 'TODOS') {
+        proveedoresFiltrados = proveedoresData.filter(p => p.tipo === tipo);
+    }
+    
+    console.log(`📋 Proveedores filtrados: ${proveedoresFiltrados.length} de ${proveedoresData.length}`);
+    
+    // Agregar cada proveedor filtrado
+    proveedoresFiltrados.forEach(prov => {
+        const nombre = prov.nombre_comercial || prov.razon_social || 'Sin nombre';
+        const option = document.createElement('option');
+        option.value = prov.id_proveedor;
+        option.textContent = nombre;
+        option.dataset.tipo = prov.tipo || 'LOCAL';
+        option.dataset.moneda = prov.moneda || 'BOB';
+        option.dataset.pago = prov.condicion_pago || 'CONTADO';
+        select.appendChild(option);
+    });
+    
+    console.log('✅ Filtro aplicado');
+}
+
+/**
+ * Actualizar información del proveedor seleccionado
+ */
+function actualizarInfoProveedor() {
+    const select = document.getElementById('ingresoProveedor');
+    const box = document.getElementById('infoProveedorBox');
+    
+    if (!select || !box) return;
+    
+    if (!select.value) {
+        box.style.display = 'none';
+        return;
+    }
+    
+    const opt = select.options[select.selectedIndex];
+    const tipo = opt.dataset.tipo;
+    const moneda = opt.dataset.moneda;
+    const pago = opt.dataset.pago;
+    
+    const tipoElement = document.getElementById('infoProveedorTipo');
+    if (tipoElement) {
+        tipoElement.className = `badge-tipo ${tipo === 'LOCAL' ? 'local' : 'import'}`;
+        tipoElement.textContent = tipo === 'LOCAL' ? '🇧🇴 LOCAL' : '🌎 IMPORTACIÓN';
+    }
+    
+    const monedaElement = document.getElementById('infoProveedorMoneda');
+    if (monedaElement) {
+        monedaElement.className = `badge-moneda ${moneda === 'USD' ? 'usd' : 'bob'}`;
+        monedaElement.textContent = moneda || 'BOB';
+    }
+    
+    const pagoElement = document.getElementById('infoProveedorPago');
+    if (pagoElement) {
+        pagoElement.textContent = `Pago: ${pago || 'N/A'}`;
+    }
+    
+    box.style.display = 'flex';
+}
+
+// Exponer funciones globalmente para que el HTML pueda llamarlas
+window.cambiarTipoIngreso = cambiarTipoIngreso;
+window.poblarSelectProveedores = poblarSelectProveedores;
+window.abrirModalIngreso = abrirModalIngreso;
+window.actualizarInfoProveedor = actualizarInfoProveedor;
+window.filtrarProveedoresIngreso = filtrarProveedoresIngreso;
+
+console.log('✅ Funciones expuestas globalmente');
+console.log('   - cambiarTipoIngreso');
+console.log('   - poblarSelectProveedores');
+console.log('   - abrirModalIngreso');
+console.log('   - actualizarInfoProveedor');
+console.log('   - filtrarProveedoresIngreso');
 console.log('✅ Módulo de tipos de ingreso dinámico cargado - VERSIÓN FINAL');
 console.log('📁 API Base:', BASE_URL_API);

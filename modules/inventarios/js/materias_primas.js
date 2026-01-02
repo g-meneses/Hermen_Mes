@@ -577,33 +577,7 @@ function toggleModoFactura() {
     modoConFactura = document.getElementById('ingresoConFactura').checked;
     document.getElementById('rowIVA').style.display = modoConFactura ? 'flex' : 'none';
     
-    const thead = document.getElementById('theadIngreso');
-    
-    if (modoConFactura) {
-        thead.innerHTML = `
-            <tr>
-                <th style="min-width:250px;">PRODUCTO</th>
-                <th style="width:60px; text-align:center;">UNID.</th>
-                <th style="width:100px; background:#fff3cd; text-align:center;">CANTIDAD</th>
-                <th style="width:140px; background:#fff3cd; text-align:center;">VALOR TOTAL<br>DEL ITEM</th>
-                <th style="width:130px; text-align:center;">COSTO UNITARIO<br>DOCUMENTO</th>
-                <th style="width:100px; background:#fff9e6; text-align:center;">IVA 13%</th>
-                <th style="width:110px; text-align:center;">COSTO ITEM</th>
-                <th style="width:130px; background:#d4edda; text-align:center;">COSTO UNITARIO<br>- IVA</th>
-                <th style="width:50px;"></th>
-            </tr>`;
-    } else {
-        thead.innerHTML = `
-            <tr>
-                <th style="min-width:250px;">PRODUCTO</th>
-                <th style="width:60px; text-align:center;">UNID.</th>
-                <th style="width:100px; background:#fff3cd; text-align:center;">CANTIDAD</th>
-                <th style="width:140px; background:#fff3cd; text-align:center;">VALOR TOTAL<br>DEL ITEM</th>
-                <th style="width:130px; background:#d4edda; text-align:center;">COSTO UNITARIO</th>
-                <th style="width:50px;"></th>
-            </tr>`;
-    }
-    
+    // Simplemente llamamos a render para que ella ajuste el encabezado y las filas
     renderLineasIngreso();
 }
 
@@ -620,19 +594,49 @@ function agregarLineaIngreso() {
 
 function renderLineasIngreso() {
     const tbody = document.getElementById('ingresoLineasBody');
+    const thead = document.getElementById('theadIngreso');
     
+    // 1. Sincronizar el encabezado (thead) según el modo
+    if (modoConFactura) {
+        thead.innerHTML = `
+            <tr>
+                <th style="width:40px; text-align:center;">#</th>
+                <th style="min-width:280px;">PRODUCTO</th>
+                <th style="width:50px; text-align:center;">UNID.</th>
+                <th style="width:90px; background:#fff3cd; text-align:center;">CANTIDAD</th>
+                <th style="width:110px; background:#fff3cd; text-align:center;">VALOR TOTAL</th>
+                <th style="width:100px; text-align:center; font-size:0.75rem;">COSTO UNIT.<br>DOC.</th>
+                <th style="width:90px; background:#fff9e6; text-align:center;">IVA 13%</th>
+                <th style="width:90px; text-align:center; font-size:0.75rem;">COSTO<br>ITEM</th>
+                <th style="width:100px; background:#d4edda; text-align:center; font-size:0.75rem;">COSTO UNIT.<br>- IVA</th>
+                <th style="width:50px;"></th>
+            </tr>`;
+    } else {
+        thead.innerHTML = `
+            <tr>
+                <th style="width:40px; text-align:center;">#</th>
+                <th style="min-width:350px;">PRODUCTO</th>
+                <th style="width:60px; text-align:center;">UNID.</th>
+                <th style="width:120px; background:#fff3cd; text-align:center;">CANTIDAD</th>
+                <th style="width:140px; background:#fff3cd; text-align:center;">VALOR TOTAL</th>
+                <th style="width:140px; background:#d4edda; text-align:center;">COSTO UNITARIO</th>
+                <th style="width:50px;"></th>
+            </tr>`;
+    }
+
     if (lineasIngreso.length === 0) {
         agregarLineaIngreso();
         return;
     }
     
+    // 2. Pintar las filas (tbody)
     tbody.innerHTML = lineasIngreso.map((l, i) => {
         const prod = productosCompletos.find(p => p.id_inventario == l.id_inventario);
         const unidad = prod ? (prod.unidad_abrev || prod.abreviatura || prod.unidad || 'kg') : '-';
-        
         const cantidad = toNum(l.cantidad);
         const valorTotal = toNum(l.valor_total_item);
-        
+        const inputStyle = "width:100%; padding:6px; background:#fff3cd; font-weight:600; text-align:right; border:1px solid #ddd; border-radius:4px;";
+
         if (modoConFactura) {
             const costoUnitDoc = cantidad > 0 ? valorTotal / cantidad : 0;
             const iva = valorTotal * 0.13;
@@ -641,82 +645,38 @@ function renderLineasIngreso() {
             
             return `
                 <tr>
+                    <td style="text-align:center; font-weight:600; background:#f8f9fa;">${i + 1}</td>
                     <td>
-                        <select id="ingProd_${i}" onchange="seleccionarProductoIngreso(${i})" style="width:100%; padding:6px;">
+                        <select id="ingProd_${i}" onchange="seleccionarProductoIngreso(${i})" style="width:100%; padding:6px; font-size:0.85rem;">
                             <option value="">Seleccione producto...</option>
-                            ${productosFiltrados.map(p => 
-                                `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>
-                                    ${p.codigo} - ${p.nombre}
-                                </option>`
-                            ).join('')}
+                            ${productosFiltrados.map(p => `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>${p.nombre}</option>`).join('')}
                         </select>
                     </td>
-                    <td style="text-align:center; font-weight:600; color:#495057;">${unidad}</td>
-                    <td>
-                        <input type="number" id="ingCant_${i}" value="${cantidad || ''}" step="0.01" 
-                               style="width:100%; padding:6px; background:#fff3cd; font-weight:600; text-align:right;" 
-                               onchange="calcularLineaIngreso(${i})" placeholder="0.00">
-                    </td>
-                    <td>
-                        <input type="number" id="ingValor_${i}" value="${valorTotal || ''}" step="0.01" 
-                               style="width:100%; padding:6px; background:#fff3cd; font-weight:600; text-align:right;" 
-                               onchange="calcularLineaIngreso(${i})" placeholder="0.00">
-                    </td>
-                    <td style="background:#f8f9fa; text-align:right; padding-right:10px; font-weight:500;">
-                        ${formatNum(costoUnitDoc, 4)}
-                    </td>
-                    <td style="background:#fff9e6; text-align:right; padding-right:10px; font-weight:500;">
-                        ${formatNum(iva, 2)}
-                    </td>
-                    <td style="background:#f8f9fa; text-align:right; padding-right:10px; font-weight:500;">
-                        ${formatNum(costoItem, 2)}
-                    </td>
-                    <td style="background:#d4edda; text-align:right; padding-right:10px; font-weight:700; color:#155724;">
-                        ${formatNum(costoUnitNeto, 4)}
-                    </td>
-                    <td style="text-align:center;">
-                        <button type="button" onclick="eliminarLineaIngreso(${i})" 
-                                style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
+                    <td style="text-align:center; font-weight:600;">${unidad}</td>
+                    <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle}" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
+                    <td><input type="text" id="ingValor_${i}" value="${formatNum(valorTotal, 2)}" style="${inputStyle}" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'valor')" onfocus="limpiarFormatoInput('ingValor_${i}')" onblur="formatearInputNumerico('ingValor_${i}')"></td>
+                    <td id="res_cudoc_${i}" style="background:#f8f9fa; text-align:right; font-weight:500;">${formatNum(costoUnitDoc, 4)}</td>
+                    <td id="res_iva_${i}" style="background:#fff9e6; text-align:right; font-weight:500;">${formatNum(iva, 2)}</td>
+                    <td id="res_citem_${i}" style="background:#f8f9fa; text-align:right; font-weight:500;">${formatNum(costoItem, 2)}</td>
+                    <td id="res_cuneto_${i}" style="background:#d4edda; text-align:right; font-weight:700; color:#155724;">${formatNum(costoUnitNeto, 4)}</td>
+                    <td style="text-align:center;"><button type="button" onclick="eliminarLineaIngreso(${i})" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px;"><i class="fas fa-trash"></i></button></td>
                 </tr>`;
         } else {
             const costoUnitario = cantidad > 0 ? valorTotal / cantidad : 0;
-            const subtotal = valorTotal;
-            
             return `
                 <tr>
+                    <td style="text-align:center; font-weight:600; background:#f8f9fa;">${i + 1}</td>
                     <td>
-                        <select id="ingProd_${i}" onchange="seleccionarProductoIngreso(${i})" style="width:100%; padding:6px;">
+                        <select id="ingProd_${i}" onchange="seleccionarProductoIngreso(${i})" style="width:100%; padding:6px; font-size:0.85rem;">
                             <option value="">Seleccione producto...</option>
-                            ${productosFiltrados.map(p => 
-                                `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>
-                                    ${p.codigo} - ${p.nombre}
-                                </option>`
-                            ).join('')}
+                            ${productosFiltrados.map(p => `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>${p.nombre}</option>`).join('')}
                         </select>
                     </td>
-                    <td style="text-align:center; font-weight:600; color:#495057;">${unidad}</td>
-                    <td>
-                        <input type="number" id="ingCant_${i}" value="${cantidad || ''}" step="0.01" 
-                               style="width:100%; padding:6px; background:#fff3cd; font-weight:600; text-align:right;" 
-                               onchange="calcularLineaIngreso(${i})" placeholder="0.00">
-                    </td>
-                    <td>
-                        <input type="number" id="ingValor_${i}" value="${valorTotal || ''}" step="0.01" 
-                               style="width:100%; padding:6px; background:#fff3cd; font-weight:600; text-align:right;" 
-                               onchange="calcularLineaIngreso(${i})" placeholder="0.00">
-                    </td>
-                    <td style="background:#d4edda; text-align:right; padding-right:10px; font-weight:700; color:#155724;">
-                        ${formatNum(costoUnitario, 4)}
-                    </td>
-                    <td style="text-align:center;">
-                        <button type="button" onclick="eliminarLineaIngreso(${i})" 
-                                style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
+                    <td style="text-align:center; font-weight:600;">${unidad}</td>
+                    <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle}" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
+                    <td><input type="text" id="ingValor_${i}" value="${formatNum(valorTotal, 2)}" style="${inputStyle}" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'valor')" onfocus="limpiarFormatoInput('ingValor_${i}')" onblur="formatearInputNumerico('ingValor_${i}')"></td>
+                    <td id="res_cu_${i}" style="background:#d4edda; text-align:right; font-weight:700; color:#155724; padding-right:10px;">${formatNum(costoUnitario, 4)}</td>
+                    <td style="text-align:center;"><button type="button" onclick="eliminarLineaIngreso(${i})" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px;"><i class="fas fa-trash"></i></button></td>
                 </tr>`;
         }
     }).join('');
@@ -724,9 +684,82 @@ function renderLineasIngreso() {
     recalcularIngreso();
 }
 
+// ========================================
+// NUEVA FUNCIÓN: Navegación con TAB
+// ========================================
+
+function handleTabNavigation(event, index, field) {
+    // Solo actuar si es la tecla TAB
+    if (event.key !== 'Tab' && event.keyCode !== 9) return;
+    
+    // Detener el salto automático del navegador
+    event.preventDefault(); 
+    
+    setTimeout(() => {
+        if (field === 'cantidad') {
+            // Caso: De Cantidad -> ir a Valor (misma fila)
+            const valorField = document.getElementById(`ingValor_${index}`);
+            if (valorField) {
+                valorField.focus();
+                valorField.select();
+            }
+        } else if (field === 'valor') {
+            // Caso: De Valor -> intentar ir a la Cantidad de la SIGUIENTE fila
+            const nextCantField = document.getElementById(`ingCant_${index + 1}`);
+            
+            if (nextCantField) {
+                // Si existe la siguiente fila, saltamos a ella
+                nextCantField.focus();
+                nextCantField.select();
+            } else {
+                // Si NO existe (estamos en el último registro), 
+                // volvemos a la Cantidad de la PRIMERA fila (índice 0)
+                const firstCantField = document.getElementById(`ingCant_0`);
+                if (firstCantField) {
+                    firstCantField.focus();
+                    firstCantField.select();
+                    
+                    // Opcional: Desplazar el scroll hacia arriba si la tabla es muy larga
+                    firstCantField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+    }, 50); // Un tiempo corto de 50ms es suficiente ahora que no redibujamos la tabla
+}
+
+
+// NUEVA FUNCIÓN: Formatear input al perder foco
+function formatearInputNumerico(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const valor = toNum(input.value);
+    if (valor === 0) {
+        input.value = '';
+        return;
+    }
+    
+    // Formatear con comas
+    input.value = formatNum(valor, 2);
+}
+
+// NUEVA FUNCIÓN: Limpiar formato al enfocar (para editar)
+function limpiarFormatoInput(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    // Remover comas para editar
+    const valorSinComas = input.value.replace(/,/g, '');
+    input.value = valorSinComas;
+    input.select(); // Seleccionar todo el texto
+}
+
 function calcularLineaIngreso(index) {
-    const cantidad = toNum(document.getElementById(`ingCant_${index}`).value);
-    const valorTotal = toNum(document.getElementById(`ingValor_${index}`).value);
+    const cantEl = document.getElementById(`ingCant_${index}`);
+    const valorEl = document.getElementById(`ingValor_${index}`);
+    
+    const cantidad = toNum(cantEl.value);
+    const valorTotal = toNum(valorEl.value);
     
     lineasIngreso[index].cantidad = cantidad;
     lineasIngreso[index].valor_total_item = valorTotal;
@@ -734,18 +767,31 @@ function calcularLineaIngreso(index) {
     if (modoConFactura) {
         const iva = valorTotal * 0.13;
         const costoItem = valorTotal - iva;
-        const costoUnitNeto = cantidad > 0 ? costoItem / cantidad : 0;
+        const cuNeto = cantidad > 0 ? costoItem / cantidad : 0;
+        const cuDoc = cantidad > 0 ? valorTotal / cantidad : 0;
         
-        lineasIngreso[index].costo_unitario = costoUnitNeto;
-        lineasIngreso[index].subtotal = valorTotal;
-        lineasIngreso[index].iva = iva;
+        lineasIngreso[index].costo_unitario = cuNeto;
+
+        // Actualizar solo las celdas de texto de la fila actual
+        const updateText = (id, val, dec) => {
+            let el = document.getElementById(id);
+            if(el) el.textContent = formatNum(val, dec);
+        };
+        
+        updateText(`res_cudoc_${index}`, cuDoc, 4);
+        updateText(`res_iva_${index}`, iva, 2);
+        updateText(`res_citem_${index}`, costoItem, 2);
+        updateText(`res_cuneto_${index}`, cuNeto, 4);
+        
     } else {
-        const costoUnitario = cantidad > 0 ? valorTotal / cantidad : 0;
-        lineasIngreso[index].costo_unitario = costoUnitario;
-        lineasIngreso[index].subtotal = valorTotal;
+        const cu = cantidad > 0 ? valorTotal / cantidad : 0;
+        lineasIngreso[index].costo_unitario = cu;
+        
+        let elCu = document.getElementById(`res_cu_${index}`);
+        if(elCu) elCu.textContent = formatNum(cu, 4);
     }
     
-    renderLineasIngreso();
+    recalcularIngreso(); // Totales de abajo
 }
 
 function seleccionarProductoIngreso(index) {

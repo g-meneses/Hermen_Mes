@@ -3,18 +3,18 @@
 let documentosHistorial = [];
 
 function abrirModalHistorial() {
-    // Establecer fechas por defecto (mes actual)
+    // Establecer fechas por defecto (últimos 3 meses)
     const hoy = new Date();
-    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    
-    document.getElementById('historialDesde').value = primerDia.toISOString().split('T')[0];
+    const hace3Meses = new Date(hoy.getFullYear(), hoy.getMonth() - 3, 1);
+
+    document.getElementById('historialDesde').value = hace3Meses.toISOString().split('T')[0];
     document.getElementById('historialHasta').value = hoy.toISOString().split('T')[0];
     document.getElementById('historialTipo').value = '';
     document.getElementById('historialEstado').value = 'todos';
-    
+
     // Cargar historial automáticamente
     buscarHistorial();
-    
+
     // Mostrar modal
     document.getElementById('modalHistorial').classList.add('show');
 }
@@ -24,74 +24,74 @@ async function buscarHistorial() {
     const hasta = document.getElementById('historialHasta').value;
     const tipo = document.getElementById('historialTipo').value;
     const estado = document.getElementById('historialEstado').value;
-    
+
     if (!desde || !hasta) {
         alert('⚠️ Seleccione rango de fechas');
         return;
     }
-    
+
     try {
         const params = new URLSearchParams({
             desde: desde,
             hasta: hasta,
             estado: estado
         });
-        
+
         //if (tipo) params.append('tipo', tipo);
-        
+
         // Llamar a ambos endpoints (ingresos y salidas)
         const [rIngresos, rSalidas] = await Promise.all([
             fetch(`${baseUrl}/api/ingresos_mp.php?action=list&${params}`),
             fetch(`${baseUrl}/api/salidas_mp.php?action=list&${params}`)
         ]);
-        
+
         const dIngresos = await rIngresos.json();
         const dSalidas = await rSalidas.json();
-        
+
         documentosHistorial = [];
-        
+
         // Agregar ingresos
         if (dIngresos.success && dIngresos.documentos) {
             documentosHistorial = documentosHistorial.concat(
-                dIngresos.documentos.map(d => ({...d, tipo_mov: 'INGRESO'}))
+                dIngresos.documentos.map(d => ({ ...d, tipo_mov: 'INGRESO' }))
             );
         }
-        
+
         // Agregar salidas
         if (dSalidas.success && dSalidas.documentos) {
             documentosHistorial = documentosHistorial.concat(
-                dSalidas.documentos.map(d => ({...d, tipo_mov: 'SALIDA'}))
+                dSalidas.documentos.map(d => ({ ...d, tipo_mov: 'SALIDA' }))
             );
         }
 
         // Filtrar por tipo si es necesario
-        
+
         if (tipo) {
             if (tipo === 'INGRESO') {
                 // Filtrar solo ingresos
                 documentosHistorial = documentosHistorial.filter(d => d.tipo_mov === 'INGRESO');
-                
+
             } else if (tipo === 'SALIDA') {
                 // Filtrar todas las salidas (cualquier subtipo)
                 documentosHistorial = documentosHistorial.filter(d => d.tipo_mov === 'SALIDA');
-                
+
             } else if (['PRODUCCION', 'VENTA', 'DEVOLUCION', 'MUESTRAS', 'AJUSTE'].includes(tipo)) {
                 // Filtrar por subtipo específico de salida
-                documentosHistorial = documentosHistorial.filter(d => 
+                documentosHistorial = documentosHistorial.filter(d =>
                     d.tipo_mov === 'SALIDA' && d.tipo_salida === tipo
                 );
             }
         }
-        
-        // Ordenar por fecha descendente
+
+        // Ordenar por fecha de creación descendente (más reciente primero)
         documentosHistorial.sort((a, b) => {
-            const fechaA = new Date(a.fecha_documento);
-            const fechaB = new Date(b.fecha_documento);
+            const fechaA = new Date(a.fecha_creacion || a.fecha_documento);
+            const fechaB = new Date(b.fecha_creacion || b.fecha_documento);
             return fechaB - fechaA;
         });
-        
+
         renderHistorial();
-        
+
     } catch (e) {
         console.error('Error:', e);
         alert('Error al cargar historial');
@@ -100,7 +100,7 @@ async function buscarHistorial() {
 
 function renderHistorial() {
     const tbody = document.getElementById('historialBody');
-    
+
     if (documentosHistorial.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -111,12 +111,12 @@ function renderHistorial() {
             </tr>`;
         return;
     }
-    
+
     tbody.innerHTML = documentosHistorial.map(doc => {
         const fecha = new Date(doc.fecha_documento).toLocaleDateString('es-BO');
         const tipo = doc.tipo_mov || 'INGRESO';
         const estado = doc.estado || 'CONFIRMADO';
-        
+
         // Badge de tipo
         let badgeTipo = '';
         if (tipo === 'INGRESO') {
@@ -138,7 +138,7 @@ function renderHistorial() {
                 badgeTipo = '<span class="badge-tipo-mov salida"><i class="fas fa-arrow-up"></i> SALIDA</span>';
             }
         }
-        
+
         // Badge de estado
         let badgeEstado = '';
         if (estado === 'CONFIRMADO') {
@@ -148,7 +148,7 @@ function renderHistorial() {
         } else {
             badgeEstado = '<span class="badge-estado pendiente">PENDIENTE</span>';
         }
-        
+
         return `
             <tr>
                 <td style="font-size:0.85rem;">${fecha}</td>
@@ -181,10 +181,10 @@ async function verDetalleDocumento(idDocumento, tipo) {
         } else {
             url = `${baseUrl}/api/salidas_mp.php?action=get&id=${idDocumento}`;
         }
-        
+
         const r = await fetch(url);
         const d = await r.json();
-        
+
         if (d.success) {
             mostrarDetalleDocumento(d.documento, d.detalle, tipo);
         } else {
@@ -199,7 +199,7 @@ async function verDetalleDocumento(idDocumento, tipo) {
 function mostrarDetalleDocumento(doc, detalle, tipo) {
     const tipoTexto = tipo === 'INGRESO' ? 'Ingreso' : 'Salida';
     const colorHeader = tipo === 'INGRESO' ? '#28a745' : '#dc3545';
-    
+
     let html = `
         <div style="background:#f8f9fa; padding:20px; border-radius:8px; margin-bottom:20px;">
             <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:15px;">
@@ -260,10 +260,10 @@ function mostrarDetalleDocumento(doc, detalle, tipo) {
             </tfoot>
         </table>
     `;
-    
+
     document.getElementById('detalleContenido').innerHTML = html;
     document.getElementById('detalleTitulo').innerHTML = `<i class="fas fa-file-alt"></i> Detalle de ${tipoTexto}`;
-    
+
     // Mostrar botón anular solo si está confirmado
     const btnAnular = document.getElementById('btnAnularDetalle');
     if (doc.estado === 'CONFIRMADO') {
@@ -275,20 +275,20 @@ function mostrarDetalleDocumento(doc, detalle, tipo) {
     } else {
         btnAnular.style.display = 'none';
     }
-    
+
     document.getElementById('modalDetalle').classList.add('show');
 }
 
 function confirmarAnulacion(idDocumento, tipo) {
     const motivo = prompt('⚠️ ¿Está seguro de anular este documento?\n\nIngrese el motivo de anulación:');
-    
+
     if (motivo === null) return; // Canceló
-    
+
     if (!motivo.trim()) {
         alert('El motivo es obligatorio');
         return;
     }
-    
+
     anularDocumento(idDocumento, tipo, motivo);
 }
 
@@ -300,7 +300,7 @@ async function anularDocumento(idDocumento, tipo, motivo) {
         } else {
             url = `${baseUrl}/api/salidas_mp.php`;
         }
-        
+
         const r = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -310,9 +310,9 @@ async function anularDocumento(idDocumento, tipo, motivo) {
                 motivo: motivo
             })
         });
-        
+
         const d = await r.json();
-        
+
         if (d.success) {
             alert('✅ ' + d.message);
             buscarHistorial(); // Recargar historial

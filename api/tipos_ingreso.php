@@ -121,33 +121,133 @@ try {
             break;
             
         case 'motivos':
-            // Obtener motivos para un tipo de ingreso
-            $tipoId = $_GET['tipo_id'] ?? null;
-            
-            if (!$tipoId) {
-                echo json_encode(['success' => false, 'message' => 'Tipo de ingreso requerido']);
+                    $tipoId = $_GET['tipo_id'] ?? null;
+                    
+                    if (!$tipoId) {
+                        ob_clean();
+                        echo json_encode(['success' => false, 'message' => 'tipo_id requerido']);
+                        exit();
+                    }
+                    
+                    // Motivos hardcoded por tipo (sin usar tabla)
+                    $motivosPorTipo = [
+                        // DEVOLUCIÓN DE PRODUCCIÓN (tipo_id = 3)
+                        '3' => [
+                            [
+                                'id_motivo' => 1, 
+                                'codigo' => 'EXCESO', 
+                                'descripcion' => 'Exceso de producción', 
+                                'requiere_detalle' => 0
+                            ],
+                            [
+                                'id_motivo' => 2, 
+                                'codigo' => 'DEFECTO', 
+                                'descripcion' => 'Material defectuoso', 
+                                'requiere_detalle' => 1
+                            ],
+                            [
+                                'id_motivo' => 3, 
+                                'codigo' => 'SOBRANTE', 
+                                'descripcion' => 'Sobrante de proceso', 
+                                'requiere_detalle' => 0
+                            ],
+                            [
+                                'id_motivo' => 4, 
+                                'codigo' => 'CAMBIO', 
+                                'descripcion' => 'Cambio de especificación', 
+                                'requiere_detalle' => 1
+                            ],
+                            [
+                                'id_motivo' => 5, 
+                                'codigo' => 'NO_UTILIZADO', 
+                                'descripcion' => 'Material no utilizado', 
+                                'requiere_detalle' => 0
+                            ]
+                        ],
+                        
+                        // AJUSTE POSITIVO (tipo_id = 4)
+                        '4' => [
+                            [
+                                'id_motivo' => 6, 
+                                'codigo' => 'DIFERENCIA', 
+                                'descripcion' => 'Diferencia de inventario físico', 
+                                'requiere_detalle' => 1
+                            ],
+                            [
+                                'id_motivo' => 7, 
+                                'codigo' => 'ENCONTRADO', 
+                                'descripcion' => 'Material encontrado', 
+                                'requiere_detalle' => 1
+                            ],
+                            [
+                                'id_motivo' => 8, 
+                                'codigo' => 'ERROR_CONTABLE', 
+                                'descripcion' => 'Corrección de error contable', 
+                                'requiere_detalle' => 1
+                            ],
+                            [
+                                'id_motivo' => 9, 
+                                'codigo' => 'RECUPERADO', 
+                                'descripcion' => 'Material recuperado de merma', 
+                                'requiere_detalle' => 0
+                            ],
+                            [
+                                'id_motivo' => 10, 
+                                'codigo' => 'RECONTEO', 
+                                'descripcion' => 'Ajuste por reconteo', 
+                                'requiere_detalle' => 1
+                            ]
+                        ]
+                    ];
+    
+                // Obtener motivos del tipo solicitado
+                $motivos = $motivosPorTipo[$tipoId] ?? [];
+                
+                ob_clean();
+                echo json_encode([
+                    'success' => true,
+                    'motivos' => $motivos,
+                    'total' => count($motivos)
+                ]);
                 exit();
-            }
-            
-            $stmt = $db->prepare("
-                SELECT 
-                    id_motivo,
-                    codigo,
-                    descripcion,
-                    requiere_detalle
-                FROM motivos_ingreso
-                WHERE id_tipo_ingreso = ? AND activo = TRUE
-                ORDER BY orden
-            ");
-            $stmt->execute([$tipoId]);
-            $motivos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            ob_clean();
-            echo json_encode([
-                'success' => true,
-                'motivos' => $motivos
-            ]);
-            break;
+                break;
+
+        case 'usuarios_autorizacion':
+    // Usuarios que pueden autorizar ajustes
+    // Mock temporal (sin usar tabla usuarios)
+    
+    $usuarios = [
+        [
+            'id_usuario' => 1,
+            'nombre' => 'Gary Meneses',
+            'rol' => 'Gerente General'
+        ],
+        [
+            'id_usuario' => 2,
+            'nombre' => 'Supervisor Producción',
+            'rol' => 'Supervisor'
+        ],
+        [
+            'id_usuario' => 3,
+            'nombre' => 'Jefe de Inventarios',
+            'rol' => 'Jefe de Área'
+        ],
+        [
+            'id_usuario' => 4,
+            'nombre' => 'Coordinador Almacén',
+            'rol' => 'Coordinador'
+        ]
+    ];
+    
+    ob_clean();
+    echo json_encode([
+        'success' => true,
+        'usuarios' => $usuarios,
+        'total' => count($usuarios)
+    ]);
+    exit();
+    break;
+    
             
         case 'areas':
             // Obtener áreas de producción activas

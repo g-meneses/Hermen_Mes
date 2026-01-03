@@ -596,52 +596,110 @@ function renderLineasIngreso() {
     const tbody = document.getElementById('ingresoLineasBody');
     const thead = document.getElementById('theadIngreso');
     
-    // 1. Sincronizar el encabezado (thead) según el modo
-    if (modoConFactura) {
-        thead.innerHTML = `
-            <tr>
-                <th style="width:40px; text-align:center;">#</th>
-                <th style="min-width:280px;">PRODUCTO</th>
-                <th style="width:50px; text-align:center;">UNID.</th>
-                <th style="width:90px; background:#fff3cd; text-align:center;">CANTIDAD</th>
-                <th style="width:110px; background:#fff3cd; text-align:center;">VALOR TOTAL</th>
-                <th style="width:100px; text-align:center; font-size:0.75rem;">COSTO UNIT.<br>DOC.</th>
-                <th style="width:90px; background:#fff9e6; text-align:center;">IVA 13%</th>
-                <th style="width:90px; text-align:center; font-size:0.75rem;">COSTO<br>ITEM</th>
-                <th style="width:100px; background:#d4edda; text-align:center; font-size:0.75rem;">COSTO UNIT.<br>- IVA</th>
-                <th style="width:50px;"></th>
-            </tr>`;
-    } else {
-        thead.innerHTML = `
-            <tr>
-                <th style="width:40px; text-align:center;">#</th>
-                <th style="min-width:350px;">PRODUCTO</th>
-                <th style="width:60px; text-align:center;">UNID.</th>
-                <th style="width:120px; background:#fff3cd; text-align:center;">CANTIDAD</th>
-                <th style="width:140px; background:#fff3cd; text-align:center;">VALOR TOTAL</th>
-                <th style="width:140px; background:#d4edda; text-align:center;">COSTO UNITARIO</th>
-                <th style="width:50px;"></th>
-            </tr>`;
+    // Validar que hay un tipo de ingreso seleccionado
+    if (!tipoIngresoActual) {
+        console.warn('⚠️ No hay tipo de ingreso seleccionado');
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">Seleccione un tipo de ingreso</td></tr>';
+        return;
     }
-
+    
+    // Obtener configuración de columnas
+    const configColumnas = obtenerConfiguracionColumnas();
+    if (!configColumnas) {
+        console.error('❌ No se pudo obtener configuración de columnas');
+        return;
+    }
+    
+    const columnas = configColumnas.columnas;
+    console.log('📋 Renderizando con', columnas.length, 'columnas para tipo:', tipoIngresoActual.codigo);
+    
+    // 1. ACTUALIZAR ENCABEZADO (thead)
+    thead.innerHTML = `
+        <tr>
+            ${columnas.map(col => {
+                let style = `width:${col.width};`;
+                if (col.align) style += ` text-align:${col.align};`;
+                if (col.bg) style += ` background:${col.bg};`;
+                if (col.calculado) style += ' font-size:0.75rem;';
+                
+                return `<th style="${style}">${col.label}</th>`;
+            }).join('')}
+        </tr>
+    `;
+    
+    // 2. Si no hay líneas, agregar una
     if (lineasIngreso.length === 0) {
         agregarLineaIngreso();
         return;
     }
     
-    // 2. Pintar las filas (tbody)
+    // 3. RENDERIZAR FILAS (tbody) según el tipo de ingreso
     tbody.innerHTML = lineasIngreso.map((l, i) => {
         const prod = productosCompletos.find(p => p.id_inventario == l.id_inventario);
         const unidad = prod ? (prod.unidad_abrev || prod.abreviatura || prod.unidad || 'kg') : '-';
         const cantidad = toNum(l.cantidad);
         const valorTotal = toNum(l.valor_total_item);
-        const inputStyle = "width:100%; padding:6px; background:#fff3cd; font-weight:600; text-align:right; border:1px solid #ddd; border-radius:4px;";
-
-        if (modoConFactura) {
-            const costoUnitDoc = cantidad > 0 ? valorTotal / cantidad : 0;
-            const iva = valorTotal * 0.13;
-            const costoItem = valorTotal - iva;
-            const costoUnitNeto = cantidad > 0 ? costoItem / cantidad : 0;
+        
+        // Estilo común para inputs
+        const inputStyle = "width:100%; padding:6px; font-weight:600; text-align:right; border:1px solid #ddd; border-radius:4px;";
+        
+        // =======================================
+        // TIPO: COMPRA A PROVEEDOR
+        // =======================================
+        if (tipoIngresoActual.codigo === 'COMPRA') {
+            if (modoConFactura) {
+                // CON FACTURA (9 columnas)
+                const costoUnitDoc = cantidad > 0 ? valorTotal / cantidad : 0;
+                const iva = valorTotal * 0.13;
+                const costoItem = valorTotal - iva;
+                const costoUnitNeto = cantidad > 0 ? costoItem / cantidad : 0;
+                
+                return `
+                    <tr>
+                        <td style="text-align:center; font-weight:600; background:#f8f9fa;">${i + 1}</td>
+                        <td>
+                            <select id="ingProd_${i}" onchange="seleccionarProductoIngreso(${i})" style="width:100%; padding:6px; font-size:0.85rem;">
+                                <option value="">Seleccione producto...</option>
+                                ${productosFiltrados.map(p => `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>${p.nombre}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="text-align:center; font-weight:600;">${unidad}</td>
+                        <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle} background:#fff3cd;" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
+                        <td><input type="text" id="ingValor_${i}" value="${formatNum(valorTotal, 2)}" style="${inputStyle} background:#fff3cd;" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'valor')" onfocus="limpiarFormatoInput('ingValor_${i}')" onblur="formatearInputNumerico('ingValor_${i}')"></td>
+                        <td id="res_cudoc_${i}" style="background:#f8f9fa; text-align:right; padding-right:10px; font-weight:500;">${formatNum(costoUnitDoc, 4)}</td>
+                        <td id="res_iva_${i}" style="background:#fff9e6; text-align:right; padding-right:10px; font-weight:500;">${formatNum(iva, 2)}</td>
+                        <td id="res_citem_${i}" style="background:#f8f9fa; text-align:right; padding-right:10px; font-weight:500;">${formatNum(costoItem, 2)}</td>
+                        <td id="res_cuneto_${i}" style="background:#d4edda; text-align:right; padding-right:10px; font-weight:700; color:#155724;">${formatNum(costoUnitNeto, 4)}</td>
+                        <td style="text-align:center;"><button type="button" onclick="eliminarLineaIngreso(${i})" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px;"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+            } else {
+                // SIN FACTURA (7 columnas)
+                const costoUnitario = cantidad > 0 ? valorTotal / cantidad : 0;
+                
+                return `
+                    <tr>
+                        <td style="text-align:center; font-weight:600; background:#f8f9fa;">${i + 1}</td>
+                        <td>
+                            <select id="ingProd_${i}" onchange="seleccionarProductoIngreso(${i})" style="width:100%; padding:6px; font-size:0.85rem;">
+                                <option value="">Seleccione producto...</option>
+                                ${productosFiltrados.map(p => `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>${p.nombre}</option>`).join('')}
+                            </select>
+                        </td>
+                        <td style="text-align:center; font-weight:600;">${unidad}</td>
+                        <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle} background:#fff3cd;" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
+                        <td><input type="text" id="ingValor_${i}" value="${formatNum(valorTotal, 2)}" style="${inputStyle} background:#fff3cd;" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'valor')" onfocus="limpiarFormatoInput('ingValor_${i}')" onblur="formatearInputNumerico('ingValor_${i}')"></td>
+                        <td id="res_cu_${i}" style="background:#d4edda; text-align:right; padding-right:10px; font-weight:700; color:#155724;">${formatNum(costoUnitario, 4)}</td>
+                        <td style="text-align:center;"><button type="button" onclick="eliminarLineaIngreso(${i})" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px;"><i class="fas fa-trash"></i></button></td>
+                    </tr>`;
+            }
+        }
+        
+        // =======================================
+        // TIPO: INVENTARIO INICIAL
+        // =======================================
+        else if (tipoIngresoActual.codigo === 'INICIAL') {
+            const costoUnit = toNum(l.costo_unitario);
+            const valorCalculado = cantidad * costoUnit;
             
             return `
                 <tr>
@@ -653,16 +711,20 @@ function renderLineasIngreso() {
                         </select>
                     </td>
                     <td style="text-align:center; font-weight:600;">${unidad}</td>
-                    <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle}" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
-                    <td><input type="text" id="ingValor_${i}" value="${formatNum(valorTotal, 2)}" style="${inputStyle}" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'valor')" onfocus="limpiarFormatoInput('ingValor_${i}')" onblur="formatearInputNumerico('ingValor_${i}')"></td>
-                    <td id="res_cudoc_${i}" style="background:#f8f9fa; text-align:right; font-weight:500;">${formatNum(costoUnitDoc, 4)}</td>
-                    <td id="res_iva_${i}" style="background:#fff9e6; text-align:right; font-weight:500;">${formatNum(iva, 2)}</td>
-                    <td id="res_citem_${i}" style="background:#f8f9fa; text-align:right; font-weight:500;">${formatNum(costoItem, 2)}</td>
-                    <td id="res_cuneto_${i}" style="background:#d4edda; text-align:right; font-weight:700; color:#155724;">${formatNum(costoUnitNeto, 4)}</td>
+                    <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle} background:#e3f2fd;" onchange="calcularLineaIngresoInicial(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
+                    <td><input type="text" id="ingCosto_${i}" value="${formatNum(costoUnit, 2)}" style="${inputStyle} background:#e3f2fd;" onchange="calcularLineaIngresoInicial(${i})" onkeydown="handleTabNavigation(event, ${i}, 'costo')" onfocus="limpiarFormatoInput('ingCosto_${i}')" onblur="formatearInputNumerico('ingCosto_${i}')"></td>
+                    <td id="res_total_${i}" style="background:#f1f8e9; text-align:right; padding-right:10px; font-weight:700; color:#2e7d32;">${formatNum(valorCalculado, 2)}</td>
                     <td style="text-align:center;"><button type="button" onclick="eliminarLineaIngreso(${i})" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px;"><i class="fas fa-trash"></i></button></td>
                 </tr>`;
-        } else {
-            const costoUnitario = cantidad > 0 ? valorTotal / cantidad : 0;
+        }
+        
+        // =======================================
+        // TIPO: DEVOLUCIÓN DE PRODUCCIÓN
+        // =======================================
+        else if (tipoIngresoActual.codigo === 'DEVOLUCION_PROD') {
+            const costoPromedio = prod ? (toNum(prod.costo_promedio) || toNum(prod.costo_unitario)) : 0;
+            const valorCalculado = cantidad * costoPromedio;
+            
             return `
                 <tr>
                     <td style="text-align:center; font-weight:600; background:#f8f9fa;">${i + 1}</td>
@@ -673,16 +735,182 @@ function renderLineasIngreso() {
                         </select>
                     </td>
                     <td style="text-align:center; font-weight:600;">${unidad}</td>
-                    <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle}" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
-                    <td><input type="text" id="ingValor_${i}" value="${formatNum(valorTotal, 2)}" style="${inputStyle}" onchange="calcularLineaIngreso(${i})" onkeydown="handleTabNavigation(event, ${i}, 'valor')" onfocus="limpiarFormatoInput('ingValor_${i}')" onblur="formatearInputNumerico('ingValor_${i}')"></td>
-                    <td id="res_cu_${i}" style="background:#d4edda; text-align:right; font-weight:700; color:#155724; padding-right:10px;">${formatNum(costoUnitario, 4)}</td>
+                    <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle} background:#fff3e0;" onchange="calcularLineaIngresoDevolucion(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
+                    <td id="res_cpp_${i}" style="background:#f5f5f5; text-align:right; padding-right:10px; font-weight:500; color:#666;">${formatNum(costoPromedio, 4)}</td>
+                    <td id="res_total_${i}" style="background:#f1f8e9; text-align:right; padding-right:10px; font-weight:700; color:#2e7d32;">${formatNum(valorCalculado, 2)}</td>
                     <td style="text-align:center;"><button type="button" onclick="eliminarLineaIngreso(${i})" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px;"><i class="fas fa-trash"></i></button></td>
                 </tr>`;
         }
+        
+        // =======================================
+        // TIPO: AJUSTE POSITIVO
+        // =======================================
+        else if (tipoIngresoActual.codigo === 'AJUSTE_POS') {
+    const costoPromedio = prod ? (toNum(prod.costo_promedio) || toNum(prod.costo_unitario)) : 0;
+    const valorCalculado = cantidad * costoPromedio;
+    
+    return `
+        <tr>
+            <td style="text-align:center; font-weight:600; background:#f8f9fa;">${i + 1}</td>
+            <td>
+                <select id="ingProd_${i}" onchange="seleccionarProductoIngreso(${i})" style="width:100%; padding:6px; font-size:0.85rem;">
+                    <option value="">Seleccione producto...</option>
+                    ${productosFiltrados.map(p => `<option value="${p.id_inventario}" ${p.id_inventario == l.id_inventario ? 'selected' : ''}>${p.nombre}</option>`).join('')}
+                </select>
+            </td>
+            <td style="text-align:center; font-weight:600;">${unidad}</td>
+            <td><input type="text" id="ingCant_${i}" value="${formatNum(cantidad, 2)}" style="${inputStyle} background:#e8f5e9;" onchange="calcularLineaIngresoAjuste(${i})" onkeydown="handleTabNavigation(event, ${i}, 'cantidad')" onfocus="limpiarFormatoInput('ingCant_${i}')" onblur="formatearInputNumerico('ingCant_${i}')"></td>
+            <td id="res_cpp_${i}" style="background:#f5f5f5; text-align:right; padding-right:10px; font-weight:500; color:#666;">${formatNum(costoPromedio, 4)}</td>
+            <td id="res_total_${i}" style="background:#f1f8e9; text-align:right; padding-right:10px; font-weight:700; color:#2e7d32;">${formatNum(valorCalculado, 2)}</td>
+            <td style="text-align:center;"><button type="button" onclick="eliminarLineaIngreso(${i})" style="background:#dc3545; color:white; border:none; padding:6px 10px; border-radius:4px;"><i class="fas fa-trash"></i></button></td>
+        </tr>`;
+}
+
+        
+        // =======================================
+        // TIPO NO RECONOCIDO
+        // =======================================
+        else {
+            return `<tr><td colspan="${columnas.length}" style="text-align:center; padding:20px; color:red;">Tipo de ingreso no soportado: ${tipoIngresoActual.codigo}</td></tr>`;
+        }
+        
     }).join('');
+    
+    // 4. RECALCULAR TOTALES
+    recalcularIngreso();
+}
+
+// ========================================
+// NUEVAS FUNCIONES DE CÁLCULO POR TIPO
+// ========================================
+
+/**
+ * Calcular para INVENTARIO INICIAL
+ * Usuario ingresa: Cantidad y Costo Unitario
+ * Sistema calcula: Valor Total
+ */
+function calcularLineaIngresoInicial(index) {
+    const cantidad = toNum(document.getElementById(`ingCant_${index}`).value);
+    const costoUnit = toNum(document.getElementById(`ingCosto_${index}`).value);
+    
+    lineasIngreso[index].cantidad = cantidad;
+    lineasIngreso[index].costo_unitario = costoUnit;
+    lineasIngreso[index].valor_total_item = cantidad * costoUnit;
+    
+    // Actualizar valor calculado
+    const elTotal = document.getElementById(`res_total_${index}`);
+    if (elTotal) {
+        elTotal.textContent = formatNum(cantidad * costoUnit, 2);
+    }
     
     recalcularIngreso();
 }
+
+/**
+ * Calcular para DEVOLUCIÓN DE PRODUCCIÓN
+ * Usuario ingresa: Cantidad
+ * Sistema usa: Costo Promedio del producto (readonly)
+ * Sistema calcula: Valor Total
+ */
+function calcularLineaIngresoDevolucion(index) {
+    const cantidad = toNum(document.getElementById(`ingCant_${index}`).value);
+    
+    console.log('🔢 Cantidad ingresada:', cantidad);
+    
+    lineasIngreso[index].cantidad = cantidad;
+    
+    // Obtener costo promedio del producto seleccionado
+    const idProd = lineasIngreso[index].id_inventario;
+    
+    if (!idProd) {
+        console.warn('⚠️ Seleccione un producto primero');
+        return;
+    }
+    
+    const prod = productosCompletos.find(p => p.id_inventario == idProd);
+    const costoPromedio = prod ? (toNum(prod.costo_promedio) || toNum(prod.costo_unitario)) : 0;
+    
+    console.log(`📊 Producto: ${prod?.nombre || 'N/A'}`);
+    console.log(`💰 CPP usado: ${costoPromedio}`);
+    
+    lineasIngreso[index].costo_unitario = costoPromedio;
+    lineasIngreso[index].valor_total_item = cantidad * costoPromedio;
+    
+    console.log(`💵 Valor Total = ${cantidad} × ${costoPromedio} = ${cantidad * costoPromedio}`);
+    
+    // Actualizar celdas en la tabla
+    const elCPP = document.getElementById(`res_cpp_${index}`);
+    if (elCPP) {
+        elCPP.textContent = formatNum(costoPromedio, 4);
+        console.log('✅ CPP actualizado en tabla');
+    }
+    
+    const elTotal = document.getElementById(`res_total_${index}`);
+    if (elTotal) {
+        elTotal.textContent = formatNum(cantidad * costoPromedio, 2);
+        console.log('✅ Total actualizado en tabla');
+    }
+    
+    recalcularIngreso();
+}
+
+
+/**
+ * Calcular para AJUSTE POSITIVO
+ * Similar a Inventario Inicial
+ */
+function calcularLineaIngresoAjuste(index) {
+    const cantidad = toNum(document.getElementById(`ingCant_${index}`).value);
+    
+    console.log('🔢 Cantidad ingresada (Ajuste):', cantidad);
+    
+    lineasIngreso[index].cantidad = cantidad;
+    
+    const idProd = lineasIngreso[index].id_inventario;
+    
+    if (!idProd) {
+        console.warn('⚠️ Seleccione un producto primero');
+        return;
+    }
+    
+    const prod = productosCompletos.find(p => p.id_inventario == idProd);
+    
+    let costoPromedio = 0;
+    
+    if (prod) {
+        if (prod.costo_promedio !== undefined && prod.costo_promedio !== null) {
+            costoPromedio = toNum(prod.costo_promedio);
+        }
+        
+        if (costoPromedio === 0 && prod.costo_unitario !== undefined) {
+            costoPromedio = toNum(prod.costo_unitario);
+        }
+    }
+    
+    console.log(`📊 Producto (Ajuste): ${prod?.nombre || 'N/A'}`);
+    console.log(`💰 CPP usado (Ajuste): ${costoPromedio}`);
+    
+    lineasIngreso[index].costo_unitario = costoPromedio;
+    lineasIngreso[index].valor_total_item = cantidad * costoPromedio;
+    
+    console.log(`💵 Valor Total = ${cantidad} × ${costoPromedio} = ${cantidad * costoPromedio}`);
+    
+    // Actualizar celdas
+    const elCPP = document.getElementById(`res_cpp_${index}`);
+    if (elCPP) {
+        elCPP.textContent = formatNum(costoPromedio, 4);
+        console.log('✅ CPP actualizado en tabla');
+    }
+    
+    const elTotal = document.getElementById(`res_total_${index}`);
+    if (elTotal) {
+        elTotal.textContent = formatNum(cantidad * costoPromedio, 2);
+        console.log('✅ Total actualizado en tabla');
+    }
+    
+    recalcularIngreso();
+}
+
 
 // ========================================
 // NUEVA FUNCIÓN: Navegación con TAB
@@ -697,34 +925,56 @@ function handleTabNavigation(event, index, field) {
     
     setTimeout(() => {
         if (field === 'cantidad') {
-            // Caso: De Cantidad -> ir a Valor (misma fila)
-            const valorField = document.getElementById(`ingValor_${index}`);
-            if (valorField) {
-                valorField.focus();
-                valorField.select();
+            // Ir al siguiente campo según el tipo
+            let nextField = null;
+            
+            if (tipoIngresoActual.codigo === 'COMPRA') {
+                // COMPRA: Cantidad → Valor
+                nextField = document.getElementById(`ingValor_${index}`);
+            } else if (tipoIngresoActual.codigo === 'INICIAL') {
+                    // INVENTARIO INICIAL: Cantidad → Costo
+                    nextField = document.getElementById(`ingCosto_${index}`);
+                } else if (tipoIngresoActual.codigo === 'AJUSTE_POS') {
+                    // AJUSTE POSITIVO: Cantidad → Siguiente línea (como devolución)
+                   nextField = document.getElementById(`ingCant_${index + 1}`);
+                    if (!nextField) {
+                        nextField = document.getElementById(`ingCant_0`);
+                    }
+                } else if (tipoIngresoActual.codigo === 'DEVOLUCION_PROD') {
+                // DEVOLUCIÓN: Cantidad → Siguiente línea (no hay más campos)
+                nextField = document.getElementById(`ingCant_${index + 1}`);
+                if (!nextField) {
+                    // Si no hay siguiente, volver a la primera
+                    nextField = document.getElementById(`ingCant_0`);
+                }
             }
-        } else if (field === 'valor') {
-            // Caso: De Valor -> intentar ir a la Cantidad de la SIGUIENTE fila
+            
+            if (nextField) {
+                nextField.focus();
+                nextField.select();
+            }
+            
+        } else if (field === 'valor' || field === 'costo') {
+            // Desde Valor o Costo → ir a Cantidad de la siguiente fila
             const nextCantField = document.getElementById(`ingCant_${index + 1}`);
             
             if (nextCantField) {
-                // Si existe la siguiente fila, saltamos a ella
+                // Ya existe la siguiente fila
                 nextCantField.focus();
                 nextCantField.select();
             } else {
-                // Si NO existe (estamos en el último registro), 
-                // volvemos a la Cantidad de la PRIMERA fila (índice 0)
+                // No existe, volver a la primera fila (TAB CIRCULAR)
                 const firstCantField = document.getElementById(`ingCant_0`);
                 if (firstCantField) {
                     firstCantField.focus();
                     firstCantField.select();
                     
-                    // Opcional: Desplazar el scroll hacia arriba si la tabla es muy larga
+                    // Opcional: Desplazar el scroll hacia arriba
                     firstCantField.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }
         }
-    }, 50); // Un tiempo corto de 50ms es suficiente ahora que no redibujamos la tabla
+    }, 50); // 50ms como en la versión original que funcionaba
 }
 
 
@@ -796,7 +1046,38 @@ function calcularLineaIngreso(index) {
 
 function seleccionarProductoIngreso(index) {
     const select = document.getElementById(`ingProd_${index}`);
-    lineasIngreso[index].id_inventario = select.value;
+    const idInventario = select.value;
+    
+    lineasIngreso[index].id_inventario = idInventario;
+    
+    console.log('📦 Producto seleccionado ID:', idInventario);
+    
+    // Para Devolución y Ajuste Positivo, cargar CPP automáticamente
+    if (tipoIngresoActual && (tipoIngresoActual.codigo === 'DEVOLUCION_PROD' || tipoIngresoActual.codigo === 'AJUSTE_POS') && idInventario) {
+        const prod = productosCompletos.find(p => p.id_inventario == idInventario);
+        
+        if (prod) {
+            let cpp = 0;
+            
+            if (prod.costo_promedio !== undefined && prod.costo_promedio !== null) {
+                cpp = toNum(prod.costo_promedio);
+            }
+            
+            if (cpp === 0 && prod.costo_unitario !== undefined) {
+                cpp = toNum(prod.costo_unitario);
+            }
+            
+            lineasIngreso[index].costo_unitario = cpp;
+            console.log('💰 CPP cargado:', cpp);
+            
+            const cantidad = toNum(lineasIngreso[index].cantidad);
+            if (cantidad > 0) {
+                lineasIngreso[index].valor_total_item = cantidad * cpp;
+                console.log('💵 Valor calculado:', cantidad * cpp);
+            }
+        }
+    }
+    
     renderLineasIngreso();
 }
 

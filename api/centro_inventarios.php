@@ -557,7 +557,8 @@ try {
                             i.stock_actual,
                             i.stock_minimo,
                             i.costo_unitario,
-                            (i.stock_actual * i.costo_unitario) AS valor_total,
+                            i.costo_promedio,
+                            (i.stock_actual * COALESCE(i.costo_promedio, i.costo_unitario, 0)) AS valor_total,
                             ua.nombre AS ubicacion,
                             i.proveedor_principal,
                             CASE 

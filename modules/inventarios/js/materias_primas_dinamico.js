@@ -25,7 +25,83 @@ let productosData = [];
 let categoriasData = [];
 let subcategoriasData = [];
 let unidadesMedida = [];
+let usuariosAutorizados = [];
 // let lineasIngreso = []; //
+
+/**
+ * Configuración de columnas por tipo de ingreso
+ * Define qué columnas mostrar para cada tipo
+ */
+const COLUMNAS_CONFIG = {
+    // COMPRA A PROVEEDOR - Complejo con factura/IVA
+    'COMPRA': {
+        conFactura: {
+            columnas: [
+                { id: 'num', label: '#', width: '40px', align: 'center' },
+                { id: 'producto', label: 'PRODUCTO', width: '280px' },
+                { id: 'unidad', label: 'UNID.', width: '50px', align: 'center' },
+                { id: 'cantidad', label: 'CANTIDAD', width: '90px', input: true, bg: '#fff3cd' },
+                { id: 'valor_total', label: 'VALOR TOTAL', width: '110px', input: true, bg: '#fff3cd' },
+                { id: 'costo_doc', label: 'COSTO UNIT.<br>DOC.', width: '100px', calculado: true },
+                { id: 'iva', label: 'IVA 13%', width: '90px', calculado: true, bg: '#fff9e6' },
+                { id: 'costo_item', label: 'COSTO<br>ITEM', width: '90px', calculado: true },
+                { id: 'costo_neto', label: 'COSTO UNIT.<br>- IVA', width: '100px', calculado: true, bg: '#d4edda' },
+                { id: 'acciones', label: '', width: '50px' }
+            ]
+        },
+        sinFactura: {
+            columnas: [
+                { id: 'num', label: '#', width: '40px', align: 'center' },
+                { id: 'producto', label: 'PRODUCTO', width: '350px' },
+                { id: 'unidad', label: 'UNID.', width: '60px', align: 'center' },
+                { id: 'cantidad', label: 'CANTIDAD', width: '120px', input: true, bg: '#fff3cd' },
+                { id: 'valor_total', label: 'VALOR TOTAL', width: '140px', input: true, bg: '#fff3cd' },
+                { id: 'costo_unitario', label: 'COSTO UNITARIO', width: '140px', calculado: true, bg: '#d4edda' },
+                { id: 'acciones', label: '', width: '50px' }
+            ]
+        }
+    },
+    
+    // INVENTARIO INICIAL - Simplificado (solo cantidad y costo)
+    'INICIAL': {
+        columnas: [
+            { id: 'num', label: '#', width: '40px', align: 'center' },
+            { id: 'producto', label: 'PRODUCTO', width: '400px' },
+            { id: 'unidad', label: 'UNID.', width: '70px', align: 'center' },
+            { id: 'cantidad', label: 'CANTIDAD<br>INICIAL', width: '120px', input: true, bg: '#e3f2fd' },
+            { id: 'costo_unitario', label: 'COSTO<br>UNITARIO', width: '120px', input: true, bg: '#e3f2fd' },
+            { id: 'valor_total', label: 'VALOR<br>TOTAL', width: '140px', calculado: true, bg: '#f1f8e9' },
+            { id: 'acciones', label: '', width: '50px' }
+        ]
+    },
+    
+    // DEVOLUCIÓN DE PRODUCCIÓN - Simplificado (solo cantidad devuelta)
+    'DEVOLUCION_PROD': {
+        columnas: [
+            { id: 'num', label: '#', width: '40px', align: 'center' },
+            { id: 'producto', label: 'PRODUCTO', width: '400px' },
+            { id: 'unidad', label: 'UNID.', width: '70px', align: 'center' },
+            { id: 'cantidad', label: 'CANTIDAD<br>DEVUELTA', width: '120px', input: true, bg: '#fff3e0' },
+            { id: 'costo_unitario', label: 'COSTO<br>PROMEDIO', width: '140px', calculado: true, readonly: true },
+            { id: 'valor_total', label: 'VALOR<br>TOTAL', width: '140px', calculado: true, bg: '#f1f8e9' },
+            { id: 'acciones', label: '', width: '50px' }
+        ]
+    },
+    
+    // AJUSTE POSITIVO - Similar a inventario inicial
+    'AJUSTE_POS': {
+    columnas: [
+        { id: 'num', label: '#', width: '40px', align: 'center' },
+        { id: 'producto', label: 'PRODUCTO', width: '400px' },
+        { id: 'unidad', label: 'UNID.', width: '70px', align: 'center' },
+        { id: 'cantidad', label: 'CANTIDAD AJUSTE', width: '120px', input: true, bg: '#e8f5e9' },
+        { id: 'costo_promedio', label: 'COSTO PROMEDIO', width: '140px', calculado: true, readonly: true }, 
+        { id: 'valor_total', label: 'VALOR TOTAL', width: '140px', calculado: true, bg: '#f1f8e9' },
+        { id: 'acciones', label: '', width: '50px' }
+    ]
+        }
+};
+
 
 // ========================================
 // FUNCIONES DE UTILIDAD
@@ -62,6 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
     cargarTiposIngreso();
     cargarAreasProduccion();
     cargarUnidadesMedida();
+    cargarUsuariosAutorizados();  
 });
 
 /**
@@ -329,12 +406,11 @@ async function cambiarTipoIngreso() {
     
     // 5. AUTORIZACIÓN
     if (config.requiere_autorizacion) {
-        mostrarSeccion('seccionAutorizacion', true);
-        setRequired('ingresoAutorizadoPor', true);
-    } else {
-        mostrarSeccion('seccionAutorizacion', false);
-        setRequired('ingresoAutorizadoPor', false);
-    }
+    mostrarSeccionAutorizacion();  
+        } else {
+            mostrarSeccion('seccionAutorizacion', false);
+            setRequired('ingresoAutorizadoPor', false);
+        }
     
     // 6. UBICACIÓN (para inventario inicial)
     mostrarSeccion('seccionUbicacion', config.codigo === 'INICIAL');
@@ -419,38 +495,73 @@ async function mostrarSeccionArea() {
     }
 }
 
+
+
 async function mostrarSeccionMotivo(tipoId) {
+    console.log('🔄 Cargando motivos para tipo:', tipoId);
+    
+    // Cargar motivos si no están en caché
     if (!motivosCache[tipoId]) {
         try {
             const url = `${BASE_URL_API}/tipos_ingreso.php?action=motivos&tipo_id=${tipoId}`;
+            console.log('📡 URL motivos:', url);
+            
             const response = await fetch(url);
             
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    motivosCache[tipoId] = data.motivos;
-                }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('📦 Respuesta motivos:', data);
+            
+            if (data.success) {
+                motivosCache[tipoId] = data.motivos;
+                console.log('✅ Motivos cargados:', data.motivos.length);
+            } else {
+                console.error('❌ Error en respuesta:', data.message);
+                motivosCache[tipoId] = [];
             }
         } catch (error) {
-            logError('mostrarSeccionMotivo', error);
+            console.error('❌ Error al cargar motivos:', error);
+            motivosCache[tipoId] = [];
         }
+    } else {
+        console.log('📦 Motivos desde caché:', motivosCache[tipoId].length);
     }
     
+    // Mostrar sección
     mostrarSeccion('seccionMotivo', true);
     setRequired('ingresoMotivo', true);
     
+    // Poblar select
     const selectMotivo = document.getElementById('ingresoMotivo');
-    if (selectMotivo && motivosCache[tipoId]) {
+    if (selectMotivo) {
         selectMotivo.innerHTML = '<option value="">Seleccione motivo...</option>';
-        motivosCache[tipoId].forEach(motivo => {
-            selectMotivo.innerHTML += `
-                <option value="${motivo.id_motivo}" data-requiere-detalle="${motivo.requiere_detalle}">
-                    ${motivo.descripcion}
-                </option>
-            `;
-        });
+        
+        const motivos = motivosCache[tipoId] || [];
+        
+        if (motivos.length > 0) {
+            motivos.forEach(motivo => {
+                const option = document.createElement('option');
+                option.value = motivo.id_motivo;
+                option.textContent = motivo.descripcion;
+                if (motivo.requiere_detalle) {
+                    option.dataset.requiereDetalle = '1';
+                }
+                selectMotivo.appendChild(option);
+            });
+            console.log('✅ Select poblado con', motivos.length, 'motivos');
+        } else {
+            console.warn('⚠️ No hay motivos para este tipo');
+            // Agregar opción temporal
+            selectMotivo.innerHTML += '<option value="0">Sin motivo especificado (temporal)</option>';
+        }
+    } else {
+        console.error('❌ Select ingresoMotivo no encontrado en el DOM');
     }
 }
+
 
 function configurarObservaciones(config) {
     const obsField = document.getElementById('ingresoObservaciones');
@@ -467,36 +578,50 @@ function configurarObservaciones(config) {
     }
 }
 
+
 function actualizarEncabezadosTabla(config) {
     const thead = document.getElementById('theadIngreso');
     if (!thead) return;
     
-    const conFactura = config.permite_iva && document.getElementById('ingresoConFactura')?.checked;
+    console.log('📋 Actualizando encabezados para tipo:', config.codigo);
     
-    if (conFactura) {
-        thead.innerHTML = `
-            <tr>
-                <th class="col-producto">Producto</th>
-                <th class="col-unidad">Unidad</th>
-                <th class="col-cantidad">Cantidad</th>
-                <th class="col-costo">Costo Unit. (con IVA)</th>
-                <th class="col-iva">IVA 13%</th>
-                <th class="col-total">Subtotal</th>
-                <th class="col-acciones"></th>
-            </tr>
-        `;
-    } else {
-        thead.innerHTML = `
-            <tr>
-                <th class="col-producto">Producto</th>
-                <th class="col-unidad">Unidad</th>
-                <th class="col-cantidad">Cantidad</th>
-                <th class="col-costo">Costo Unitario</th>
-                <th class="col-total">Subtotal</th>
-                <th class="col-acciones"></th>
-            </tr>
-        `;
+    // Obtener configuración de columnas para este tipo
+    const tipoConfig = COLUMNAS_CONFIG[config.codigo];
+    
+    if (!tipoConfig) {
+        console.warn('⚠️ No hay configuración de columnas para:', config.codigo);
+        return;
     }
+    
+    // Determinar qué set de columnas usar
+    let columnasConfig;
+    
+    if (config.codigo === 'COMPRA') {
+        // Para compras, revisar si hay factura
+        const conFactura = document.getElementById('ingresoConFactura')?.checked;
+        columnasConfig = conFactura ? tipoConfig.conFactura : tipoConfig.sinFactura;
+    } else {
+        // Para otros tipos, usar la configuración única
+        columnasConfig = tipoConfig;
+    }
+    
+    // Generar HTML de encabezados
+    const columnas = columnasConfig.columnas;
+    
+    thead.innerHTML = `
+        <tr>
+            ${columnas.map(col => {
+                let style = `width:${col.width};`;
+                if (col.align) style += ` text-align:${col.align};`;
+                if (col.bg) style += ` background:${col.bg};`;
+                if (col.calculado) style += ' font-size:0.75rem;';
+                
+                return `<th style="${style}">${col.label}</th>`;
+            }).join('')}
+        </tr>
+    `;
+    
+    console.log('✅ Encabezados actualizados con', columnas.length, 'columnas');
 }
 
 function actualizarTotalesIngreso() {
@@ -670,13 +795,106 @@ function actualizarInfoProveedor() {
     box.style.display = 'flex';
 }
 
+function obtenerConfiguracionColumnas() {
+    if (!tipoIngresoActual) {
+        console.warn('⚠️ No hay tipo de ingreso seleccionado');
+        return null;
+    }
+    
+    const tipoConfig = COLUMNAS_CONFIG[tipoIngresoActual.codigo];
+    if (!tipoConfig) return null;
+    
+    if (tipoIngresoActual.codigo === 'COMPRA') {
+        const conFactura = document.getElementById('ingresoConFactura')?.checked;
+        return conFactura ? tipoConfig.conFactura : tipoConfig.sinFactura;
+    }
+    
+    return tipoConfig;
+}
+
+async function cargarUsuariosAutorizados() {
+    try {
+        const url = `${BASE_URL_API}/tipos_ingreso.php?action=usuarios_autorizacion`;
+        console.log('🔄 Cargando usuarios autorizados desde:', url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('📦 Respuesta usuarios:', data);
+        
+        if (data.success) {
+            usuariosAutorizados = data.usuarios;
+            console.log('✅ Usuarios autorizados cargados:', usuariosAutorizados.length);
+        } else {
+            console.error('❌ Error:', data.message);
+            // Usar mock local
+            usuariosAutorizados = [
+                { id_usuario: 1, nombre: 'Gary Meneses', rol: 'Gerente' }
+            ];
+        }
+    } catch (error) {
+        console.error('❌ Error al cargar usuarios:', error);
+        // Usar mock local
+        usuariosAutorizados = [
+            { id_usuario: 1, nombre: 'Gary Meneses', rol: 'Gerente' }
+        ];
+    }
+}
+
+
+// ========================================
+// VERIFICAR mostrarSeccionAutorizacion()
+// ========================================
+
+function mostrarSeccionAutorizacion() {
+    console.log('🔄 Mostrando sección de autorización');
+    
+    mostrarSeccion('seccionAutorizacion', true);
+    setRequired('ingresoAutorizadoPor', true);
+    
+    // Poblar select de usuarios
+    const selectAutoriza = document.getElementById('ingresoAutorizadoPor');
+    
+    if (!selectAutoriza) {
+        console.error('❌ Select ingresoAutorizadoPor no encontrado');
+        return;
+    }
+    
+    selectAutoriza.innerHTML = '<option value="">Seleccione quién autoriza...</option>';
+    
+    if (usuariosAutorizados && usuariosAutorizados.length > 0) {
+        usuariosAutorizados.forEach(usuario => {
+            const option = document.createElement('option');
+            option.value = usuario.id_usuario;
+            option.textContent = `${usuario.nombre} - ${usuario.rol}`;
+            selectAutoriza.appendChild(option);
+        });
+        console.log('✅ Select autorización poblado con', usuariosAutorizados.length, 'usuarios');
+    } else {
+        console.warn('⚠️ No hay usuarios autorizados cargados');
+        // Agregar opción temporal
+        selectAutoriza.innerHTML += '<option value="1">Administrador (temporal)</option>';
+    }
+}
+
+
+
 // Exponer funciones globalmente para que el HTML pueda llamarlas
+window.obtenerConfiguracionColumnas = obtenerConfiguracionColumnas;
 window.cambiarTipoIngreso = cambiarTipoIngreso;
 window.poblarSelectProveedores = poblarSelectProveedores;
 window.abrirModalIngreso = abrirModalIngreso;
 window.actualizarInfoProveedor = actualizarInfoProveedor;
 window.filtrarProveedoresIngreso = filtrarProveedoresIngreso;
+window.mostrarSeccionMotivo = mostrarSeccionMotivo;
+window.mostrarSeccionAutorizacion = mostrarSeccionAutorizacion;
 
+console.log('✅ Sistema de configuración de columnas cargado');
+console.log('   Tipos configurados:', Object.keys(COLUMNAS_CONFIG).join(', '));
 console.log('✅ Funciones expuestas globalmente');
 console.log('   - cambiarTipoIngreso');
 console.log('   - poblarSelectProveedores');
@@ -684,4 +902,6 @@ console.log('   - abrirModalIngreso');
 console.log('   - actualizarInfoProveedor');
 console.log('   - filtrarProveedoresIngreso');
 console.log('✅ Módulo de tipos de ingreso dinámico cargado - VERSIÓN FINAL');
+console.log('   - mostrarSeccionMotivo');          
+console.log('   - mostrarSeccionAutorizacion');  
 console.log('📁 API Base:', BASE_URL_API);

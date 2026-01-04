@@ -146,6 +146,60 @@ require_once '../../includes/header.php';
         color: white;
     }
 
+    /* ========================================
+       ESTILOS PARA KARDEX VALORADO
+       ======================================== */
+    .kardex-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        margin-top: 10px;
+    }
+
+    .kardex-table th {
+        background: #343a40;
+        color: white;
+        padding: 10px 8px;
+        text-align: center;
+        border: 1px solid #dee2e6;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+
+    .kardex-table td {
+        padding: 8px;
+        border: 1px solid #e9ecef;
+        text-align: right;
+        font-size: 0.85rem;
+    }
+
+    .kardex-table td.documento {
+        text-align: left;
+        font-weight: 600;
+    }
+
+    .kardex-table tr.entrada {
+        background: #d4edda;
+    }
+
+    .kardex-table tr.salida {
+        background: #f8d7da;
+    }
+
+    .kardex-table tr.saldo-inicial {
+        background: #fff3cd;
+        font-weight: 700;
+    }
+
+    .kardex-table .cpp-column {
+        background: #e7f3ff;
+        font-weight: 600;
+    }
+
+    .kardex-table tbody tr:hover {
+        opacity: 0.9;
+    }
+
     .mp-kpis {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -1102,6 +1156,71 @@ require_once '../../includes/header.php';
             transform: translateY(0);
         }
     }
+
+    .kardex-tabs {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #dee2e6;
+    }
+
+    .kardex-tab {
+        padding: 10px 20px;
+        background: #e9ecef;
+        color: #495057;
+        border: none;
+        border-radius: 8px 8px 0 0;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .kardex-tab:hover {
+        background: #dee2e6;
+    }
+
+    .kardex-tab.active {
+        background: #6f42c1;
+        color: white;
+    }
+
+    /* Estilos para el kardex */
+    .kardex-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+
+    .kardex-table th {
+        background: #343a40;
+        color: white;
+        padding: 10px 8px;
+        text-align: center;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .kardex-table td {
+        padding: 8px;
+        border-bottom: 1px solid #e9ecef;
+        text-align: right;
+    }
+
+    .kardex-table tr.entrada {
+        background: #e8f5e9;
+    }
+
+    .kardex-table tr.salida {
+        background: #ffebee;
+    }
+
+    .kardex-table tr.saldo-inicial {
+        background: #f5f5f5;
+        font-weight: bold;
+    }
 </style>
 
 <div class="mp-module">
@@ -1677,7 +1796,8 @@ require_once '../../includes/header.php';
     <div class="modal-content">
         <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #5a32a3); color: white;">
             <h3><i class="fas fa-file-alt"></i> <span id="detalleTitulo">Detalle</span></h3>
-            <button class="modal-close" onclick="cerrarModal('modalDetalle')" style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+            <button class="modal-close" onclick="cerrarModal('modalDetalle')"
+                style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
         <div class="modal-body" id="detalleContenido"></div>
         <div class="modal-footer">
@@ -1693,28 +1813,89 @@ require_once '../../includes/header.php';
 <div class="modal" id="modalKardex">
     <div class="modal-content large">
         <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #e83e8c); color: white;">
-            <h3><i class="fas fa-book"></i> <span id="kardexTitulo">Kardex</span></h3>
+            <h3><i class="fas fa-book"></i> Kardex - <span id="kardexProducto"></span></h3>
             <button class="modal-close" onclick="cerrarModal('modalKardex')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
         <div class="modal-body">
-            <div id="kardexHeader" style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <!-- Información del producto -->
+            <div id="kardexProductoInfo"
+                style="background: #f8f9fa; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px; font-size: 0.9rem;">
             </div>
-            <table class="kardex-table">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Documento</th>
-                        <th>Tipo</th>
-                        <th>Entrada</th>
-                        <th>Salida</th>
-                        <th>Saldo</th>
-                        <th>Costo</th>
-                        <th>CPP</th>
-                    </tr>
-                </thead>
-                <tbody id="kardexBody"></tbody>
-            </table>
+
+            <!-- Pestañas para Físico y Valorado -->
+            <div class="kardex-tabs"
+                style="display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #dee2e6;">
+                <button class="kardex-tab active" data-tipo="valorado" onclick="cambiarTabKardex('valorado')"
+                    style="padding: 10px 20px; background: #6f42c1; color: white; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-dollar-sign"></i> Kardex Valorado
+                </button>
+                <button class="kardex-tab" data-tipo="fisico" onclick="cambiarTabKardex('fisico')"
+                    style="padding: 10px 20px; background: #e9ecef; color: #495057; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-boxes"></i> Kardex Físico
+                </button>
+            </div>
+
+            <!-- Filtros de fecha -->
+            <div
+                style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; align-items: flex-end;">
+                <div class="form-group" style="flex:1; min-width: 150px; margin: 0;">
+                    <label style="font-size:0.85rem; font-weight:600;">Desde</label>
+                    <input type="date" id="kardexDesde"
+                        style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                </div>
+                <div class="form-group" style="flex:1; min-width: 150px; margin: 0;">
+                    <label style="font-size:0.85rem; font-weight:600;">Hasta</label>
+                    <input type="date" id="kardexHasta"
+                        style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <button class="btn btn-primary" onclick="buscarKardex()" style="padding:9px 20px;">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <button class="btn btn-info" onclick="exportarKardex()" style="padding:9px 20px;">
+                        <i class="fas fa-download"></i> Exportar
+                    </button>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <button class="btn btn-secondary" onclick="imprimirKardex()" style="padding:9px 20px;">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla de kardex (se actualiza dinámicamente según la pestaña) -->
+            <div style="overflow-x: auto; max-height: 400px;">
+                <table class="kardex-table">
+                    <thead id="kardexTableHead">
+                        <!-- El encabezado se genera dinámicamente según el tipo de kardex -->
+                        <tr>
+                            <th width="120">Fecha</th>
+                            <th>Documento</th>
+                            <th width="90">Entrada</th>
+                            <th width="90">Salida</th>
+                            <th width="90" style="background:#e8f5e9;">Saldo</th>
+                            <th width="110">Valor Entrada</th>
+                            <th width="110">Valor Salida</th>
+                            <th width="110" style="background:#fff3e0;">Saldo Valor</th>
+                            <th width="100" style="background:#e3f2fd;">CPP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kardexBody">
+                        <tr>
+                            <td colspan="9" style="text-align:center; padding:30px; color:#6c757d;">
+                                <i class="fas fa-search" style="font-size:2rem;"></i><br>
+                                Seleccione un rango de fechas y presione Buscar
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="cerrarModal('modalKardex')">Cerrar</button>
         </div>
     </div>
 </div>
@@ -1847,4 +2028,5 @@ require_once '../../includes/header.php';
 <script src="js/materias_primas_dinamico.js"></script>
 <script src="js/devolucion_proveedor.js"></script>
 <script src="js/historial_movimientos.js"></script>
+<script src="js/kardex_mp.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

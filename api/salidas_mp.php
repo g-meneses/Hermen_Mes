@@ -17,27 +17,27 @@ error_reporting(E_ALL);
 
 try {
     require_once '../config/database.php';
-    
+
     if (!isLoggedIn()) {
         echo json_encode(['success' => false, 'message' => 'No autorizado']);
         exit();
     }
-    
+
     $db = getDB();
     $method = $_SERVER['REQUEST_METHOD'];
     $TIPO_INVENTARIO_MP = 1;
-    
+
     switch ($method) {
         case 'GET':
             $action = $_GET['action'] ?? 'list';
-            
+
             switch ($action) {
                 case 'list':
                     $desde = $_GET['desde'] ?? date('Y-m-01');
                     $hasta = $_GET['hasta'] ?? date('Y-m-d');
                     $tipo = $_GET['tipo'] ?? null;
                     $estado = $_GET['estado'] ?? 'todos';
-                    
+
                     $sql = "SELECT 
                                 d.id_documento,
                                 d.numero_documento,
@@ -54,23 +54,23 @@ try {
                             AND d.id_tipo_inventario = ?
                             AND d.fecha_documento BETWEEN ? AND ?";
                     $params = [$TIPO_INVENTARIO_MP, $desde, $hasta];
-                    
+
                     if ($tipo) {
                         $sql .= " AND d.referencia_externa LIKE ?";
                         $params[] = $tipo . '%';
                     }
-                    
+
                     if ($estado !== 'todos') {
                         $sql .= " AND d.estado = ?";
                         $params[] = $estado;
                     }
-                    
+
                     $sql .= " ORDER BY d.fecha_documento DESC, d.id_documento DESC";
-                    
+
                     $stmt = $db->prepare($sql);
                     $stmt->execute($params);
                     $documentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    
+
                     ob_clean();
                     echo json_encode([
                         'success' => true,
@@ -78,12 +78,12 @@ try {
                         'total' => count($documentos)
                     ]);
                     break;
-                    
+
                 case 'ingresos_devolucion':
                     // Listar ingresos disponibles para devolución
                     $proveedor = $_GET['proveedor'] ?? null;
                     $limit = $_GET['limit'] ?? 20;
-                    
+
                     $sql = "SELECT 
                                 d.id_documento,
                                 d.numero_documento,
@@ -101,26 +101,26 @@ try {
                             AND d.estado = 'CONFIRMADO'
                             AND d.id_documento > 0";
                     $params = [$TIPO_INVENTARIO_MP];
-                    
+
                     if ($proveedor) {
                         $sql .= " AND d.id_proveedor = ?";
                         $params[] = $proveedor;
                     }
-                    
+
                     $sql .= " ORDER BY d.fecha_documento DESC, d.id_documento DESC LIMIT ?";
-                    $params[] = (int)$limit;
-                    
+                    $params[] = (int) $limit;
+
                     $stmt = $db->prepare($sql);
                     $stmt->execute($params);
                     $ingresos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                    
+
                     ob_clean();
                     echo json_encode([
                         'success' => true,
                         'ingresos' => $ingresos
                     ]);
                     break;
-                    
+
                 case 'detalle_ingreso':
                     // Obtener detalle de un ingreso para devolución
                     $id = $_GET['id'] ?? null;
@@ -128,7 +128,7 @@ try {
                         echo json_encode(['success' => false, 'message' => 'ID requerido']);
                         exit();
                     }
-                    
+
                     // Información del documento
                     $stmt = $db->prepare("
                         SELECT 
@@ -141,12 +141,12 @@ try {
                     ");
                     $stmt->execute([$id]);
                     $documento = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
+
                     if (!$documento) {
                         echo json_encode(['success' => false, 'message' => 'Documento no encontrado']);
                         exit();
                     }
-                    
+
                     // Detalle con información de devoluciones previas
                     $stmtDet = $db->prepare("
                         SELECT 
@@ -176,12 +176,12 @@ try {
                     ");
                     $stmtDet->execute([$id]);
                     $detalle = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
-                    
+
                     // Calcular disponible para devolver
                     foreach ($detalle as &$linea) {
                         $linea['cantidad_disponible'] = $linea['cantidad_original'] - $linea['cantidad_devuelta'];
                     }
-                    
+
                     ob_clean();
                     echo json_encode([
                         'success' => true,
@@ -189,7 +189,7 @@ try {
                         'detalle' => $detalle
                     ]);
                     break;
-                    
+
                 case 'get':
                     // Obtener un documento de salida con su detalle
                     $id = $_GET['id'] ?? null;
@@ -197,7 +197,7 @@ try {
                         echo json_encode(['success' => false, 'message' => 'ID requerido']);
                         exit();
                     }
-                    
+
                     // Documento principal
                     $stmt = $db->prepare("
                         SELECT 
@@ -207,12 +207,12 @@ try {
                     ");
                     $stmt->execute([$id]);
                     $documento = $stmt->fetch(PDO::FETCH_ASSOC);
-                    
+
                     if (!$documento) {
                         echo json_encode(['success' => false, 'message' => 'Documento no encontrado']);
                         exit();
                     }
-                    
+
                     // Detalle del documento
                     $stmtDet = $db->prepare("
                         SELECT 
@@ -227,7 +227,7 @@ try {
                     ");
                     $stmtDet->execute([$id]);
                     $detalle = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
-                    
+
                     ob_clean();
                     echo json_encode([
                         'success' => true,
@@ -235,33 +235,33 @@ try {
                         'detalle' => $detalle
                     ]);
                     break;
-                    
+
                 default:
                     ob_clean();
                     echo json_encode(['success' => false, 'message' => 'Acción no válida']);
             }
             break;
-            
+
         case 'POST':
             $data = json_decode(file_get_contents('php://input'), true);
             $action = $data['action'] ?? 'crear';
-            
+
             switch ($action) {
                 case 'crear':
                     if (empty($data['lineas']) || count($data['lineas']) === 0) {
                         echo json_encode(['success' => false, 'message' => 'Agregue al menos una línea']);
                         exit();
                     }
-                    
+
                     // Validar motivo para ajustes
                     $tipoSalida = $data['tipo_salida'] ?? 'PRODUCCION';
                     if ($tipoSalida === 'AJUSTE' && empty(trim($data['observaciones'] ?? ''))) {
                         echo json_encode(['success' => false, 'message' => 'El motivo es obligatorio para ajustes de inventario']);
                         exit();
                     }
-                    
+
                     $db->beginTransaction();
-                    
+
                     try {
                         // Generar número de documento según tipo
                         $prefijos = [
@@ -273,23 +273,23 @@ try {
                         ];
                         $prefijo = $prefijos[$tipoSalida] ?? 'SAL-MP';
                         $numeroDoc = generarNumeroDocumento($db, 'SALIDA', $prefijo);
-                        
+
                         // Calcular totales
                         $totalDocumento = 0;
                         $totalNeto = 0;
                         $totalIVA = 0;
-                        
+
                         foreach ($data['lineas'] as $linea) {
                             $cantidad = floatval($linea['cantidad']);
                             $costo = floatval($linea['costo_unitario']);
-                            $teniaIva = isset($linea['tenia_iva']) ? (bool)$linea['tenia_iva'] : false;
-                            
+                            $teniaIva = isset($linea['tenia_iva']) ? (bool) $linea['tenia_iva'] : false;
+
                             if ($teniaIva) {
                                 // Para devoluciones con IVA: recalcular el total bruto
                                 $subtotalNeto = $cantidad * $costo;
                                 $iva = $subtotalNeto / 0.87 * 0.13; // IVA sobre el bruto
                                 $subtotalBruto = $subtotalNeto / 0.87;
-                                
+
                                 $totalNeto += $subtotalNeto;
                                 $totalIVA += $iva;
                                 $totalDocumento += $subtotalBruto;
@@ -300,7 +300,7 @@ try {
                                 $totalDocumento += $subtotal;
                             }
                         }
-                        
+
                         // Insertar documento
                         $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
@@ -312,12 +312,12 @@ try {
                                 'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
                             )
                         ");
-                        
+
                         $referencia = $tipoSalida;
                         if (!empty($data['referencia'])) {
                             $referencia .= ' - ' . $data['referencia'];
                         }
-                        
+
                         $stmt->execute([
                             $numeroDoc,
                             $data['fecha'] ?? date('Y-m-d'),
@@ -331,9 +331,9 @@ try {
                             $data['observaciones'] ?? null,
                             $_SESSION['user_id'] ?? null
                         ]);
-                        
+
                         $idDocumento = $db->lastInsertId();
-                        
+
                         // Insertar líneas y actualizar stock
                         $stmtLinea = $db->prepare("
                             INSERT INTO documentos_inventario_detalle (
@@ -342,40 +342,46 @@ try {
                                 costo_adquisicion, tenia_iva, subtotal
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
-                        
+
                         $stmtStock = $db->prepare("
                             UPDATE inventarios 
                             SET stock_actual = stock_actual - ?
                             WHERE id_inventario = ?
                         ");
-                        
+
                         $stmtKardex = $db->prepare("
                             INSERT INTO kardex_inventario (
                                 id_inventario, fecha_movimiento, tipo_movimiento, id_documento,
                                 documento_referencia, cantidad, costo_unitario, costo_total,
-                                stock_anterior, stock_posterior, creado_por
-                            ) VALUES (?, NOW(), 'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?)
+                                stock_anterior, stock_posterior, 
+                                costo_promedio_anterior, costo_promedio_posterior,
+                                creado_por
+                            ) VALUES (?, ?, 'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
-                        
+
+                        $fechaMovimiento = $data['fecha'] . ' ' . date('H:i:s');
+
                         foreach ($data['lineas'] as $linea) {
                             $cantidad = floatval($linea['cantidad']);
                             $costoUnit = floatval($linea['costo_unitario']);
                             $costoAdq = isset($linea['costo_adquisicion']) ? floatval($linea['costo_adquisicion']) : $costoUnit;
-                            $teniaIva = isset($linea['tenia_iva']) ? (int)(bool)$linea['tenia_iva'] : 0;
+                            $teniaIva = isset($linea['tenia_iva']) ? (int) (bool) $linea['tenia_iva'] : 0;
                             $cantidadOriginal = isset($linea['cantidad_original']) ? floatval($linea['cantidad_original']) : null;
                             $idDetalleOrigen = isset($linea['id_detalle_origen']) ? $linea['id_detalle_origen'] : null;
-                            
+
                             $subtotal = $cantidad * $costoUnit;
-                            
-                            // Verificar stock disponible
-                            $stmtCheck = $db->prepare("SELECT stock_actual FROM inventarios WHERE id_inventario = ?");
+
+                            // Verificar stock disponible y obtener CPP actual
+                            $stmtCheck = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ?");
                             $stmtCheck->execute([$linea['id_inventario']]);
-                            $stockActual = floatval($stmtCheck->fetchColumn());
-                            
+                            $infoInv = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+                            $stockActual = floatval($infoInv['stock_actual']);
+                            $cppActual = floatval($infoInv['costo_promedio']);
+
                             if ($cantidad > $stockActual) {
                                 throw new Exception("Stock insuficiente para el producto ID " . $linea['id_inventario']);
                             }
-                            
+
                             // Para devoluciones, validar que no exceda lo disponible
                             if ($tipoSalida === 'DEVOLUCION' && $idDetalleOrigen) {
                                 $stmtCheckDev = $db->prepare("
@@ -389,14 +395,14 @@ try {
                                              AND ds.tipo_documento = 'SALIDA'
                                              AND ds.estado = 'CONFIRMADO'
                                              AND ds.referencia_externa LIKE 'DEVOLUCION%'
-                                            ), 0
+                                             ), 0
                                         ) AS cantidad_devuelta
                                     FROM documentos_inventario_detalle dd
                                     WHERE dd.id_detalle = ?
                                 ");
                                 $stmtCheckDev->execute([$idDetalleOrigen, $idDetalleOrigen]);
                                 $detalleOrigen = $stmtCheckDev->fetch(PDO::FETCH_ASSOC);
-                                
+
                                 if ($detalleOrigen) {
                                     $disponible = $detalleOrigen['cantidad_original'] - $detalleOrigen['cantidad_devuelta'];
                                     if ($cantidad > $disponible) {
@@ -404,7 +410,7 @@ try {
                                     }
                                 }
                             }
-                            
+
                             // Insertar línea
                             $stmtLinea->execute([
                                 $idDocumento,
@@ -417,16 +423,17 @@ try {
                                 $teniaIva,
                                 $subtotal
                             ]);
-                            
+
                             // Actualizar stock
                             $stmtStock->execute([
                                 $cantidad,
                                 $linea['id_inventario']
                             ]);
-                            
+
                             // Registrar en Kardex
                             $stmtKardex->execute([
                                 $linea['id_inventario'],
+                                $fechaMovimiento, // Fecha del documento
                                 $idDocumento,
                                 $numeroDoc,
                                 $cantidad,
@@ -434,12 +441,14 @@ try {
                                 $subtotal,
                                 $stockActual,
                                 $stockActual - $cantidad,
+                                $cppActual,      // CPP anterior (no cambia en salida simple)
+                                $cppActual,      // CPP posterior (no cambia en salida simple)
                                 $_SESSION['user_id'] ?? null
                             ]);
                         }
-                        
+
                         $db->commit();
-                        
+
                         ob_clean();
                         echo json_encode([
                             'success' => true,
@@ -447,51 +456,51 @@ try {
                             'id_documento' => $idDocumento,
                             'numero_documento' => $numeroDoc
                         ]);
-                        
+
                     } catch (Exception $e) {
                         $db->rollBack();
                         throw $e;
                     }
                     break;
-                    
+
                 case 'anular':
                     $id = $data['id_documento'] ?? null;
                     $motivo = $data['motivo'] ?? 'Sin especificar';
-                    
+
                     if (!$id) {
                         echo json_encode(['success' => false, 'message' => 'ID requerido']);
                         exit();
                     }
-                    
+
                     $db->beginTransaction();
-                    
+
                     try {
                         // Verificar que el documento existe y está confirmado
                         $stmt = $db->prepare("SELECT * FROM documentos_inventario WHERE id_documento = ? AND estado = 'CONFIRMADO'");
                         $stmt->execute([$id]);
                         $doc = $stmt->fetch(PDO::FETCH_ASSOC);
-                        
+
                         if (!$doc) {
                             echo json_encode(['success' => false, 'message' => 'Documento no encontrado o ya anulado']);
                             exit();
                         }
-                        
+
                         // Obtener detalle para revertir stock (sumar de vuelta)
                         $stmtDet = $db->prepare("SELECT * FROM documentos_inventario_detalle WHERE id_documento = ?");
                         $stmtDet->execute([$id]);
                         $lineas = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
-                        
+
                         // Revertir stock (sumar porque fue una salida)
                         $stmtRevert = $db->prepare("UPDATE inventarios SET stock_actual = stock_actual + ? WHERE id_inventario = ?");
-                        
+
                         foreach ($lineas as $linea) {
                             $stmtRevert->execute([$linea['cantidad'], $linea['id_inventario']]);
-                            
+
                             // Registrar en Kardex la reversión
                             $stmtStockAct = $db->prepare("SELECT stock_actual FROM inventarios WHERE id_inventario = ?");
                             $stmtStockAct->execute([$linea['id_inventario']]);
                             $stockActual = floatval($stmtStockAct->fetchColumn());
-                            
+
                             $stmtKardex = $db->prepare("
                                 INSERT INTO kardex_inventario (
                                     id_inventario, fecha_movimiento, tipo_movimiento, id_documento,
@@ -512,7 +521,7 @@ try {
                                 $_SESSION['user_id'] ?? null
                             ]);
                         }
-                        
+
                         // Marcar documento como anulado
                         $stmtAnular = $db->prepare("
                             UPDATE documentos_inventario 
@@ -520,40 +529,40 @@ try {
                             WHERE id_documento = ?
                         ");
                         $stmtAnular->execute([$motivo, $_SESSION['user_id'] ?? null, $id]);
-                        
+
                         $db->commit();
-                        
+
                         ob_clean();
                         echo json_encode([
                             'success' => true,
                             'message' => 'Documento anulado exitosamente'
                         ]);
-                        
+
                     } catch (Exception $e) {
                         $db->rollBack();
                         throw $e;
                     }
                     break;
-                    
+
                 default:
                     ob_clean();
                     echo json_encode(['success' => false, 'message' => 'Acción no válida']);
             }
             break;
-            
+
         default:
             ob_clean();
             echo json_encode(['success' => false, 'message' => 'Método no permitido']);
     }
-    
-} catch(PDOException $e) {
+
+} catch (PDOException $e) {
     error_log("Error en salidas_mp.php: " . $e->getMessage());
     ob_clean();
     echo json_encode([
         'success' => false,
         'message' => 'Error de base de datos: ' . $e->getMessage()
     ]);
-} catch(Exception $e) {
+} catch (Exception $e) {
     error_log("Error en salidas_mp.php: " . $e->getMessage());
     ob_clean();
     echo json_encode([
@@ -562,10 +571,11 @@ try {
     ]);
 }
 
-function generarNumeroDocumento($db, $tipo, $prefijo) {
+function generarNumeroDocumento($db, $tipo, $prefijo)
+{
     $anio = date('Y');
     $mes = date('m');
-    
+
     $stmt = $db->prepare("
         SELECT ultimo_numero FROM secuencias_documento 
         WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ?
@@ -573,7 +583,7 @@ function generarNumeroDocumento($db, $tipo, $prefijo) {
     ");
     $stmt->execute([$tipo, $prefijo, $anio, $mes]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($row) {
         $siguiente = $row['ultimo_numero'] + 1;
         $stmtUp = $db->prepare("
@@ -589,7 +599,7 @@ function generarNumeroDocumento($db, $tipo, $prefijo) {
         ");
         $stmtIn->execute([$tipo, $prefijo, $anio, $mes]);
     }
-    
+
     return $prefijo . '-' . $anio . $mes . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
 }
 

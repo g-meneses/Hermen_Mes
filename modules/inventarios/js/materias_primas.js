@@ -4,6 +4,7 @@
  * VERSIÓN CORREGIDA CON TODAS LAS FUNCIONES
  */
 
+const BASE_URL_API = window.location.origin + '/mes_hermen/api';
 const baseUrl = window.location.origin + '/mes_hermen';
 const TIPO_ID = document.querySelector('.mp-title-icon')?.dataset?.tipoId || 1;
 

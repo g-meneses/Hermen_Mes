@@ -10,7 +10,7 @@
 // CONFIGURACIÓN DE RUTAS
 // ========================================
 
-const BASE_URL_API = window.location.origin + '/mes_hermen/api';
+// const BASE_URL_API = window.location.origin + '/mes_hermen/api'; // Ya declarado en materias_primas.js
 
 // ========================================
 // VARIABLES GLOBALES
@@ -61,7 +61,7 @@ const COLUMNAS_CONFIG = {
             ]
         }
     },
-    
+
     // INVENTARIO INICIAL - Simplificado (solo cantidad y costo)
     'INICIAL': {
         columnas: [
@@ -74,7 +74,7 @@ const COLUMNAS_CONFIG = {
             { id: 'acciones', label: '', width: '50px' }
         ]
     },
-    
+
     // DEVOLUCIÓN DE PRODUCCIÓN - Simplificado (solo cantidad devuelta)
     'DEVOLUCION_PROD': {
         columnas: [
@@ -87,19 +87,19 @@ const COLUMNAS_CONFIG = {
             { id: 'acciones', label: '', width: '50px' }
         ]
     },
-    
+
     // AJUSTE POSITIVO - Similar a inventario inicial
     'AJUSTE_POS': {
-    columnas: [
-        { id: 'num', label: '#', width: '40px', align: 'center' },
-        { id: 'producto', label: 'PRODUCTO', width: '400px' },
-        { id: 'unidad', label: 'UNID.', width: '70px', align: 'center' },
-        { id: 'cantidad', label: 'CANTIDAD AJUSTE', width: '120px', input: true, bg: '#e8f5e9' },
-        { id: 'costo_promedio', label: 'COSTO PROMEDIO', width: '140px', calculado: true, readonly: true }, 
-        { id: 'valor_total', label: 'VALOR TOTAL', width: '140px', calculado: true, bg: '#f1f8e9' },
-        { id: 'acciones', label: '', width: '50px' }
-    ]
-        }
+        columnas: [
+            { id: 'num', label: '#', width: '40px', align: 'center' },
+            { id: 'producto', label: 'PRODUCTO', width: '400px' },
+            { id: 'unidad', label: 'UNID.', width: '70px', align: 'center' },
+            { id: 'cantidad', label: 'CANTIDAD AJUSTE', width: '120px', input: true, bg: '#e8f5e9' },
+            { id: 'costo_promedio', label: 'COSTO PROMEDIO', width: '140px', calculado: true, readonly: true },
+            { id: 'valor_total', label: 'VALOR TOTAL', width: '140px', calculado: true, bg: '#f1f8e9' },
+            { id: 'acciones', label: '', width: '50px' }
+        ]
+    }
 };
 
 
@@ -131,14 +131,14 @@ function logError(contexto, error) {
 // INICIALIZACIÓN
 // ========================================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('🚀 Inicializando módulo de Materias Primas...');
     console.log('📁 API Base URL:', BASE_URL_API);
-    
+
     cargarTiposIngreso();
     cargarAreasProduccion();
     cargarUnidadesMedida();
-    cargarUsuariosAutorizados();  
+    cargarUsuariosAutorizados();
 });
 
 /**
@@ -148,20 +148,20 @@ async function cargarTiposIngreso() {
     try {
         const url = `${BASE_URL_API}/tipos_ingreso.php?action=list`;
         console.log('🔄 Cargando tipos desde:', url);
-        
+
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             data.tipos.forEach(tipo => {
                 tiposIngresoConfig[tipo.id_tipo_ingreso] = tipo;
             });
-            
+
             const select = document.getElementById('ingresoTipoIngreso');
             if (select) {
                 select.innerHTML = '<option value="">Seleccione tipo de ingreso...</option>';
@@ -173,14 +173,14 @@ async function cargarTiposIngreso() {
                     `;
                 });
             }
-            
+
             console.log('✅ Tipos de ingreso cargados:', Object.keys(tiposIngresoConfig).length);
         } else {
             logError('cargarTiposIngreso', data.message);
         }
     } catch (error) {
         logError('cargarTiposIngreso', error);
-        
+
         if (error.message.includes('404')) {
             console.error('⚠️  ARCHIVO NO ENCONTRADO');
             console.log('📁 Verifica que tipos_ingreso.php esté en: C:\\xampp\\htdocs\\mes_hermen\\api\\tipos_ingreso.php');
@@ -195,13 +195,13 @@ async function cargarAreasProduccion() {
     try {
         const url = `${BASE_URL_API}/tipos_ingreso.php?action=areas`;
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
             areasProduccion = data.areas;
             console.log('✅ Áreas de producción cargadas:', areasProduccion.length);
@@ -218,7 +218,7 @@ async function cargarUnidadesMedida() {
     try {
         const url = `${BASE_URL_API}/unidades_medida.php?action=list`;
         const response = await fetch(url);
-        
+
         if (response.ok) {
             const data = await response.json();
             if (data.success) {
@@ -228,18 +228,18 @@ async function cargarUnidadesMedida() {
         } else {
             console.warn('⚠️  Endpoint de unidades no disponible, usando valores por defecto');
             unidadesMedida = [
-                {id_unidad: 1, codigo: 'KG', nombre: 'Kilogramo', abreviatura: 'kg'},
-                {id_unidad: 2, codigo: 'MT', nombre: 'Metro', abreviatura: 'm'},
-                {id_unidad: 3, codigo: 'UND', nombre: 'Unidad', abreviatura: 'und'},
-                {id_unidad: 4, codigo: 'LT', nombre: 'Litro', abreviatura: 'lt'}
+                { id_unidad: 1, codigo: 'KG', nombre: 'Kilogramo', abreviatura: 'kg' },
+                { id_unidad: 2, codigo: 'MT', nombre: 'Metro', abreviatura: 'm' },
+                { id_unidad: 3, codigo: 'UND', nombre: 'Unidad', abreviatura: 'und' },
+                { id_unidad: 4, codigo: 'LT', nombre: 'Litro', abreviatura: 'lt' }
             ];
         }
     } catch (error) {
         logError('cargarUnidadesMedida', error);
         unidadesMedida = [
-            {id_unidad: 1, codigo: 'KG', nombre: 'Kilogramo', abreviatura: 'kg'},
-            {id_unidad: 2, codigo: 'MT', nombre: 'Metro', abreviatura: 'm'},
-            {id_unidad: 3, codigo: 'UND', nombre: 'Unidad', abreviatura: 'und'}
+            { id_unidad: 1, codigo: 'KG', nombre: 'Kilogramo', abreviatura: 'kg' },
+            { id_unidad: 2, codigo: 'MT', nombre: 'Metro', abreviatura: 'm' },
+            { id_unidad: 3, codigo: 'UND', nombre: 'Unidad', abreviatura: 'und' }
         ];
     }
 }
@@ -250,22 +250,22 @@ async function cargarUnidadesMedida() {
 
 async function abrirModalIngreso() {
     console.log('📖 Abriendo modal de ingreso...');
-    
+
     // 1. PRIMERO: Cargar datos necesarios
     await cargarProveedores();
     await cargarCategoriasIngreso();
-    
+
     // 2. DESPUÉS: Resetear formulario (esto limpia los selects)
     resetearFormularioIngreso();
-    
+
     // 3. LUEGO: Obtener siguiente número
     await obtenerSiguienteNumero();
-    
+
     // 4. ESTABLECER FECHA ACTUAL
     const hoy = new Date().toISOString().split('T')[0];
     const fechaInput = document.getElementById('ingresoFecha');
     if (fechaInput) fechaInput.value = hoy;
-    
+
     // 5. ABRIR EL MODAL
     const modal = document.getElementById('modalIngreso');
     if (modal) modal.classList.add('show');
@@ -276,7 +276,7 @@ async function obtenerSiguienteNumero() {
         const url = `${BASE_URL_API}/ingresos_mp.php?action=siguiente_numero`;
         const response = await fetch(url);
         const data = await response.json();
-        
+
         if (data.success) {
             const docInput = document.getElementById('ingresoDocumento');
             if (docInput) docInput.value = data.numero;
@@ -290,7 +290,7 @@ function resetearFormularioIngreso() {
     const selectTipo = document.getElementById('ingresoTipoIngreso');
     if (selectTipo) selectTipo.value = '';
     tipoIngresoActual = null;
-    
+
     const campos = {
         'ingresoDocumento': '',
         'ingresoFecha': '',
@@ -299,34 +299,34 @@ function resetearFormularioIngreso() {
         // 'ingresoProveedor': '',  ← ❌ QUITAR ESTA LÍNEA (no resetear proveedor aquí)
         'ingresoReferencia': ''
     };
-    
+
     Object.keys(campos).forEach(id => {
         const campo = document.getElementById(id);
         if (campo) campo.value = campos[id];
     });
-    
+
     // Resetear proveedor solo si NO hay datos cargados
     const selectProveedor = document.getElementById('ingresoProveedor');
     if (selectProveedor && proveedoresData.length === 0) {
         selectProveedor.value = '';
     }
-    
+
     const checkbox = document.getElementById('ingresoConFactura');
     if (checkbox) checkbox.checked = false;
-    
+
     const camposDinamicos = [
-        'ingresoArea', 'ingresoResponsableEntrega', 'ingresoMotivo', 
+        'ingresoArea', 'ingresoResponsableEntrega', 'ingresoMotivo',
         'ingresoAutorizadoPor', 'ingresoUbicacion', 'ingresoResponsableConteo'
     ];
     camposDinamicos.forEach(id => {
         const campo = document.getElementById(id);
         if (campo) campo.value = '';
     });
-    
+
     lineasIngreso = [];
     const tbody = document.getElementById('ingresoLineasBody');
     if (tbody) tbody.innerHTML = '';
-    
+
     ocultarTodasLasSecciones();
     actualizarTotalesIngreso();
 }
@@ -336,15 +336,15 @@ function ocultarTodasLasSecciones() {
         'seccionProveedor', 'seccionFactura', 'seccionArea',
         'seccionMotivo', 'seccionAutorizacion', 'seccionUbicacion'
     ];
-    
+
     secciones.forEach(id => {
         const elemento = document.getElementById(id);
         if (elemento) elemento.classList.add('d-none');
     });
-    
+
     const infoBox = document.getElementById('infoProveedorBox');
     if (infoBox) infoBox.style.display = 'none';
-    
+
     const rowIVA = document.getElementById('rowIVA');
     if (rowIVA) rowIVA.style.display = 'none';
 }
@@ -356,68 +356,68 @@ function ocultarTodasLasSecciones() {
 async function cambiarTipoIngreso() {
     const selectTipo = document.getElementById('ingresoTipoIngreso');
     if (!selectTipo) return;
-    
+
     const tipoId = parseInt(selectTipo.value);
-    
+
     if (!tipoId) {
         ocultarTodasLasSecciones();
         tipoIngresoActual = null;
         return;
     }
-    
+
     const config = tiposIngresoConfig[tipoId];
     if (!config) {
         console.error('❌ Configuración no encontrada para tipo:', tipoId);
         return;
     }
-    
+
     tipoIngresoActual = config;
     console.log('🔄 Cambiando a tipo:', config.nombre, config);
-    
+
     // 1. PROVEEDOR
     mostrarSeccion('seccionProveedor', config.requiere_proveedor);
     setRequired('ingresoProveedor', config.requiere_proveedor);
-    
+
     // ⭐ NUEVO: Poblar proveedores si es requerido
     if (config.requiere_proveedor) {
         poblarSelectProveedores();
     }
-    
+
     // 2. FACTURA
     mostrarSeccion('seccionFactura', config.requiere_factura);
     if (!config.requiere_factura) {
         const checkbox = document.getElementById('ingresoConFactura');
         if (checkbox) checkbox.checked = false;
     }
-    
+
     // 3. ÁREA DE PRODUCCIÓN
     if (config.requiere_area_produccion) {
         await mostrarSeccionArea();
     } else {
         mostrarSeccion('seccionArea', false);
     }
-    
+
     // 4. MOTIVO
     if (config.requiere_motivo) {
         await mostrarSeccionMotivo(tipoId);
     } else {
         mostrarSeccion('seccionMotivo', false);
     }
-    
+
     // 5. AUTORIZACIÓN
     if (config.requiere_autorizacion) {
-    mostrarSeccionAutorizacion();  
-        } else {
-            mostrarSeccion('seccionAutorizacion', false);
-            setRequired('ingresoAutorizadoPor', false);
-        }
-    
+        mostrarSeccionAutorizacion();
+    } else {
+        mostrarSeccion('seccionAutorizacion', false);
+        setRequired('ingresoAutorizadoPor', false);
+    }
+
     // 6. UBICACIÓN (para inventario inicial)
     mostrarSeccion('seccionUbicacion', config.codigo === 'INICIAL');
-    
+
     // 7. CONFIGURAR OBSERVACIONES
     configurarObservaciones(config);
-    
+
     // 8. ACTUALIZAR ENCABEZADOS DE TABLA
     actualizarEncabezadosTabla(config);
 }
@@ -425,23 +425,23 @@ async function cambiarTipoIngreso() {
 // ⭐ NUEVA FUNCIÓN: Poblar select de proveedores
 function poblarSelectProveedores() {
     const selectProveedor = document.getElementById('ingresoProveedor');
-    
+
     if (!selectProveedor) {
         console.error('❌ Select de proveedor no encontrado');
         return;
     }
-    
+
     console.log('📋 Poblando select de proveedores...', proveedoresData.length);
-    
+
     // Limpiar opciones actuales
     selectProveedor.innerHTML = '<option value="">Seleccione proveedor...</option>';
-    
+
     // Verificar que hay proveedores cargados
     if (!proveedoresData || proveedoresData.length === 0) {
         console.warn('⚠️ No hay proveedores para mostrar');
         return;
     }
-    
+
     // Agregar cada proveedor
     proveedoresData.forEach(prov => {
         const nombre = prov.nombre_comercial || prov.razon_social || 'Sin nombre';
@@ -453,7 +453,7 @@ function poblarSelectProveedores() {
         option.dataset.pago = prov.condicion_pago || 'CONTADO';
         selectProveedor.appendChild(option);
     });
-    
+
     console.log('✅ Select poblado con', selectProveedor.options.length - 1, 'proveedores');
 }
 
@@ -463,7 +463,7 @@ function mostrarSeccion(seccionId, mostrar) {
         console.warn(`⚠️  Sección ${seccionId} no encontrada`);
         return;
     }
-    
+
     if (mostrar) {
         seccion.classList.remove('d-none');
     } else {
@@ -474,7 +474,7 @@ function mostrarSeccion(seccionId, mostrar) {
 function setRequired(fieldId, required) {
     const field = document.getElementById(fieldId);
     if (!field) return;
-    
+
     if (required) {
         field.setAttribute('required', 'required');
     } else {
@@ -485,7 +485,7 @@ function setRequired(fieldId, required) {
 async function mostrarSeccionArea() {
     mostrarSeccion('seccionArea', true);
     setRequired('ingresoArea', true);
-    
+
     const selectArea = document.getElementById('ingresoArea');
     if (selectArea && areasProduccion.length > 0) {
         selectArea.innerHTML = '<option value="">Seleccione área...</option>';
@@ -499,22 +499,22 @@ async function mostrarSeccionArea() {
 
 async function mostrarSeccionMotivo(tipoId) {
     console.log('🔄 Cargando motivos para tipo:', tipoId);
-    
+
     // Cargar motivos si no están en caché
     if (!motivosCache[tipoId]) {
         try {
             const url = `${BASE_URL_API}/tipos_ingreso.php?action=motivos&tipo_id=${tipoId}`;
             console.log('📡 URL motivos:', url);
-            
+
             const response = await fetch(url);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            
+
             const data = await response.json();
             console.log('📦 Respuesta motivos:', data);
-            
+
             if (data.success) {
                 motivosCache[tipoId] = data.motivos;
                 console.log('✅ Motivos cargados:', data.motivos.length);
@@ -529,18 +529,18 @@ async function mostrarSeccionMotivo(tipoId) {
     } else {
         console.log('📦 Motivos desde caché:', motivosCache[tipoId].length);
     }
-    
+
     // Mostrar sección
     mostrarSeccion('seccionMotivo', true);
     setRequired('ingresoMotivo', true);
-    
+
     // Poblar select
     const selectMotivo = document.getElementById('ingresoMotivo');
     if (selectMotivo) {
         selectMotivo.innerHTML = '<option value="">Seleccione motivo...</option>';
-        
+
         const motivos = motivosCache[tipoId] || [];
-        
+
         if (motivos.length > 0) {
             motivos.forEach(motivo => {
                 const option = document.createElement('option');
@@ -566,9 +566,9 @@ async function mostrarSeccionMotivo(tipoId) {
 function configurarObservaciones(config) {
     const obsField = document.getElementById('ingresoObservaciones');
     if (!obsField) return;
-    
+
     setRequired('ingresoObservaciones', config.observaciones_obligatorias);
-    
+
     if (config.observaciones_obligatorias && config.minimo_caracteres_obs > 0) {
         obsField.setAttribute('minlength', config.minimo_caracteres_obs);
         obsField.placeholder = `Observaciones (mínimo ${config.minimo_caracteres_obs} caracteres) *`;
@@ -582,45 +582,46 @@ function configurarObservaciones(config) {
 function actualizarEncabezadosTabla(config) {
     const thead = document.getElementById('theadIngreso');
     if (!thead) return;
-    
+
     console.log('📋 Actualizando encabezados para tipo:', config.codigo);
-    
+
     // Obtener configuración de columnas para este tipo
     const tipoConfig = COLUMNAS_CONFIG[config.codigo];
-    
+
     if (!tipoConfig) {
         console.warn('⚠️ No hay configuración de columnas para:', config.codigo);
         return;
     }
-    
+
     // Determinar qué set de columnas usar
     let columnasConfig;
-    
+
     if (config.codigo === 'COMPRA') {
         // Para compras, revisar si hay factura
-        const conFactura = document.getElementById('ingresoConFactura')?.checked;
+        const checkFactura = document.getElementById('ingresoConFactura');
+        const conFactura = checkFactura && checkFactura.checked;
         columnasConfig = conFactura ? tipoConfig.conFactura : tipoConfig.sinFactura;
     } else {
         // Para otros tipos, usar la configuración única
         columnasConfig = tipoConfig;
     }
-    
+
     // Generar HTML de encabezados
     const columnas = columnasConfig.columnas;
-    
+
     thead.innerHTML = `
         <tr>
             ${columnas.map(col => {
-                let style = `width:${col.width};`;
-                if (col.align) style += ` text-align:${col.align};`;
-                if (col.bg) style += ` background:${col.bg};`;
-                if (col.calculado) style += ' font-size:0.75rem;';
-                
-                return `<th style="${style}">${col.label}</th>`;
-            }).join('')}
+        let style = `width:${col.width};`;
+        if (col.align) style += ` text-align:${col.align};`;
+        if (col.bg) style += ` background:${col.bg};`;
+        if (col.calculado) style += ' font-size:0.75rem;';
+
+        return `<th style="${style}">${col.label}</th>`;
+    }).join('')}
         </tr>
     `;
-    
+
     console.log('✅ Encabezados actualizados con', columnas.length, 'columnas');
 }
 
@@ -628,7 +629,7 @@ function actualizarTotalesIngreso() {
     const totalNeto = document.getElementById('ingresoTotalNeto');
     const totalIVA = document.getElementById('ingresoIVA');
     const totalFinal = document.getElementById('ingresoTotal');
-    
+
     if (totalNeto) totalNeto.textContent = 'Bs. 0.00';
     if (totalIVA) totalIVA.textContent = 'Bs. 0.00';
     if (totalFinal) totalFinal.textContent = 'Bs. 0.00';
@@ -638,19 +639,19 @@ async function cargarProveedores() {
     try {
         const url = `${BASE_URL_API}/proveedores.php?action=list`;
         console.log('🔄 Cargando proveedores desde:', url);
-        
+
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success && data.proveedores) {
             proveedoresData = data.proveedores;
             console.log('✅ Proveedores cargados:', proveedoresData.length);
-            
+
             // Poblar select de proveedores
             const selectProveedor = document.getElementById('ingresoProveedor');
             if (selectProveedor) {
@@ -681,19 +682,19 @@ async function cargarCategoriasIngreso() {
     try {
         const url = `${BASE_URL_API}/centro_inventarios.php?action=categorias&tipo_id=1`;
         console.log('🔄 Cargando categorías desde:', url);
-        
+
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         if (data.success && data.categorias) {
             categoriasData = data.categorias;
             console.log('✅ Categorías cargadas:', categoriasData.length);
-            
+
             // Poblar select de filtro de categorías
             const selectCat = document.getElementById('ingresoFiltroCat');
             if (selectCat) {
@@ -716,31 +717,32 @@ async function cargarCategoriasIngreso() {
  * Filtrar proveedores por tipo (LOCAL o IMPORTACIÓN)
  */
 function filtrarProveedoresIngreso() {
-    const tipo = document.getElementById('ingresoTipoProveedor')?.value || 'TODOS';
+    const tipoEl = document.getElementById('ingresoTipoProveedor');
+    const tipo = (tipoEl && tipoEl.value) || 'TODOS';
     const select = document.getElementById('ingresoProveedor');
-    
+
     if (!select) return;
-    
+
     console.log('🔄 Filtrando proveedores por tipo:', tipo);
-    
+
     // Limpiar select
     select.innerHTML = '<option value="">Seleccione proveedor...</option>';
-    
+
     // Verificar que hay proveedores
     if (!proveedoresData || proveedoresData.length === 0) {
         console.warn('⚠️ No hay proveedores para filtrar');
         return;
     }
-    
+
     // Filtrar según tipo
     let proveedoresFiltrados = proveedoresData;
-    
+
     if (tipo !== 'TODOS') {
         proveedoresFiltrados = proveedoresData.filter(p => p.tipo === tipo);
     }
-    
+
     console.log(`📋 Proveedores filtrados: ${proveedoresFiltrados.length} de ${proveedoresData.length}`);
-    
+
     // Agregar cada proveedor filtrado
     proveedoresFiltrados.forEach(prov => {
         const nombre = prov.nombre_comercial || prov.razon_social || 'Sin nombre';
@@ -752,7 +754,7 @@ function filtrarProveedoresIngreso() {
         option.dataset.pago = prov.condicion_pago || 'CONTADO';
         select.appendChild(option);
     });
-    
+
     console.log('✅ Filtro aplicado');
 }
 
@@ -762,36 +764,36 @@ function filtrarProveedoresIngreso() {
 function actualizarInfoProveedor() {
     const select = document.getElementById('ingresoProveedor');
     const box = document.getElementById('infoProveedorBox');
-    
+
     if (!select || !box) return;
-    
+
     if (!select.value) {
         box.style.display = 'none';
         return;
     }
-    
+
     const opt = select.options[select.selectedIndex];
     const tipo = opt.dataset.tipo;
     const moneda = opt.dataset.moneda;
     const pago = opt.dataset.pago;
-    
+
     const tipoElement = document.getElementById('infoProveedorTipo');
     if (tipoElement) {
         tipoElement.className = `badge-tipo ${tipo === 'LOCAL' ? 'local' : 'import'}`;
         tipoElement.textContent = tipo === 'LOCAL' ? '🇧🇴 LOCAL' : '🌎 IMPORTACIÓN';
     }
-    
+
     const monedaElement = document.getElementById('infoProveedorMoneda');
     if (monedaElement) {
         monedaElement.className = `badge-moneda ${moneda === 'USD' ? 'usd' : 'bob'}`;
         monedaElement.textContent = moneda || 'BOB';
     }
-    
+
     const pagoElement = document.getElementById('infoProveedorPago');
     if (pagoElement) {
         pagoElement.textContent = `Pago: ${pago || 'N/A'}`;
     }
-    
+
     box.style.display = 'flex';
 }
 
@@ -800,15 +802,15 @@ function obtenerConfiguracionColumnas() {
         console.warn('⚠️ No hay tipo de ingreso seleccionado');
         return null;
     }
-    
+
     const tipoConfig = COLUMNAS_CONFIG[tipoIngresoActual.codigo];
     if (!tipoConfig) return null;
-    
+
     if (tipoIngresoActual.codigo === 'COMPRA') {
         const conFactura = document.getElementById('ingresoConFactura')?.checked;
         return conFactura ? tipoConfig.conFactura : tipoConfig.sinFactura;
     }
-    
+
     return tipoConfig;
 }
 
@@ -816,16 +818,16 @@ async function cargarUsuariosAutorizados() {
     try {
         const url = `${BASE_URL_API}/tipos_ingreso.php?action=usuarios_autorizacion`;
         console.log('🔄 Cargando usuarios autorizados desde:', url);
-        
+
         const response = await fetch(url);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('📦 Respuesta usuarios:', data);
-        
+
         if (data.success) {
             usuariosAutorizados = data.usuarios;
             console.log('✅ Usuarios autorizados cargados:', usuariosAutorizados.length);
@@ -852,20 +854,20 @@ async function cargarUsuariosAutorizados() {
 
 function mostrarSeccionAutorizacion() {
     console.log('🔄 Mostrando sección de autorización');
-    
+
     mostrarSeccion('seccionAutorizacion', true);
     setRequired('ingresoAutorizadoPor', true);
-    
+
     // Poblar select de usuarios
     const selectAutoriza = document.getElementById('ingresoAutorizadoPor');
-    
+
     if (!selectAutoriza) {
         console.error('❌ Select ingresoAutorizadoPor no encontrado');
         return;
     }
-    
+
     selectAutoriza.innerHTML = '<option value="">Seleccione quién autoriza...</option>';
-    
+
     if (usuariosAutorizados && usuariosAutorizados.length > 0) {
         usuariosAutorizados.forEach(usuario => {
             const option = document.createElement('option');
@@ -902,6 +904,6 @@ console.log('   - abrirModalIngreso');
 console.log('   - actualizarInfoProveedor');
 console.log('   - filtrarProveedoresIngreso');
 console.log('✅ Módulo de tipos de ingreso dinámico cargado - VERSIÓN FINAL');
-console.log('   - mostrarSeccionMotivo');          
-console.log('   - mostrarSeccionAutorizacion');  
+console.log('   - mostrarSeccionMotivo');
+console.log('   - mostrarSeccionAutorizacion');
 console.log('📁 API Base:', BASE_URL_API);

@@ -6,7 +6,8 @@
 
 const BASE_URL_API = window.location.origin + '/mes_hermen/api';
 const baseUrl = window.location.origin + '/mes_hermen';
-const TIPO_ID = document.querySelector('.mp-title-icon')?.dataset?.tipoId || 1;
+const iconTitle = document.querySelector('.mp-title-icon');
+const TIPO_ID = (iconTitle && iconTitle.dataset && iconTitle.dataset.tipoId) || 1;
 
 let categorias = [], subcategorias = [], productos = [], productosCompletos = [];
 let unidades = [], proveedores = [];
@@ -121,7 +122,7 @@ function renderCategorias() {
     }
 
     grid.innerHTML = categorias.map(c => `
-        <div class="categoria-card ${categoriaSeleccionada?.id_categoria == c.id_categoria ? 'active' : ''}" onclick="seleccionarCategoria(${c.id_categoria})">
+        <div class="categoria-card ${(categoriaSeleccionada && categoriaSeleccionada.id_categoria == c.id_categoria) ? 'active' : ''}" onclick="seleccionarCategoria(${c.id_categoria})">
             <div class="categoria-header">
                 <div class="categoria-nombre">${c.nombre}</div>
                 <span class="categoria-badge">${c.total_items || 0}</span>

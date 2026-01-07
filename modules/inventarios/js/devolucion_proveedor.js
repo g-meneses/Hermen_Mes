@@ -7,20 +7,20 @@ async function abrirModalDevolucion() {
     // Reset
     ingresoSeleccionado = null;
     lineasDevolucion = [];
-    
+
     // Generar número
     document.getElementById('devolucionDocumento').value = generarNumeroDoc('SMP-DV');
-    
+
     // Fecha actual
     document.getElementById('devolucionFecha').value = new Date().toISOString().split('T')[0];
-    
+
     // Reset campos
     document.getElementById('devolucionReferencia').value = '';
     document.getElementById('devolucionObservaciones').value = '';
-    
+
     // Cargar ingresos disponibles
     await cargarIngresosDisponibles();
-    
+
     // Mostrar modal
     document.getElementById('modalDevolucion').classList.add('show');
 }
@@ -29,11 +29,11 @@ async function cargarIngresosDisponibles() {
     try {
         const r = await fetch(`${baseUrl}/api/salidas_mp.php?action=ingresos_devolucion&limit=20`);
         const d = await r.json();
-        
+
         if (d.success && d.ingresos) {
             renderIngresosDisponibles(d.ingresos);
         } else {
-            document.getElementById('ingresosDisponibles').innerHTML = 
+            document.getElementById('ingresosDisponibles').innerHTML =
                 '<p style="padding:20px; text-align:center; color:#dc3545;">No hay ingresos disponibles</p>';
         }
     } catch (e) {
@@ -44,17 +44,17 @@ async function cargarIngresosDisponibles() {
 
 function renderIngresosDisponibles(ingresos) {
     const container = document.getElementById('ingresosDisponibles');
-    
+
     if (ingresos.length === 0) {
         container.innerHTML = '<p style="padding:20px; text-align:center;">No hay ingresos para devolver</p>';
         return;
     }
-    
+
     container.innerHTML = ingresos.map(ing => {
         const fecha = new Date(ing.fecha_documento).toLocaleDateString('es-BO');
         const proveedor = ing.proveedor_comercial || ing.proveedor_nombre;
         const conFactura = parseInt(ing.con_factura) === 1;
-        
+
         return `
             <div class="ingreso-card" onclick="seleccionarIngreso(${ing.id_documento})" 
                  data-id="${ing.id_documento}">
@@ -64,9 +64,9 @@ function renderIngresosDisponibles(ingresos) {
                         <div class="ingreso-fecha">${fecha}</div>
                     </div>
                     <div>
-                        ${conFactura ? 
-                            '<span class="badge-factura con">CON FACTURA</span>' : 
-                            '<span class="badge-factura sin">SIN FACTURA</span>'}
+                        ${conFactura ?
+                '<span class="badge-factura con">CON FACTURA</span>' :
+                '<span class="badge-factura sin">SIN FACTURA</span>'}
                     </div>
                 </div>
                 <div class="ingreso-proveedor">
@@ -85,12 +85,13 @@ async function seleccionarIngreso(idDocumento) {
         document.querySelectorAll('.ingreso-card').forEach(card => {
             card.classList.remove('selected');
         });
-        document.querySelector(`.ingreso-card[data-id="${idDocumento}"]`)?.classList.add('selected');
-        
+        const selectedCard = document.querySelector(`.ingreso-card[data-id="${idDocumento}"]`);
+        if (selectedCard) selectedCard.classList.add('selected');
+
         // Cargar detalle
         const r = await fetch(`${baseUrl}/api/salidas_mp.php?action=detalle_ingreso&id=${idDocumento}`);
         const d = await r.json();
-        
+
         if (d.success) {
             ingresoSeleccionado = d.documento;
             lineasDevolucion = d.detalle.map(linea => ({
@@ -107,7 +108,7 @@ async function seleccionarIngreso(idDocumento) {
                 costo_con_iva: parseFloat(linea.costo_con_iva),
                 tenia_iva: parseInt(ingresoSeleccionado.con_factura) === 1
             }));
-            
+
             // Mostrar sección de líneas
             document.getElementById('seccionLineasDevolucion').style.display = 'block';
             renderLineasDevolucion();
@@ -121,21 +122,21 @@ async function seleccionarIngreso(idDocumento) {
 function renderLineasDevolucion() {
     const tbody = document.getElementById('devolucionLineasBody');
     const conFactura = ingresoSeleccionado && parseInt(ingresoSeleccionado.con_factura) === 1;
-    
+
     tbody.innerHTML = lineasDevolucion.map((linea, i) => {
         const cantidad = linea.cantidad_a_devolver || 0;
         const costoUnit = linea.costo_unitario;
         const subtotalNeto = cantidad * costoUnit;
-        
+
         let iva = 0;
         let subtotalBruto = subtotalNeto;
-        
+
         if (conFactura) {
             // Calcular IVA: del neto al bruto
             iva = subtotalNeto / 0.87 * 0.13;
             subtotalBruto = subtotalNeto / 0.87;
         }
-        
+
         return `
             <tr>
                 <td style="font-size:0.85rem;">
@@ -175,14 +176,14 @@ function renderLineasDevolucion() {
                 `}
             </tr>`;
     }).join('');
-    
+
     recalcularDevolucion();
 }
 
 function calcularLineaDevolucion(index) {
     const cantidad = toNum(document.getElementById(`devCant_${index}`).value);
     const disponible = lineasDevolucion[index].cantidad_disponible;
-    
+
     if (cantidad > disponible) {
         alert(`⚠️ No puede devolver más de lo disponible: ${formatNum(disponible, 2)}`);
         document.getElementById(`devCant_${index}`).value = disponible;
@@ -190,7 +191,7 @@ function calcularLineaDevolucion(index) {
     } else {
         lineasDevolucion[index].cantidad_a_devolver = cantidad;
     }
-    
+
     renderLineasDevolucion();
 }
 
@@ -199,14 +200,14 @@ function recalcularDevolucion() {
     let totalNeto = 0;
     let totalIVA = 0;
     let totalBruto = 0;
-    
+
     lineasDevolucion.forEach(linea => {
         const cantidad = linea.cantidad_a_devolver || 0;
         const costoUnit = linea.costo_unitario;
         const subtotalNeto = cantidad * costoUnit;
-        
+
         totalNeto += subtotalNeto;
-        
+
         if (conFactura) {
             const iva = subtotalNeto / 0.87 * 0.13;
             const bruto = subtotalNeto / 0.87;
@@ -216,16 +217,16 @@ function recalcularDevolucion() {
             totalBruto += subtotalNeto;
         }
     });
-    
+
     document.getElementById('devolucionTotalNeto').textContent = 'Bs. ' + formatNum(totalNeto, 2);
-    
+
     if (conFactura) {
         document.getElementById('rowDevIVA').style.display = 'flex';
         document.getElementById('devolucionIVA').textContent = 'Bs. ' + formatNum(totalIVA, 2);
     } else {
         document.getElementById('rowDevIVA').style.display = 'none';
     }
-    
+
     document.getElementById('devolucionTotal').textContent = 'Bs. ' + formatNum(totalBruto, 2);
 }
 
@@ -235,14 +236,14 @@ async function guardarDevolucion() {
         alert('⚠️ Seleccione un ingreso para devolver');
         return;
     }
-    
+
     const lineasConCantidad = lineasDevolucion.filter(l => (l.cantidad_a_devolver || 0) > 0);
-    
+
     if (lineasConCantidad.length === 0) {
         alert('⚠️ Ingrese al menos una cantidad a devolver');
         return;
     }
-    
+
     // Validar que no exceda disponible
     for (let linea of lineasConCantidad) {
         if (linea.cantidad_a_devolver > linea.cantidad_disponible) {
@@ -250,9 +251,9 @@ async function guardarDevolucion() {
             return;
         }
     }
-    
+
     const conFactura = parseInt(ingresoSeleccionado.con_factura) === 1;
-    
+
     const data = {
         action: 'crear',
         tipo_salida: 'DEVOLUCION',
@@ -271,9 +272,9 @@ async function guardarDevolucion() {
             tenia_iva: conFactura
         }))
     };
-    
+
     console.log('Guardando devolución:', data);
-    
+
     try {
         const r = await fetch(`${baseUrl}/api/salidas_mp.php`, {
             method: 'POST',
@@ -282,7 +283,7 @@ async function guardarDevolucion() {
         });
         const d = await r.json();
         console.log('Respuesta:', d);
-        
+
         if (d.success) {
             alert('✅ ' + d.message);
             cerrarModal('modalDevolucion');

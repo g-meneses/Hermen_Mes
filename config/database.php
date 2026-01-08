@@ -2,6 +2,7 @@
 /**
  * Configuración de Base de Datos
  * Sistema MES Hermen Ltda.
+ * Versión: 2.1 - Collation forzada
  */
 
 // Configuración de la base de datos
@@ -24,11 +25,13 @@ session_start();
 date_default_timezone_set(TIMEZONE);
 
 // Clase de conexión a base de datos
-class Database {
+class Database
+{
     private static $instance = null;
     private $connection;
-    
-    private function __construct() {
+
+    private function __construct()
+    {
         try {
             $this->connection = new PDO(
                 "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
@@ -37,59 +40,78 @@ class Database {
                 [
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
                 ]
             );
-        } catch(PDOException $e) {
+
+            // ⭐ ESTA ES LA LÍNEA CRÍTICA - Forzar collation en todas las consultas
+            $this->connection->exec("SET collation_connection = utf8mb4_unicode_ci");
+            $this->connection->exec("SET collation_database = utf8mb4_unicode_ci");
+            $this->connection->exec("SET collation_server = utf8mb4_unicode_ci");
+
+        } catch (PDOException $e) {
             die("Error de conexión: " . $e->getMessage());
         }
     }
-    
-    public static function getInstance() {
+
+    public static function getInstance()
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
-    
-    public function getConnection() {
+
+    public function getConnection()
+    {
         return $this->connection;
     }
-    
-    private function __clone() {}
-    
-    public function __wakeup() {
+
+    private function __clone()
+    {
+    }
+
+    public function __wakeup()
+    {
         throw new Exception("No se puede deserializar singleton");
     }
 }
 
-function getDB() {
+function getDB()
+{
     return Database::getInstance()->getConnection();
 }
 
-function isLoggedIn() {
+function isLoggedIn()
+{
     return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
 }
 
-function hasRole($roles) {
-    if (!isLoggedIn()) return false;
-    
+function hasRole($roles)
+{
+    if (!isLoggedIn())
+        return false;
+
     if (is_array($roles)) {
         return in_array($_SESSION['user_role'], $roles);
     }
     return $_SESSION['user_role'] === $roles;
 }
 
-function redirect($url) {
+function redirect($url)
+{
     header("Location: " . SITE_URL . "/" . $url);
     exit();
 }
 
-function sanitize($data) {
+function sanitize($data)
+{
     return htmlspecialchars(strip_tags(trim($data)));
 }
 
-function jsonResponse($data, $status = 200) {
+function jsonResponse($data, $status = 200)
+{
     http_response_code($status);
     header('Content-Type: application/json');
     echo json_encode($data);

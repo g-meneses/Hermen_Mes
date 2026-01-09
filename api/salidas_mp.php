@@ -56,7 +56,7 @@ try {
                     $params = [$TIPO_INVENTARIO_MP, $desde, $hasta];
 
                     if ($tipo) {
-                        $sql .= " AND d.referencia_externa LIKE ?";
+                        $sql .= " AND d.referencia_externa COLLATE utf8mb4_unicode_ci LIKE ?";
                         $params[] = $tipo . '%';
                     }
 
@@ -166,7 +166,7 @@ try {
                                  WHERE dds.id_detalle_origen = dd.id_detalle 
                                  AND ds.tipo_documento = 'SALIDA'
                                  AND ds.estado = 'CONFIRMADO'
-                                 AND ds.referencia_externa LIKE 'DEVOLUCION%'
+                                 AND ds.referencia_externa COLLATE utf8mb4_unicode_ci LIKE 'DEVOLUCION%'
                                 ), 0
                             ) AS cantidad_devuelta
                         FROM documentos_inventario_detalle dd
@@ -394,7 +394,7 @@ try {
                                              WHERE dds.id_detalle_origen = ?
                                              AND ds.tipo_documento = 'SALIDA'
                                              AND ds.estado = 'CONFIRMADO'
-                                             AND ds.referencia_externa LIKE 'DEVOLUCION%'
+                                             AND ds.referencia_externa COLLATE utf8mb4_unicode_ci LIKE 'DEVOLUCION%'
                                              ), 0
                                         ) AS cantidad_devuelta
                                     FROM documentos_inventario_detalle dd
@@ -578,7 +578,7 @@ function generarNumeroDocumento($db, $tipo, $prefijo)
 
     $stmt = $db->prepare("
         SELECT ultimo_numero FROM secuencias_documento 
-        WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ?
+        WHERE tipo_documento COLLATE utf8mb4_unicode_ci = ? AND prefijo COLLATE utf8mb4_unicode_ci = ? AND anio = ? AND mes = ?
         FOR UPDATE
     ");
     $stmt->execute([$tipo, $prefijo, $anio, $mes]);

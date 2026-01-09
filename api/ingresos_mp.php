@@ -324,6 +324,7 @@ try {
                         }
 
                         // Insertar documento
+
                         $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
                                 tipo_documento, numero_documento, fecha_documento,
@@ -335,6 +336,7 @@ try {
                                 'INGRESO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?, ?
                             )
                         ");
+
 
                         $stmt->execute([
                             $numeroDoc,
@@ -354,6 +356,7 @@ try {
                             $_SESSION['user_id'] ?? null,
                             $data['id_usuario_autoriza'] ?? null
                         ]);
+
 
                         $idDocumento = $db->lastInsertId();
 
@@ -393,6 +396,8 @@ try {
                             // Costo sin IVA = Costo Bruto * 0.87
                             $costoUnit = $conFactura ? $costoConIva * 0.87 : $costoConIva;
 
+                            // Upsert
+
                             // Insertar línea de detalle
                             $stmtLinea->execute([
                                 $idDocumento,
@@ -402,6 +407,7 @@ try {
                                 $costoConIva,     // Costo bruto (del documento)
                                 $subtotalLinea    // Subtotal del documento
                             ]);
+
 
                             // Obtener stock e información anterior
                             $stmtInfo = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ?");
@@ -418,6 +424,7 @@ try {
                             $cppNuevo = $stockNuevo > 0 ? ($valorAnterior + $valorEntrada) / $stockNuevo : 0;
 
                             // Actualizar stock e inventario
+
                             $stmtStock->execute([
                                 $cantidad,           // Sumar al stock
                                 $costoUnit,          // Costo si stock era 0
@@ -429,6 +436,7 @@ try {
                             ]);
 
                             // Registrar movimiento en tabla unificada
+
                             $stmtMovimiento->execute([
                                 $linea['id_inventario'],
                                 $cantidad,
@@ -444,6 +452,7 @@ try {
                                 $data['observaciones'] ?? null,
                                 $_SESSION['user_id'] ?? null
                             ]);
+
                         }
 
                         $db->commit();
@@ -564,7 +573,7 @@ function generarNumeroDocumento($db, $tipo, $prefijo)
     // Buscar o crear secuencia
     $stmt = $db->prepare("
         SELECT ultimo_numero FROM secuencias_documento 
-        WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ?
+        WHERE tipo_documento COLLATE utf8mb4_unicode_ci = ? AND prefijo COLLATE utf8mb4_unicode_ci = ? AND anio = ? AND mes = ?
         FOR UPDATE
     ");
     $stmt->execute([$tipo, $prefijo, $anio, $mes]);

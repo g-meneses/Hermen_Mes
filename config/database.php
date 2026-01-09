@@ -45,10 +45,15 @@ class Database
                 ]
             );
 
-            // ⭐ ESTA ES LA LÍNEA CRÍTICA - Forzar collation en todas las consultas
-            $this->connection->exec("SET collation_connection = utf8mb4_unicode_ci");
-            $this->connection->exec("SET collation_database = utf8mb4_unicode_ci");
-            $this->connection->exec("SET collation_server = utf8mb4_unicode_ci");
+            // ⭐ FORZAR COLLATION EN CADA CONEXIÓN
+            $this->connection->exec("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $this->connection->exec("SET CHARACTER SET utf8mb4");
+            $this->connection->exec("SET collation_connection = 'utf8mb4_unicode_ci'");
+            $this->connection->exec("SET collation_database = 'utf8mb4_unicode_ci'");
+            $this->connection->exec("SET collation_server = 'utf8mb4_unicode_ci'");
+
+            // ⭐ ESTO ES CRÍTICO - Eliminar strict mode que causa problemas
+            $this->connection->exec("SET SESSION sql_mode = ''");
 
         } catch (PDOException $e) {
             die("Error de conexión: " . $e->getMessage());

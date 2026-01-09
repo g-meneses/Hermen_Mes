@@ -25,23 +25,23 @@ error_reporting(E_ALL);
 
 try {
     require_once '../config/database.php';
-    
+
     if (!isLoggedIn()) {
         echo json_encode(['success' => false, 'message' => 'No autorizado']);
         exit();
     }
-    
+
     $db = getDB();
     $action = $_GET['action'] ?? 'total';
     $formato = $_GET['formato'] ?? 'json'; // json, csv, pdf (futuro)
-    
+
     // Filtros opcionales
     $tipoId = $_GET['tipo_id'] ?? null;
     $categoriaId = $_GET['categoria_id'] ?? null;
     $subcategoriaId = $_GET['subcategoria_id'] ?? null;
     $fechaDesde = $_GET['fecha_desde'] ?? null;
     $fechaHasta = $_GET['fecha_hasta'] ?? null;
-    
+
     switch ($action) {
         // ========== REPORTE 1: TOTAL GENERAL ==========
         case 'total':
@@ -60,7 +60,7 @@ try {
                 WHERE activo = 1
             ");
             $totales = $stmt->fetch(PDO::FETCH_ASSOC);
-            
+
             // Totales por tipo
             $stmt = $db->query("
                 SELECT 
@@ -75,7 +75,7 @@ try {
                 ORDER BY ti.orden
             ");
             $porTipo = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             ob_clean();
             echo json_encode([
                 'success' => true,
@@ -85,7 +85,7 @@ try {
                 'resumen_por_tipo' => $porTipo
             ]);
             break;
-            
+
         // ========== REPORTE 2: POR TIPO DE INVENTARIO ==========
         case 'por_tipo':
             $sql = "
@@ -104,19 +104,19 @@ try {
                 LEFT JOIN inventarios i ON ti.id_tipo_inventario = i.id_tipo_inventario AND i.activo = 1
                 WHERE ti.activo = 1
             ";
-            
+
             $params = [];
             if ($tipoId) {
                 $sql .= " AND ti.id_tipo_inventario = ?";
                 $params[] = $tipoId;
             }
-            
+
             $sql .= " GROUP BY ti.id_tipo_inventario, ti.codigo, ti.nombre, ti.color ORDER BY ti.orden";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             $datos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Calcular totales
             $totalItems = 0;
             $totalValor = 0;
@@ -124,7 +124,7 @@ try {
                 $totalItems += $row['total_items'];
                 $totalValor += $row['valor_total'];
             }
-            
+
             ob_clean();
             echo json_encode([
                 'success' => true,
@@ -137,7 +137,7 @@ try {
                 ]
             ]);
             break;
-            
+
         // ========== REPORTE 3: POR CATEGORÍA ==========
         case 'por_categoria':
             $sql = "
@@ -159,7 +159,7 @@ try {
                 LEFT JOIN inventarios i ON ci.id_categoria = i.id_categoria AND i.activo = 1
                 WHERE ti.activo = 1 AND ci.activo = 1
             ";
-            
+
             $params = [];
             if ($tipoId) {
                 $sql .= " AND ti.id_tipo_inventario = ?";
@@ -169,20 +169,20 @@ try {
                 $sql .= " AND ci.id_categoria = ?";
                 $params[] = $categoriaId;
             }
-            
+
             $sql .= " GROUP BY ti.id_tipo_inventario, ti.codigo, ti.nombre, ti.color, 
                                ci.id_categoria, ci.codigo, ci.nombre
                       ORDER BY ti.orden, ci.orden";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             $datos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Agrupar por tipo para mejor visualización
             $agrupado = [];
             $totalItems = 0;
             $totalValor = 0;
-            
+
             foreach ($datos as $row) {
                 $tipoKey = $row['tipo_codigo'];
                 if (!isset($agrupado[$tipoKey])) {
@@ -209,7 +209,7 @@ try {
                 $totalItems += $row['total_items'];
                 $totalValor += $row['valor_total'];
             }
-            
+
             ob_clean();
             echo json_encode([
                 'success' => true,
@@ -223,7 +223,7 @@ try {
                 ]
             ]);
             break;
-            
+
         // ========== REPORTE 4: POR SUBCATEGORÍA ==========
         case 'por_subcategoria':
             $sql = "
@@ -245,7 +245,7 @@ try {
                 LEFT JOIN subcategorias_inventario si ON i.id_subcategoria = si.id_subcategoria
                 WHERE i.activo = 1
             ";
-            
+
             $params = [];
             if ($tipoId) {
                 $sql .= " AND ti.id_tipo_inventario = ?";
@@ -259,22 +259,22 @@ try {
                 $sql .= " AND i.id_subcategoria = ?";
                 $params[] = $subcategoriaId;
             }
-            
+
             $sql .= " GROUP BY ti.codigo, ti.nombre, ci.codigo, ci.nombre, 
                                si.id_subcategoria, si.codigo, si.nombre
                       ORDER BY ti.codigo, ci.codigo, si.codigo";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             $datos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             $totalItems = 0;
             $totalValor = 0;
             foreach ($datos as $row) {
                 $totalItems += $row['total_items'];
                 $totalValor += $row['valor_total'];
             }
-            
+
             ob_clean();
             echo json_encode([
                 'success' => true,
@@ -287,7 +287,7 @@ try {
                 ]
             ]);
             break;
-            
+
         // ========== REPORTE 5: DETALLADO (TODOS LOS ITEMS) ==========
         case 'detallado':
             $sql = "
@@ -321,7 +321,7 @@ try {
                 LEFT JOIN ubicaciones_almacen ua ON i.id_ubicacion = ua.id_ubicacion
                 WHERE i.activo = 1
             ";
-            
+
             $params = [];
             if ($tipoId) {
                 $sql .= " AND ti.id_tipo_inventario = ?";
@@ -335,13 +335,13 @@ try {
                 $sql .= " AND i.id_subcategoria = ?";
                 $params[] = $subcategoriaId;
             }
-            
+
             $sql .= " ORDER BY ti.codigo, ci.codigo, si.codigo, i.codigo";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             $datos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             // Calcular totales
             $totalItems = count($datos);
             $totalUnidades = 0;
@@ -350,7 +350,7 @@ try {
                 $totalUnidades += $row['stock_actual'];
                 $totalValor += $row['valor_total'];
             }
-            
+
             ob_clean();
             echo json_encode([
                 'success' => true,
@@ -364,7 +364,7 @@ try {
                 ]
             ]);
             break;
-            
+
         // ========== REPORTE 6: COMPRAS POR PROVEEDOR ==========
         case 'compras_proveedor':
             $sql = "
@@ -380,10 +380,10 @@ try {
                     MAX(m.fecha_movimiento) AS ultima_compra
                 FROM movimientos_inventario_erp m
                 LEFT JOIN proveedores p ON m.id_proveedor = p.id_proveedor
-                WHERE m.tipo_movimiento LIKE 'ENTRADA_%'
+                WHERE m.tipo_movimiento COLLATE utf8mb4_unicode_ci LIKE 'ENTRADA_%'
                 AND m.estado = 'ACTIVO'
             ";
-            
+
             $params = [];
             if ($fechaDesde) {
                 $sql .= " AND DATE(m.fecha_movimiento) >= ?";
@@ -393,19 +393,19 @@ try {
                 $sql .= " AND DATE(m.fecha_movimiento) <= ?";
                 $params[] = $fechaHasta;
             }
-            
+
             $sql .= " GROUP BY p.id_proveedor, p.codigo, p.razon_social, p.nit
                       ORDER BY total_compras DESC";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             $datos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             $totalCompras = 0;
             foreach ($datos as $row) {
                 $totalCompras += $row['total_compras'];
             }
-            
+
             ob_clean();
             echo json_encode([
                 'success' => true,
@@ -422,7 +422,7 @@ try {
                 ]
             ]);
             break;
-            
+
         // ========== REPORTE 7: MOVIMIENTOS DE INVENTARIO ==========
         case 'movimientos':
             $sql = "
@@ -451,7 +451,7 @@ try {
                 LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
                 WHERE 1=1
             ";
-            
+
             $params = [];
             if ($tipoId) {
                 $sql .= " AND ti.id_tipo_inventario = ?";
@@ -465,13 +465,13 @@ try {
                 $sql .= " AND DATE(m.fecha_movimiento) <= ?";
                 $params[] = $fechaHasta;
             }
-            
+
             $sql .= " ORDER BY m.fecha_movimiento DESC LIMIT 500";
-            
+
             $stmt = $db->prepare($sql);
             $stmt->execute($params);
             $datos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             ob_clean();
             echo json_encode([
                 'success' => true,
@@ -481,13 +481,13 @@ try {
                 'total_registros' => count($datos)
             ]);
             break;
-            
+
         default:
             ob_clean();
             echo json_encode(['success' => false, 'message' => 'Tipo de reporte no válido']);
     }
-    
-} catch(PDOException $e) {
+
+} catch (PDOException $e) {
     error_log("Error en reportes_inventario.php: " . $e->getMessage());
     ob_clean();
     echo json_encode([
@@ -495,7 +495,7 @@ try {
         'message' => 'Error de base de datos',
         'error' => $e->getMessage()
     ]);
-} catch(Exception $e) {
+} catch (Exception $e) {
     error_log("Error en reportes_inventario.php: " . $e->getMessage());
     ob_clean();
     echo json_encode([

@@ -2,7 +2,7 @@
 /**
  * API de Kardex de Materias Primas
  * Sistema MES Hermen Ltda.
- * Versión: 2.1 - Corrección de valores monetarios
+ * Versión: 2.2 - CORREGIDO para usar movimientos_inventario
  */
 
 ob_start();
@@ -69,21 +69,15 @@ try {
                         // Buscar el último movimiento antes de la fecha inicial
                         $stmtSaldo = $db->prepare("
                             SELECT 
-                                COALESCE(SUM(CASE 
-                                    WHEN k.tipo_movimiento IN ('ENTRADA', 'AJUSTE_POSITIVO', 'INGRESO') THEN k.cantidad
-                                    WHEN k.tipo_movimiento IN ('SALIDA', 'AJUSTE_NEGATIVO') THEN -k.cantidad
-                                    ELSE 0
-                                END), 0) as cantidad,
-                                COALESCE(SUM(CASE 
-                                    WHEN k.tipo_movimiento IN ('ENTRADA', 'AJUSTE_POSITIVO', 'INGRESO') THEN 
-                                        COALESCE(k.costo_total, k.cantidad * k.costo_unitario)
-                                    WHEN k.tipo_movimiento IN ('SALIDA', 'AJUSTE_NEGATIVO') THEN 
-                                        -COALESCE(k.costo_total, k.cantidad * k.costo_unitario)
-                                    ELSE 0
-                                END), 0) as valor_total
-                            FROM kardex_inventario k
-                            WHERE k.id_inventario = ? 
-                              AND DATE(k.fecha_movimiento) < ?
+                                stock_posterior as cantidad,
+                                stock_posterior * costo_promedio_posterior as valor_total,
+                                costo_promedio_posterior as cpp
+                            FROM movimientos_inventario
+                            WHERE id_inventario = ? 
+                              AND DATE(fecha_movimiento) < ?
+                              AND estado = 'ACTIVO'
+                            ORDER BY fecha_movimiento DESC, id_movimiento DESC
+                            LIMIT 1
                         ");
                         $stmtSaldo->execute([$idInventario, $desde]);
                         $saldoInicial = $stmtSaldo->fetch(PDO::FETCH_ASSOC);
@@ -91,8 +85,7 @@ try {
                         if ($saldoInicial) {
                             $saldoInicial['cantidad'] = floatval($saldoInicial['cantidad']);
                             $saldoInicial['valor_total'] = floatval($saldoInicial['valor_total']);
-                            $saldoInicial['cpp'] = $saldoInicial['cantidad'] > 0 ?
-                                $saldoInicial['valor_total'] / $saldoInicial['cantidad'] : 0;
+                            $saldoInicial['cpp'] = floatval($saldoInicial['cpp']);
                         } else {
                             $saldoInicial = [
                                 'cantidad' => 0,
@@ -102,127 +95,91 @@ try {
                         }
                     }
 
-                    // Construir query de movimientos con JOIN para obtener más información
+                    // Construir query de movimientos
                     $sql = "
                         SELECT 
-                            k.id_kardex,
-                            k.fecha_movimiento,
-                            k.tipo_movimiento,
-                            k.documento_referencia,
-                            k.cantidad,
-                            k.costo_unitario,
-                            k.costo_total,
-                            k.stock_anterior,
-                            k.stock_posterior,
-                            k.costo_promedio_anterior,
-                            k.costo_promedio_posterior,
-                            k.observaciones,
-                            d.numero_documento,
-                            d.tipo_documento,
-                            d.subtotal as doc_subtotal,
-                            d.total as doc_total,
-                            dd.costo_unitario as detalle_costo_unitario,
-                            dd.subtotal as detalle_subtotal
-                        FROM kardex_inventario k
-                        LEFT JOIN documentos_inventario d ON k.id_documento = d.id_documento
-                        LEFT JOIN documentos_inventario_detalle dd ON 
-                            d.id_documento = dd.id_documento AND dd.id_inventario = k.id_inventario
-                        WHERE k.id_inventario = ?
+                            m.id_movimiento,
+                            m.fecha_movimiento,
+                            m.tipo_movimiento,
+                            m.codigo_movimiento,
+                            m.documento_numero,
+                            m.documento_tipo,
+                            m.cantidad,
+                            m.costo_unitario,
+                            m.costo_total,
+                            m.stock_anterior,
+                            m.stock_posterior,
+                            m.costo_promedio_anterior,
+                            m.costo_promedio_posterior,
+                            m.observaciones,
+                            m.estado
+                        FROM movimientos_inventario m
+                        WHERE m.id_inventario = ?
+                          AND m.estado = 'ACTIVO'
                     ";
                     $params = [$idInventario];
 
                     if ($desde) {
-                        $sql .= " AND k.fecha_movimiento >= ?";
+                        $sql .= " AND DATE(m.fecha_movimiento) >= ?";
                         $params[] = $desde;
                     }
 
                     if ($hasta) {
-                        $sql .= " AND k.fecha_movimiento <= ?";
-                        $params[] = $hasta . ' 23:59:59';
+                        $sql .= " AND DATE(m.fecha_movimiento) <= ?";
+                        $params[] = $hasta;
                     }
 
-                    $sql .= " ORDER BY k.fecha_movimiento ASC, k.id_kardex ASC";
+                    $sql .= " ORDER BY m.fecha_movimiento ASC, m.id_movimiento ASC";
 
                     $stmt = $db->prepare($sql);
                     $stmt->execute($params);
                     $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                    // Inicializar saldos acumulados
-                    $saldoCantidad = $saldoInicial ? $saldoInicial['cantidad'] : 0;
-                    $saldoValor = $saldoInicial ? $saldoInicial['valor_total'] : 0;
-                    $cpp = $saldoInicial ? $saldoInicial['cpp'] : 0;
-
                     // Formatear movimientos para el frontend
                     $movimientosFormateados = [];
                     foreach ($movimientos as $mov) {
-                        $esEntrada = in_array($mov['tipo_movimiento'], ['ENTRADA', 'AJUSTE_POSITIVO', 'INGRESO']);
+                        $esEntrada = in_array($mov['tipo_movimiento'], [
+                            'ENTRADA_COMPRA',
+                            'ENTRADA_DEVOLUCION',
+                            'ENTRADA_AJUSTE'
+                        ]);
 
-                        // Calcular el valor del movimiento
-                        $valorMovimiento = 0;
-                        $costoUnitarioMov = 0;
+                        $cantidad = floatval($mov['cantidad']);
+                        $costoUnit = floatval($mov['costo_unitario']);
+                        $costoTotal = floatval($mov['costo_total']);
+                        $stockAnt = floatval($mov['stock_anterior']);
+                        $stockPost = floatval($mov['stock_posterior']);
+                        $cppAnt = floatval($mov['costo_promedio_anterior']);
+                        $cppPost = floatval($mov['costo_promedio_posterior']);
 
-                        if ($esEntrada) {
-                            // Para entradas, usar el costo del documento o calcular
-                            if ($mov['costo_total'] > 0) {
-                                $valorMovimiento = floatval($mov['costo_total']);
-                            } elseif ($mov['detalle_subtotal'] > 0) {
-                                $valorMovimiento = floatval($mov['detalle_subtotal']);
-                            } elseif ($mov['costo_unitario'] > 0) {
-                                $valorMovimiento = floatval($mov['cantidad']) * floatval($mov['costo_unitario']);
-                            } elseif ($mov['detalle_costo_unitario'] > 0) {
-                                $valorMovimiento = floatval($mov['cantidad']) * floatval($mov['detalle_costo_unitario']);
-                            }
-
-                            $costoUnitarioMov = $mov['cantidad'] > 0 ? $valorMovimiento / $mov['cantidad'] : 0;
-
-                            // Actualizar saldos
-                            $saldoCantidad += floatval($mov['cantidad']);
-                            $saldoValor += $valorMovimiento;
-
-                        } else {
-                            // Para salidas, usar el CPP actual
-                            $costoUnitarioMov = $cpp;
-                            $valorMovimiento = floatval($mov['cantidad']) * $costoUnitarioMov;
-
-                            // Actualizar saldos
-                            $saldoCantidad -= floatval($mov['cantidad']);
-                            $saldoValor -= $valorMovimiento;
-                        }
-
-                        // Recalcular CPP después del movimiento
-                        if ($saldoCantidad > 0) {
-                            $cpp = $saldoValor / $saldoCantidad;
-                        } elseif ($saldoCantidad == 0) {
-                            $cpp = 0;
-                            $saldoValor = 0; // Ajustar a 0 si no hay stock
-                        }
-
-                        // Verificar si el CPP del kardex está guardado y es diferente
-                        if ($mov['costo_promedio_posterior'] > 0 && abs($mov['costo_promedio_posterior'] - $cpp) > 0.01) {
-                            // Si hay una diferencia significativa, usar el valor guardado
-                            $cpp = floatval($mov['costo_promedio_posterior']);
-                            $saldoValor = $saldoCantidad * $cpp;
-                        }
+                        // Calcular valores
+                        $valorAnt = $stockAnt * $cppAnt;
+                        $valorPost = $stockPost * $cppPost;
 
                         $movimientosFormateados[] = [
                             'fecha' => $mov['fecha_movimiento'],
-                            'documento' => $mov['numero_documento'] ?: $mov['documento_referencia'],
+                            'documento' => $mov['documento_numero'] ?: $mov['codigo_movimiento'],
                             'tipo' => $mov['tipo_movimiento'],
                             'observaciones' => $mov['observaciones'],
 
                             // Físico
-                            'cantidad_entrada' => $esEntrada ? floatval($mov['cantidad']) : 0,
-                            'cantidad_salida' => !$esEntrada ? floatval($mov['cantidad']) : 0,
-                            'saldo_cantidad' => $saldoCantidad,
+                            'cantidad_entrada' => $esEntrada ? $cantidad : 0,
+                            'cantidad_salida' => !$esEntrada ? $cantidad : 0,
+                            'saldo_cantidad' => $stockPost,
 
                             // Valorado
-                            'valor_entrada' => $esEntrada ? $valorMovimiento : 0,
-                            'valor_salida' => !$esEntrada ? $valorMovimiento : 0,
-                            'cpp' => $cpp,
-                            'saldo_valor' => $saldoValor,
+                            'valor_entrada' => $esEntrada ? $costoTotal : 0,
+                            'valor_salida' => !$esEntrada ? $costoTotal : 0,
+                            'cpp' => $cppPost,
+                            'saldo_valor' => $valorPost,
 
                             // Costo unitario para referencia
-                            'costo_unitario' => $costoUnitarioMov
+                            'costo_unitario' => $costoUnit,
+
+                            // Saldo anterior
+                            'stock_anterior' => $stockAnt,
+                            'cpp_anterior' => $cppAnt,
+                            'valor_anterior' => $valorAnt
                         ];
                     }
 
@@ -234,9 +191,8 @@ try {
                         'movimientos' => $movimientosFormateados,
                         'total_movimientos' => count($movimientosFormateados),
                         'debug' => [
-                            'saldo_final_cantidad' => $saldoCantidad,
-                            'saldo_final_valor' => $saldoValor,
-                            'cpp_final' => $cpp
+                            'params' => $params,
+                            'query' => $sql
                         ]
                     ]);
                     break;
@@ -253,14 +209,15 @@ try {
                     // Obtener todos los movimientos ordenados
                     $stmt = $db->prepare("
                         SELECT 
-                            k.*,
+                            m.*,
                             dd.costo_unitario as detalle_costo,
                             dd.subtotal as detalle_subtotal
-                        FROM kardex_inventario k
+                        FROM movimientos_inventario m
                         LEFT JOIN documentos_inventario_detalle dd ON 
-                            k.id_documento = dd.id_documento AND dd.id_inventario = k.id_inventario
-                        WHERE k.id_inventario = ?
-                        ORDER BY k.fecha_movimiento, k.id_kardex
+                            m.documento_id = dd.id_documento AND dd.id_inventario = m.id_inventario
+                        WHERE m.id_inventario = ?
+                          AND m.estado = 'ACTIVO'
+                        ORDER BY m.fecha_movimiento, m.id_movimiento
                     ");
                     $stmt->execute([$idInventario]);
                     $movimientos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -271,15 +228,19 @@ try {
                     $actualizaciones = 0;
 
                     $stmtUpdate = $db->prepare("
-                        UPDATE kardex_inventario 
+                        UPDATE movimientos_inventario 
                         SET costo_total = ?, 
                             costo_promedio_posterior = ?,
                             stock_posterior = ?
-                        WHERE id_kardex = ?
+                        WHERE id_movimiento = ?
                     ");
 
                     foreach ($movimientos as $mov) {
-                        $esEntrada = in_array($mov['tipo_movimiento'], ['ENTRADA', 'AJUSTE_POSITIVO', 'INGRESO']);
+                        $esEntrada = in_array($mov['tipo_movimiento'], [
+                            'ENTRADA_COMPRA',
+                            'ENTRADA_DEVOLUCION',
+                            'ENTRADA_AJUSTE'
+                        ]);
 
                         if ($esEntrada) {
                             // Calcular valor de entrada
@@ -310,7 +271,7 @@ try {
                         }
 
                         // Actualizar en BD
-                        $stmtUpdate->execute([$valorMov, $cpp, $saldoCantidad, $mov['id_kardex']]);
+                        $stmtUpdate->execute([$valorMov, $cpp, $saldoCantidad, $mov['id_movimiento']]);
                         $actualizaciones++;
                     }
 

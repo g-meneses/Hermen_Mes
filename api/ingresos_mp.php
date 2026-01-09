@@ -391,7 +391,8 @@ try {
 
                         foreach ($data['lineas'] as $linea) {
                             $cantidad = floatval($linea['cantidad']);
-                            $subtotalLinea = floatval($linea['subtotal'] ?? 0);
+                            $subtotalLinea = floatval($linea['subtotal'] ?? ($linea['cantidad'] * $linea['costo_unitario']));
+
                             $costoConIva = $cantidad > 0 ? $subtotalLinea / $cantidad : 0;
                             // Costo sin IVA = Costo Bruto * 0.87
                             $costoUnit = $conFactura ? $costoConIva * 0.87 : $costoConIva;

@@ -350,17 +350,19 @@ try {
                             WHERE id_inventario = ?
                         ");
 
-                        $stmtKardex = $db->prepare("
-                            INSERT INTO kardex_inventario (
-                                id_inventario, fecha_movimiento, tipo_movimiento, id_documento,
-                                documento_referencia, cantidad, costo_unitario, costo_total,
-                                stock_anterior, stock_posterior, 
+                        $stmtMovimiento = $db->prepare("
+                            INSERT INTO movimientos_inventario (
+                                id_inventario, fecha_movimiento, tipo_movimiento, 
+                                codigo_movimiento, documento_tipo, documento_numero, documento_id,
+                                cantidad, costo_unitario, costo_total,
+                                stock_anterior, stock_posterior,
                                 costo_promedio_anterior, costo_promedio_posterior,
-                                creado_por
-                            ) VALUES (?, ?, 'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                estado, creado_por
+                            ) VALUES (?, ?, ?, ?, 'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
                         ");
 
-                        $fechaMovimiento = $data['fecha'] . ' ' . date('H:i:s');
+                        $fechaMovimiento = ($data['fecha'] ?? date('Y-m-d')) . ' ' . date('H:i:s');
+                        $codigoMovBase = generarCodigoMovimiento($db);
 
                         foreach ($data['lineas'] as $linea) {
                             $cantidad = floatval($linea['cantidad']);
@@ -373,11 +375,16 @@ try {
                             $subtotal = $cantidad * $costoUnit;
 
                             // Verificar stock disponible y obtener CPP actual
-                            $stmtCheck = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ?");
+                            $stmtCheck = $db->prepare("
+                                SELECT stock_actual, costo_promedio 
+                                FROM inventarios 
+                                WHERE id_inventario = ?
+                                FOR UPDATE
+                            ");
                             $stmtCheck->execute([$linea['id_inventario']]);
                             $infoInv = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-                            $stockActual = floatval($infoInv['stock_actual']);
-                            $cppActual = floatval($infoInv['costo_promedio']);
+                            $stockActual = floatval($infoInv['stock_actual'] ?? 0);
+                            $cppActual = floatval($infoInv['costo_promedio'] ?? 0);
 
                             if ($cantidad > $stockActual) {
                                 throw new Exception("Stock insuficiente para el producto ID " . $linea['id_inventario']);
@@ -431,19 +438,30 @@ try {
                                 $linea['id_inventario']
                             ]);
 
-                            // Registrar en Kardex
-                            $stmtKardex->execute([
+                            // Registrar en movimientos_inventario
+                            $tipoMov = 'SALIDA_' . $tipoSalida;
+
+                            // DETERMINAR COSTO: Si es devolución, usar el costo original de la línea.
+                            // Para otros casos (producción, etc), usar el CPP actual.
+                            $costoMovimiento = ($tipoSalida === 'DEVOLUCION') ? $costoUnit : $cppActual;
+
+                            $stmtMovimiento->execute([
                                 $linea['id_inventario'],
-                                $fechaMovimiento, // Fecha del documento
-                                $idDocumento,
+                                $fechaMovimiento,
+                                $tipoMov,
+                                $codigoMovBase,
                                 $numeroDoc,
+                                $idDocumento,
                                 $cantidad,
-                                $costoUnit,
-                                $subtotal,
+                                $costoMovimiento,
+                                $cantidad * $costoMovimiento,
                                 $stockActual,
                                 $stockActual - $cantidad,
-                                $cppActual,      // CPP anterior (no cambia en salida simple)
-                                $cppActual,      // CPP posterior (no cambia en salida simple)
+                                $cppActual,      // CPP anterior
+                                    // El CPP posterior se recalcula aquí si es devolución
+                                ($tipoSalida === 'DEVOLUCION' && ($stockActual - $cantidad) > 0)
+                                ? (($stockActual * $cppActual) - ($cantidad * $costoMovimiento)) / ($stockActual - $cantidad)
+                                : $cppActual,
                                 $_SESSION['user_id'] ?? null
                             ]);
                         }
@@ -602,6 +620,41 @@ function generarNumeroDocumento($db, $tipo, $prefijo)
     }
 
     return $prefijo . '-' . $anio . $mes . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
+}
+
+/**
+ * Genera el siguiente código de movimiento
+ */
+function generarCodigoMovimiento($db)
+{
+    $fecha = date('Ymd');
+
+    // Buscar o crear secuencia de movimientos
+    $stmt = $db->prepare("
+        SELECT ultimo_numero FROM secuencias_documento 
+        WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ?
+        FOR UPDATE
+    ");
+    $stmt->execute([date('Y'), date('m')]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($row) {
+        $siguiente = $row['ultimo_numero'] + 1;
+        $stmtUp = $db->prepare("
+            UPDATE secuencias_documento SET ultimo_numero = ?
+            WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ?
+        ");
+        $stmtUp->execute([$siguiente, date('Y'), date('m')]);
+    } else {
+        $siguiente = 1;
+        $stmtIn = $db->prepare("
+            INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero)
+            VALUES ('MOVIMIENTO', 'MOV', ?, ?, 1)
+        ");
+        $stmtIn->execute([date('Y'), date('m')]);
+    }
+
+    return 'MOV-' . $fecha . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
 }
 
 ob_end_flush();

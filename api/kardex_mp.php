@@ -229,9 +229,12 @@ try {
 
                     $stmtUpdate = $db->prepare("
                         UPDATE movimientos_inventario 
-                        SET costo_total = ?, 
-                            costo_promedio_posterior = ?,
-                            stock_posterior = ?
+                        SET costo_unitario = ?,
+                            costo_total = ?, 
+                            stock_anterior = ?,
+                            stock_posterior = ?,
+                            costo_promedio_anterior = ?,
+                            costo_promedio_posterior = ?
                         WHERE id_movimiento = ?
                     ");
 
@@ -241,6 +244,9 @@ try {
                             'ENTRADA_DEVOLUCION',
                             'ENTRADA_AJUSTE'
                         ]);
+
+                        $stockAnt = $saldoCantidad;
+                        $cppAnt = $cpp;
 
                         if ($esEntrada) {
                             // Calcular valor de entrada
@@ -253,11 +259,16 @@ try {
                                 $valorMov = floatval($mov['cantidad']) * floatval($mov['costo_unitario']);
                             }
 
+                            $costoUnitMov = floatval($mov['cantidad']) > 0 ? $valorMov / floatval($mov['cantidad']) : 0;
                             $saldoCantidad += floatval($mov['cantidad']);
                             $saldoValor += $valorMov;
                         } else {
-                            // Para salidas usar CPP
-                            $valorMov = floatval($mov['cantidad']) * $cpp;
+                            // Si es devolución a proveedor, usar costo registrado. Otros tipos usan CPP.
+                            $costoUnitMov = ($mov['tipo_movimiento'] === 'SALIDA_DEVOLUCION')
+                                ? floatval($mov['costo_unitario'])
+                                : $cpp;
+
+                            $valorMov = floatval($mov['cantidad']) * $costoUnitMov;
                             $saldoCantidad -= floatval($mov['cantidad']);
                             $saldoValor -= $valorMov;
                         }
@@ -270,8 +281,16 @@ try {
                             $saldoValor = 0;
                         }
 
-                        // Actualizar en BD
-                        $stmtUpdate->execute([$valorMov, $cpp, $saldoCantidad, $mov['id_movimiento']]);
+                        // Actualizar en BD (todos los campos para mayor consistencia)
+                        $stmtUpdate->execute([
+                            $costoUnitMov,
+                            $valorMov,
+                            $stockAnt,
+                            $saldoCantidad,
+                            $cppAnt,
+                            $cpp,
+                            $mov['id_movimiento']
+                        ]);
                         $actualizaciones++;
                     }
 

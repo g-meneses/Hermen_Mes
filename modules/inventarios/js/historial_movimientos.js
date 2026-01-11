@@ -131,13 +131,29 @@ function renderHistorial() {
 
         if (tipo === 'INGRESO') {
             const sub = doc.tipo_ingreso || '';
-            if (sub === 'COMPRA') { nombreSubtipo = 'Compra'; claseSubtipo = 'badge-sub-compra'; }
-            else if (sub === 'DEVOLUCION_PROD') { nombreSubtipo = 'Devolución Prod.'; claseSubtipo = 'badge-sub-devolucion'; }
-            else if (sub === 'AJUSTE_POS') { nombreSubtipo = 'Ajuste (+)'; claseSubtipo = 'badge-sub-ajuste'; }
-            else if (sub === 'INICIAL') { nombreSubtipo = 'Inv. Inicial'; claseSubtipo = 'badge-sub-inicial'; }
+            const ref = (doc.referencia_externa || '').toUpperCase();
+
+            if (sub === 'COMPRA') {
+                nombreSubtipo = 'Compra Proveedor'; claseSubtipo = 'badge-sub-compra';
+            }
+            else if (sub === 'DEVOLUCION_PROD' || ref.includes('DEVOLUCION')) {
+                nombreSubtipo = 'Devolución Prod.'; claseSubtipo = 'badge-sub-devolucion';
+            }
+            else if (sub === 'AJUSTE_POS' || ref.includes('AJUSTE')) {
+                nombreSubtipo = 'Ajuste (+)'; claseSubtipo = 'badge-sub-ajuste';
+            }
+            else if (sub === 'INICIAL' || ref.includes('INICIAL')) {
+                nombreSubtipo = 'Inventario Inicial'; claseSubtipo = 'badge-sub-inicial';
+            }
             else {
-                // Fallback por si no viene el campo
-                nombreSubtipo = 'Ingreso Gral.';
+                // Fallback inteligente: si no tiene proveedor, probablemente es interno
+                if (!doc.id_proveedor) {
+                    nombreSubtipo = 'Devolución Prod.';
+                    claseSubtipo = 'badge-sub-devolucion';
+                } else {
+                    nombreSubtipo = 'Compra Proveedor';
+                    claseSubtipo = 'badge-sub-compra';
+                }
             }
         } else {
             const sub = doc.tipo_salida || '';

@@ -1944,6 +1944,17 @@ require_once '../../includes/header.php';
                 Haga clic en el ingreso del cual desea devolver productos
             </p>
 
+            <!-- 🔍 BUSCADOR DE INGRESOS -->
+            <div class="form-group" style="margin-bottom: 20px;">
+                <div class="input-with-icon" style="position: relative;">
+                    <i class="fas fa-search"
+                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d;"></i>
+                    <input type="text" id="buscarIngresoDevolucion"
+                        placeholder="Buscar por Nº de Documento o Proveedor..." oninput="filtrarIngresosDevolucion()"
+                        style="width: 100%; padding: 12px 12px 12px 40px; border: 2px solid #e9ecef; border-radius: 10px; font-size: 1rem; transition: border-color 0.2s;">
+                </div>
+            </div>
+
             <div class="ingresos-container" id="ingresosDisponibles">
                 <p style="padding:20px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando ingresos...
                 </p>

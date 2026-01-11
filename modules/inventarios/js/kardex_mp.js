@@ -71,15 +71,16 @@ function cambiarTabKardex(tipo) {
         // Kardex Valorado - mostrar todas las columnas
         document.getElementById('kardexTableHead').innerHTML = `
             <tr>
-                <th width="120">Fecha</th>
+                <th width="110">Fecha</th>
                 <th>Documento</th>
                 <th width="90">Entrada</th>
                 <th width="90">Salida</th>
                 <th width="90">Saldo</th>
-                <th width="110">Valor Entrada</th>
-                <th width="110">Valor Salida</th>
+                <th width="100">Costo Aplic.</th>
+                <th width="110">Val. Entrada</th>
+                <th width="110">Val. Salida</th>
                 <th width="110">Saldo Valor</th>
-                <th width="100">CPP</th>
+                <th width="90">CPP</th>
             </tr>
         `;
     }
@@ -259,6 +260,7 @@ function renderKardex(data) {
                     </td>
                     <td style="text-align:right;">-</td>
                     <td style="text-align:right;">-</td>
+                    <td style="text-align:right;">-</td>
                     <td style="text-align:right; font-weight:700; background:#fff3e0;">
                         Bs. ${formatNum(saldo_inicial.valor_total, 2)}
                     </td>
@@ -301,6 +303,9 @@ function renderKardex(data) {
                         <td style="text-align:right; font-weight:600; background:#e8f5e9;">
                             ${formatNum(mov.saldo_cantidad, 2)}
                         </td>
+                        <td style="text-align:right; font-size:0.85rem; background:#f5f5f5;">
+                            Bs. ${formatNum(mov.costo_unitario, 4)}
+                        </td>
                         <td style="text-align:right; color:#2e7d32;">
                             ${mov.valor_entrada > 0 ? 'Bs. ' + formatNum(mov.valor_entrada, 2) : '-'}
                         </td>
@@ -334,6 +339,7 @@ function renderKardex(data) {
                     <td style="text-align:right; background:#1b5e20;">
                         ${formatNum(ultimoMov.saldo_cantidad, 2)}
                     </td>
+                    <td style="text-align:right; background:#37474f;">-</td>
                     <td style="text-align:right;">Bs. ${formatNum(totalValorEntradas, 2)}</td>
                     <td style="text-align:right;">Bs. ${formatNum(totalValorSalidas, 2)}</td>
                     <td style="text-align:right; background:#e65100;">

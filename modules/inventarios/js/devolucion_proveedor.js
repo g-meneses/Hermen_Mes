@@ -2,6 +2,7 @@
 
 let ingresoSeleccionado = null;
 let lineasDevolucion = [];
+let todosLosIngresosDisponibles = []; // Caché para búsqueda local
 
 async function abrirModalDevolucion() {
     // Reset
@@ -18,6 +19,10 @@ async function abrirModalDevolucion() {
     document.getElementById('devolucionReferencia').value = '';
     document.getElementById('devolucionObservaciones').value = '';
 
+    // Limpiar buscador
+    const buscador = document.getElementById('buscarIngresoDevolucion');
+    if (buscador) buscador.value = '';
+
     // Cargar ingresos disponibles
     await cargarIngresosDisponibles();
 
@@ -31,8 +36,10 @@ async function cargarIngresosDisponibles() {
         const d = await r.json();
 
         if (d.success && d.ingresos) {
+            todosLosIngresosDisponibles = d.ingresos;
             renderIngresosDisponibles(d.ingresos);
         } else {
+            todosLosIngresosDisponibles = [];
             document.getElementById('ingresosDisponibles').innerHTML =
                 '<p style="padding:20px; text-align:center; color:#dc3545;">No hay ingresos disponibles</p>';
         }
@@ -77,6 +84,26 @@ function renderIngresosDisponibles(ingresos) {
                 </div>
             </div>`;
     }).join('');
+}
+
+/**
+ * Filtra los ingresos en el modal según el texto buscado
+ */
+function filtrarIngresosDevolucion() {
+    const query = document.getElementById('buscarIngresoDevolucion').value.toLowerCase().trim();
+
+    if (!query) {
+        renderIngresosDisponibles(todosLosIngresosDisponibles);
+        return;
+    }
+
+    const filtrados = todosLosIngresosDisponibles.filter(ing => {
+        const nroDoc = ing.numero_documento.toLowerCase();
+        const proveedor = (ing.proveedor_comercial || ing.proveedor_nombre || '').toLowerCase();
+        return nroDoc.includes(query) || proveedor.includes(query);
+    });
+
+    renderIngresosDisponibles(filtrados);
 }
 
 async function seleccionarIngreso(idDocumento) {

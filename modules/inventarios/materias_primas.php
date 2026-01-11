@@ -2042,6 +2042,7 @@ require_once '../../includes/header.php';
         </div>
     </div>
 </div>
+
 <!-- Scripts -->
 <script src="js/materias_primas.js"></script>
 <script src="js/materias_primas_dinamico.js"></script>

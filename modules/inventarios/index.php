@@ -1052,97 +1052,7 @@ require_once '../../includes/header.php';
         </div>
     </div>
 
-    <!-- Área de Trabajo (se muestra al seleccionar un tipo) -->
-    <div class="inv-workspace" id="workspace">
-        <div class="workspace-header">
-            <div class="workspace-title">
-                <div class="icon" id="workspaceIcon">
-                    <i class="fas fa-box"></i>
-                </div>
-                <div>
-                    <h2 id="workspaceTitulo">Tipo de Inventario</h2>
-                    <div class="subtitle" id="workspaceSubtitulo">Seleccione una categoría</div>
-                </div>
-            </div>
-            <div class="workspace-actions">
-                <button class="btn btn-volver" onclick="volverATipos()">
-                    <i class="fas fa-arrow-left"></i> Volver
-                </button>
-                <button class="btn btn-ingreso" onclick="abrirIngreso()">
-                    <i class="fas fa-arrow-down"></i> Ingreso
-                </button>
-                <button class="btn btn-salida" onclick="abrirSalida()">
-                    <i class="fas fa-arrow-up"></i> Salida
-                </button>
-                <button class="btn btn-historial" onclick="abrirHistorial()">
-                    <i class="fas fa-history"></i> Historial
-                </button>
-                <button class="btn btn-nuevo" onclick="abrirNuevoItem()">
-                    <i class="fas fa-plus"></i> Nuevo Item
-                </button>
-            </div>
-        </div>
-
-        <div class="workspace-body">
-            <!-- Breadcrumb de navegación -->
-            <div class="breadcrumb-nav" id="breadcrumbNav" style="display: none;">
-                <span class="breadcrumb-item" onclick="volverACategorias()">
-                    <i class="fas fa-folder"></i> <span id="breadcrumbCategoria">Categoría</span>
-                </span>
-                <i class="fas fa-chevron-right" style="margin: 0 10px; color: #adb5bd;"></i>
-                <span class="breadcrumb-current" id="breadcrumbSubcategoria">Subcategoría</span>
-            </div>
-
-            <!-- Categorías del tipo seleccionado -->
-            <div class="categorias-grid" id="categoriasGrid">
-                <!-- Se llena dinámicamente -->
-            </div>
-
-            <!-- Subcategorías (se muestra al seleccionar categoría con subcategorías) -->
-            <div class="subcategorias-section" id="subcategoriasSection" style="display: none;">
-                <div class="section-title" style="margin-bottom: 15px;">
-                    <i class="fas fa-folder-open"></i>
-                    <span>Subcategorías de: <strong id="subcategoriasTitulo">Categoría</strong></span>
-                </div>
-                <div class="categorias-grid" id="subcategoriasGrid">
-                    <!-- Se llena dinámicamente -->
-                </div>
-            </div>
-
-            <!-- Tabla de productos (se muestra al seleccionar categoría/subcategoría) -->
-            <div class="productos-section" id="productosSection">
-                <div class="productos-header">
-                    <h3>
-                        <i class="fas fa-list"></i>
-                        <span id="productosTitulo">Productos</span>
-                        <span class="categoria-badge" id="productosCategoria">CAT</span>
-                    </h3>
-                    <div class="productos-search">
-                        <input type="text" id="buscarProducto" placeholder="Buscar por código o nombre..."
-                            onkeyup="filtrarProductos()">
-                        <span id="totalProductos">0 items</span>
-                    </div>
-                </div>
-                <table class="productos-tabla">
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Nombre</th>
-                            <th class="text-right">Stock</th>
-                            <th>Unidad</th>
-                            <th>Estado</th>
-                            <th class="text-right">Costo Unit.</th>
-                            <th class="text-right">Valor Total</th>
-                            <th class="text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="productosBody">
-                        <!-- Se llena dinámicamente -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+    <!-- Área de Trabajo Eliminada (Ahora cada tipo tiene su propia página) -->
 </div>
 
 <!-- ========== MODALES ========== -->
@@ -2462,35 +2372,31 @@ require_once '../../includes/header.php';
 
     // ========== SELECCIÓN DE TIPO ==========
     async function seleccionarTipo(idTipo) {
-        // Marcar card como activo
-        document.querySelectorAll('.tipo-card').forEach(card => card.classList.remove('active'));
-        document.getElementById(`tipoCard_${idTipo}`).classList.add('active');
+        // Mapeo de redireccionamiento por tipo de inventario
+        const rutas = {
+            1: 'materias_primas.php',
+            // Añadir más rutas según se implementen los módulos
+        };
 
-        // Guardar tipo seleccionado
-        tipoSeleccionado = tiposInventario.find(t => t.id_tipo_inventario == idTipo);
+        const destino = rutas[idTipo];
 
-        if (!tipoSeleccionado) return;
+        if (destino) {
+            // Animación de salida opcional
+            document.getElementById(`tipoCard_${idTipo}`).classList.add('active');
 
-        // Actualizar header del workspace
-        const color = tipoSeleccionado.color || '#007bff';
-        document.getElementById('workspaceIcon').style.background = color;
-        document.getElementById('workspaceIcon').innerHTML = `<i class="fas ${tipoSeleccionado.icono || 'fa-box'}"></i>`;
-        document.getElementById('workspaceTitulo').textContent = tipoSeleccionado.nombre;
-        document.getElementById('workspaceSubtitulo').textContent = `${tipoSeleccionado.total_items} items | Bs. ${parseFloat(tipoSeleccionado.valor_total).toLocaleString('es-BO', { minimumFractionDigits: 2 })}`;
+            // Redirigir a la página correspondiente
+            window.location.href = destino;
+        } else {
+            // Manejo de módulos no implementados (Próximamente)
+            const tipo = tiposInventario.find(t => t.id_tipo_inventario == idTipo);
+            const nombre = tipo ? tipo.nombre : 'este módulo';
 
-        // Mostrar workspace
-        document.getElementById('workspace').classList.add('active');
-        document.getElementById('workspace').style.setProperty('--tipo-color', color);
+            alert(`ℹ️ El módulo de "${nombre}" se encuentra actualmente en desarrollo y estará disponible próximamente.`);
 
-        // Ocultar sección de productos
-        document.getElementById('productosSection').classList.remove('active');
-        categoriaSeleccionada = null;
-
-        // Cargar categorías del tipo
-        await cargarCategoriasDelTipo(idTipo);
-
-        // Scroll al workspace
-        document.getElementById('workspace').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Si el workspace estaba abierto por alguna razón previa, ocultarlo
+            const workspace = document.getElementById('workspace');
+            if (workspace) workspace.classList.remove('active');
+        }
     }
 
     async function cargarCategoriasDelTipo(idTipo) {
@@ -4346,26 +4252,56 @@ require_once '../../includes/header.php';
         if (!documentoActual) return;
 
         const contenido = document.getElementById('detalleDocContenido').innerHTML;
+        const logoImg = document.querySelector('.sidebar-header img');
+        const logoSrc = logoImg ? logoImg.src : '';
+
         const ventana = window.open('', '_blank');
         ventana.document.write(`
         <html>
         <head>
             <title>Documento ${documentoActual.cabecera.documento_numero}</title>
             <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                h1 { font-size: 1.2rem; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; }
+                .print-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1a237e; padding-bottom: 20px; margin-bottom: 30px; }
+                .company-info img { max-width: 180px; height: auto; }
+                .doc-info { text-align: right; }
+                .doc-info h2 { margin: 0; color: #1a237e; font-size: 1.5rem; }
+                .doc-info p { margin: 5px 0 0 0; color: #666; font-weight: 600; }
                 table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 8px; }
-                th { background: #f5f5f5; }
-                .badge-activo { background: #28a745; color: white; padding: 2px 8px; border-radius: 10px; }
-                .badge-anulado { background: #dc3545; color: white; padding: 2px 8px; border-radius: 10px; }
+                th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                th { background: #f8f9fa; color: #1a237e; font-weight: bold; }
+                .badge-activo { background: #e8f5e9; color: #2e7d32; padding: 4px 12px; border-radius: 4px; font-weight: 600; font-size: 0.8rem; }
+                .badge-anulado { background: #ffebee; color: #c62828; padding: 4px 12px; border-radius: 4px; font-weight: 600; font-size: 0.8rem; }
+                .print-footer { margin-top: 50px; display: flex; justify-content: space-between; }
+                .firma { border-top: 1px solid #333; width: 200px; text-align: center; padding-top: 10px; font-size: 0.9rem; }
             </style>
         </head>
         <body>
-            <h1>HERMEN LTDA.</h1>
-            <h2>Documento: ${documentoActual.cabecera.documento_numero}</h2>
+            <div class="print-header">
+                <div class="company-info">
+                    ${logoSrc ? `<img src="${logoSrc}" alt="Logo">` : '<h1>HERMEN LTDA.</h1>'}
+                </div>
+                <div class="doc-info">
+                    <h2>NOTA DE ${documentoActual.cabecera.tipo_movimiento.toUpperCase()}</h2>
+                    <p>Nº: ${documentoActual.cabecera.documento_numero}</p>
+                    <p>Fecha: ${new Date(documentoActual.cabecera.fecha).toLocaleDateString()}</p>
+                </div>
+            </div>
+
             ${contenido}
-            <script>window.print();<\/script>
+
+            <div class="print-footer">
+                <div class="firma">Entrega Conforme</div>
+                <div class="firma">Recibe Conforme</div>
+            </div>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+                };
+            <\/script>
         </body>
         </html>
     `);

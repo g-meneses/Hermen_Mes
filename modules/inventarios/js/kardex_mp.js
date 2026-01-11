@@ -45,8 +45,14 @@ function cambiarTabKardex(tipo) {
     // Actualizar pestañas activas
     document.querySelectorAll('.kardex-tab').forEach(tab => {
         tab.classList.remove('active');
+        tab.style.background = '#e9ecef';
+        tab.style.color = '#495057';
     });
-    document.querySelector(`.kardex-tab[data-tipo="${tipo}"]`).classList.add('active');
+
+    const activeTab = document.querySelector(`.kardex-tab[data-tipo="${tipo}"]`);
+    activeTab.classList.add('active');
+    activeTab.style.background = '#1a237e';
+    activeTab.style.color = 'white';
 
     // Mostrar/ocultar columnas según el tipo
     if (tipo === 'fisico') {
@@ -57,7 +63,7 @@ function cambiarTabKardex(tipo) {
                 <th>Documento</th>
                 <th width="100">Entrada</th>
                 <th width="100">Salida</th>
-                <th width="100" style="background:#e8f5e9;">Saldo</th>
+                <th width="100">Saldo</th>
                 <th>Observaciones</th>
             </tr>
         `;
@@ -69,11 +75,11 @@ function cambiarTabKardex(tipo) {
                 <th>Documento</th>
                 <th width="90">Entrada</th>
                 <th width="90">Salida</th>
-                <th width="90" style="background:#e8f5e9;">Saldo</th>
+                <th width="90">Saldo</th>
                 <th width="110">Valor Entrada</th>
                 <th width="110">Valor Salida</th>
-                <th width="110" style="background:#fff3e0;">Saldo Valor</th>
-                <th width="100" style="background:#e3f2fd;">CPP</th>
+                <th width="110">Saldo Valor</th>
+                <th width="100">CPP</th>
             </tr>
         `;
     }

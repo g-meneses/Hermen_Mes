@@ -16,7 +16,9 @@
 // VARIABLES GLOBALES
 // ========================================
 
-let tiposIngresoConfig = {};
+// Variables compartidas con materias_primas.js
+window.tiposIngresoConfig = window.tiposIngresoConfig || {};
+let tiposIngresoConfig = window.tiposIngresoConfig;
 let tipoIngresoActual = null;
 let motivosCache = {};
 let areasProduccion = [];
@@ -614,7 +616,7 @@ function actualizarEncabezadosTabla(config) {
             ${columnas.map(col => {
         let style = `width:${col.width};`;
         if (col.align) style += ` text-align:${col.align};`;
-        if (col.bg) style += ` background:${col.bg};`;
+        // if (col.bg) style += ` background:${col.bg}; color: #000000 !important; font-weight: 800 !important;`;
         if (col.calculado) style += ' font-size:0.75rem;';
 
         return `<th style="${style}">${col.label}</th>`;

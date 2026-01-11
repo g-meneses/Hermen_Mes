@@ -216,7 +216,7 @@ function mostrarSubcategorias() {
 
         let estiloExtra = '';
         if (esVerTodos) {
-            estiloExtra = 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;';
+            estiloExtra = 'background: linear-gradient(135deg, #1a237e, #4fc3f7); color: white;';
         } else if (esSinClasificar) {
             estiloExtra = 'background: #fff3cd; border-color: #ffc107;';
         }
@@ -227,7 +227,7 @@ function mostrarSubcategorias() {
              style="${estiloExtra}">
             <div class="categoria-header">
                 <div class="categoria-nombre" ${esVerTodos ? 'style="color:white;"' : ''}>${s.nombre}</div>
-                <span class="categoria-badge" ${esVerTodos ? 'style="background:white;color:#667eea;"' : ''}>${s.total_items || 0}</span>
+                <span class="categoria-badge" ${esVerTodos ? 'style="background:white;color:#1a237e;"' : ''}>${s.total_items || 0}</span>
             </div>
             <div class="categoria-stats">
                 <div>
@@ -630,7 +630,7 @@ function renderLineasIngreso() {
             ${columnas.map(col => {
         let style = `width:${col.width};`;
         if (col.align) style += ` text-align:${col.align};`;
-        if (col.bg) style += ` background:${col.bg};`;
+        // if (col.bg) style += ` background:${col.bg};`;
         if (col.calculado) style += ' font-size:0.75rem;';
 
         return `<th style="${style}">${col.label}</th>`;
@@ -1146,11 +1146,11 @@ async function guardarIngreso() {
 
         // 3. VALIDACIONES DINÁMICAS según tipo
 
-        // 3.1 Validar PROVEEDOR (solo si es requerido)
-        if (config.requiere_proveedor) {
+        // 3.1 Validar PROVEEDOR (Solo para COMPRAS)
+        if (config.codigo === 'COMPRA') {
             const proveedorId = document.getElementById('ingresoProveedor').value;
             if (!proveedorId) {
-                mostrarAlerta('Seleccione un proveedor', 'error');
+                mostrarAlerta('Seleccione un proveedor para completar el registro de compra', 'error');
                 return;
             }
         }
@@ -1205,7 +1205,7 @@ async function guardarIngreso() {
             observaciones: document.getElementById('ingresoObservaciones').value || null,
             lineas: lineasIngreso
         };
-
+        //datosIngreso.tipo_ingreso = config.codigo;
         // 6. Agregar campos específicos según tipo
 
         // 6.1 COMPRA A PROVEEDOR

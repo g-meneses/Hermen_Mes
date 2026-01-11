@@ -37,7 +37,7 @@ async function buscarHistorial() {
             estado: estado
         });
 
-        //if (tipo) params.append('tipo', tipo);
+        if (tipo) params.append('tipo', tipo);
 
         // Llamar a ambos endpoints (ingresos y salidas)
         const [rIngresos, rSalidas] = await Promise.all([
@@ -104,7 +104,7 @@ function renderHistorial() {
     if (documentosHistorial.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align:center; padding:30px; color:#6c757d;">
+                <td colspan="8" style="text-align:center; padding:30px; color:#6c757d;">
                     <i class="fas fa-inbox" style="font-size:3rem; margin-bottom:10px; display:block;"></i>
                     No se encontraron documentos en este período
                 </td>
@@ -117,27 +117,46 @@ function renderHistorial() {
         const tipo = doc.tipo_mov || 'INGRESO';
         const estado = doc.estado || 'CONFIRMADO';
 
-        // Badge de tipo
-        let badgeTipo = '';
+        // Movimiento (I/S)
+        let badgeMov = '';
         if (tipo === 'INGRESO') {
-            badgeTipo = '<span class="badge-tipo-mov ingreso"><i class="fas fa-arrow-down"></i> INGRESO</span>';
+            badgeMov = '<span class="badge-tipo-mov ingreso"><i class="fas fa-arrow-down"></i> INGRESO</span>';
         } else {
-            // Determinar subtipo de salida
-            const ref = doc.referencia_externa || '';
-            if (ref.includes('PRODUCCION')) {
-                badgeTipo = '<span class="badge-tipo-mov produccion"><i class="fas fa-industry"></i> PRODUCCIÓN</span>';
-            } else if (ref.includes('VENTA')) {
-                badgeTipo = '<span class="badge-tipo-mov venta"><i class="fas fa-shopping-cart"></i> VENTA</span>';
-            } else if (ref.includes('MUESTRAS')) {
-                badgeTipo = '<span class="badge-tipo-mov muestras"><i class="fas fa-flask"></i> MUESTRAS</span>';
-            } else if (ref.includes('AJUSTE')) {
-                badgeTipo = '<span class="badge-tipo-mov ajuste"><i class="fas fa-tools"></i> AJUSTE</span>';
-            } else if (ref.includes('DEVOLUCION')) {
-                badgeTipo = '<span class="badge-tipo-mov devolucion"><i class="fas fa-undo"></i> DEVOLUCIÓN</span>';
+            badgeMov = '<span class="badge-tipo-mov salida"><i class="fas fa-arrow-up"></i> SALIDA</span>';
+        }
+
+        // Subtipo descriptivo
+        let nombreSubtipo = '-';
+        let claseSubtipo = '';
+
+        if (tipo === 'INGRESO') {
+            const sub = doc.tipo_ingreso || '';
+            if (sub === 'COMPRA') { nombreSubtipo = 'Compra'; claseSubtipo = 'badge-sub-compra'; }
+            else if (sub === 'DEVOLUCION_PROD') { nombreSubtipo = 'Devolución Prod.'; claseSubtipo = 'badge-sub-devolucion'; }
+            else if (sub === 'AJUSTE_POS') { nombreSubtipo = 'Ajuste (+)'; claseSubtipo = 'badge-sub-ajuste'; }
+            else if (sub === 'INICIAL') { nombreSubtipo = 'Inv. Inicial'; claseSubtipo = 'badge-sub-inicial'; }
+            else {
+                // Fallback por si no viene el campo
+                nombreSubtipo = 'Ingreso Gral.';
+            }
+        } else {
+            const sub = doc.tipo_salida || '';
+            if (sub === 'PRODUCCION' || (doc.referencia_externa && doc.referencia_externa.includes('PRODUCCION'))) {
+                nombreSubtipo = 'Producción'; claseSubtipo = 'badge-sub-produccion';
+            } else if (sub === 'VENTA' || (doc.referencia_externa && doc.referencia_externa.includes('VENTA'))) {
+                nombreSubtipo = 'Venta'; claseSubtipo = 'badge-sub-venta';
+            } else if (sub === 'DEVOLUCION' || (doc.referencia_externa && doc.referencia_externa.includes('DEVOLUCION'))) {
+                nombreSubtipo = 'Dev. a Proveedor'; claseSubtipo = 'badge-sub-devolucion';
+            } else if (sub === 'MUESTRAS' || (doc.referencia_externa && doc.referencia_externa.includes('MUESTRAS'))) {
+                nombreSubtipo = 'Muestras'; claseSubtipo = 'badge-sub-muestras';
+            } else if (sub === 'AJUSTE' || (doc.referencia_externa && doc.referencia_externa.includes('AJUSTE'))) {
+                nombreSubtipo = 'Ajuste (-)'; claseSubtipo = 'badge-sub-ajuste';
             } else {
-                badgeTipo = '<span class="badge-tipo-mov salida"><i class="fas fa-arrow-up"></i> SALIDA</span>';
+                nombreSubtipo = 'Salida Gral.';
             }
         }
+
+        const badgeSubtipo = `<span class="badge-subtipo ${claseSubtipo}">${nombreSubtipo}</span>`;
 
         // Badge de estado
         let badgeEstado = '';
@@ -153,10 +172,11 @@ function renderHistorial() {
             <tr>
                 <td style="font-size:0.85rem;">${fecha}</td>
                 <td style="font-weight:600;">${doc.numero_documento}</td>
-                <td>${badgeTipo}</td>
+                <td>${badgeMov}</td>
+                <td>${badgeSubtipo}</td>
                 <td style="text-align:right; font-weight:600;">Bs. ${formatNum(parseFloat(doc.total), 2)}</td>
                 <td style="text-align:center;">${badgeEstado}</td>
-                <td style="font-size:0.85rem; color:#6c757d; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                <td style="font-size:0.85rem; color:#6c757d; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                     ${doc.observaciones || '-'}
                 </td>
                 <td style="text-align:center;">

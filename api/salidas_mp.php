@@ -55,9 +55,9 @@ try {
                             AND d.fecha_documento BETWEEN ? AND ?";
                     $params = [$TIPO_INVENTARIO_MP, $desde, $hasta];
 
-                    if ($tipo) {
-                        $sql .= " AND d.referencia_externa COLLATE utf8mb4_unicode_ci LIKE ?";
-                        $params[] = $tipo . '%';
+                    if ($tipo && $tipo !== 'SALIDA') {
+                        $sql .= " AND d.tipo_salida = ?";
+                        $params[] = $tipo;
                     }
 
                     if ($estado !== 'todos') {
@@ -304,12 +304,12 @@ try {
                         // Insertar documento
                         $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
-                                tipo_documento, numero_documento, fecha_documento,
+                                tipo_documento, tipo_salida, numero_documento, fecha_documento,
                                 id_tipo_inventario, id_proveedor, id_documento_origen,
                                 referencia_externa, subtotal, iva, total,
                                 observaciones, estado, creado_por
                             ) VALUES (
-                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
+                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
                             )
                         ");
 
@@ -319,6 +319,7 @@ try {
                         }
 
                         $stmt->execute([
+                            $tipoSalida,
                             $numeroDoc,
                             $data['fecha'] ?? date('Y-m-d'),
                             $TIPO_INVENTARIO_MP,

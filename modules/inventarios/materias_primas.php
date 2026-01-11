@@ -156,15 +156,7 @@ require_once '../../includes/header.php';
         margin-top: 10px;
     }
 
-    .kardex-table th {
-        background: #343a40;
-        color: white;
-        padding: 10px 8px;
-        text-align: center;
-        border: 1px solid #dee2e6;
-        font-weight: 600;
-        font-size: 0.8rem;
-    }
+
 
     .kardex-table td {
         padding: 8px;
@@ -229,7 +221,7 @@ require_once '../../includes/header.php';
     }
 
     .kpi-icon.items {
-        background: linear-gradient(135deg, #667eea, #764ba2);
+        background: linear-gradient(135deg, #1a237e, #4fc3f7);
     }
 
     .kpi-icon.valor {
@@ -375,14 +367,7 @@ require_once '../../includes/header.php';
         border-collapse: collapse;
     }
 
-    .productos-table th {
-        background: #f8f9fa;
-        padding: 12px 15px;
-        text-align: left;
-        font-size: 0.8rem;
-        color: #6c757d;
-        text-transform: uppercase;
-    }
+
 
     .productos-table td {
         padding: 12px 15px;
@@ -433,7 +418,7 @@ require_once '../../includes/header.php';
     }
 
     .btn-icon.kardex {
-        background: #6f42c1;
+        background: #1a237e;
         color: white;
     }
 
@@ -480,13 +465,17 @@ require_once '../../includes/header.php';
         justify-content: space-between;
         align-items: center;
         padding: 20px 25px;
-        border-bottom: 1px solid #e9ecef;
-        background: #f8f9fa;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        background: linear-gradient(135deg, #1a237e, #4fc3f7);
+        color: white;
     }
 
     .modal-header h3 {
         margin: 0;
         font-size: 1.2rem;
+        color: white;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     .modal-close {
@@ -586,12 +575,7 @@ require_once '../../includes/header.php';
         margin-bottom: 15px;
     }
 
-    .tabla-lineas th {
-        background: #343a40;
-        color: white;
-        padding: 10px;
-        font-size: 0.8rem;
-    }
+
 
     .tabla-lineas td {
         padding: 8px;
@@ -656,11 +640,7 @@ require_once '../../includes/header.php';
         font-size: 0.85rem;
     }
 
-    .kardex-table th {
-        background: #343a40;
-        color: white;
-        padding: 10px;
-    }
+
 
     .kardex-table td {
         padding: 10px;
@@ -724,17 +704,28 @@ require_once '../../includes/header.php';
         font-size: 0.85rem;
     }
 
-    .tabla-lineas th {
-        background: #343a40;
-        color: white;
-        padding: 10px 8px;
+    .tabla-lineas th,
+    .kardex-table th,
+    .tabla-detalle th,
+    .productos-table th {
+        background: #2c3e50 !important;
+        color: white !important;
+        padding: 12px 10px !important;
         text-align: center;
-        font-size: 0.75rem;
+        font-size: 0.8rem;
+        font-weight: 700;
         text-transform: uppercase;
         position: sticky;
         top: 0;
         z-index: 10;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }
+
+    .productos-table th {
+        text-align: left;
+    }
+
+
 
     .tabla-lineas td {
         padding: 8px;
@@ -1003,50 +994,82 @@ require_once '../../includes/header.php';
    ======================================== */
 
     /* Badges de tipo de movimiento */
+    /* Badges de movimiento (Ingreso/Salida) */
     .badge-tipo-mov {
         padding: 5px 12px;
-        border-radius: 15px;
+        border-radius: 6px;
         font-size: 0.75rem;
         font-weight: 700;
         text-transform: uppercase;
         display: inline-flex;
         align-items: center;
         gap: 5px;
+        min-width: 85px;
+        justify-content: center;
     }
 
     .badge-tipo-mov.ingreso {
-        background: linear-gradient(135deg, #28a745, #20c997);
-        color: white;
-    }
-
-    .badge-tipo-mov.produccion {
-        background: linear-gradient(135deg, #007bff, #0056b3);
-        color: white;
-    }
-
-    .badge-tipo-mov.venta {
-        background: linear-gradient(135deg, #17a2b8, #117a8b);
-        color: white;
-    }
-
-    .badge-tipo-mov.muestras {
-        background: linear-gradient(135deg, #6f42c1, #5a32a3);
-        color: white;
-    }
-
-    .badge-tipo-mov.ajuste {
-        background: linear-gradient(135deg, #ffc107, #e0a800);
-        color: #212529;
-    }
-
-    .badge-tipo-mov.devolucion {
-        background: linear-gradient(135deg, #fd7e14, #e8590c);
-        color: white;
+        background: #e8f5e9;
+        color: #2e7d32;
+        border: 1px solid #c8e6c9;
     }
 
     .badge-tipo-mov.salida {
-        background: linear-gradient(135deg, #dc3545, #c82333);
-        color: white;
+        background: #fff3e0;
+        color: #e65100;
+        border: 1px solid #ffe0b2;
+    }
+
+    /* Badges de subtipos específicos */
+    .badge-subtipo {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    .badge-sub-compra {
+        background: #e3f2fd;
+        color: #1565c0;
+        border: 1px solid #bbdefb;
+    }
+
+    .badge-sub-devolucion {
+        background: #fff3e0;
+        color: #e65100;
+        border: 1px solid #ffe0b2;
+    }
+
+    .badge-sub-ajuste {
+        background: #f3e5f5;
+        color: #7b1fa2;
+        border: 1px solid #e1bee7;
+    }
+
+    .badge-sub-inicial {
+        background: #e8eaf6;
+        color: #283593;
+        border: 1px solid #c5cae9;
+    }
+
+    .badge-sub-produccion {
+        background: #e8f5e9;
+        color: #2e7d32;
+        border: 1px solid #c8e6c9;
+    }
+
+    .badge-sub-venta {
+        background: #f1f8e9;
+        color: #33691e;
+        border: 1px solid #dcedc8;
+    }
+
+    .badge-sub-muestras {
+        background: #e0f2f1;
+        color: #00695c;
+        border: 1px solid #b2dfdb;
     }
 
     /* Badges de estado */
@@ -1180,7 +1203,7 @@ require_once '../../includes/header.php';
     }
 
     .kardex-tab.active {
-        background: #6f42c1;
+        background: #1a237e;
         color: white;
     }
 
@@ -1367,7 +1390,7 @@ require_once '../../includes/header.php';
 <!-- Modal Ingreso -->
 <div class="modal" id="modalIngreso">
     <div class="modal-content xlarge">
-        <div class="modal-header" style="background: linear-gradient(135deg, #28a745, #20c997); color: white;">
+        <div class="modal-header">
             <h3><i class="fas fa-arrow-down"></i> Ingreso de Materias Primas</h3>
             <button class="modal-close" onclick="cerrarModal('modalIngreso')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
@@ -1376,7 +1399,7 @@ require_once '../../includes/header.php';
 
             <!-- ⭐ SELECTOR DE TIPO DE INGRESO -->
             <div class="form-row"
-                style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                style="background: linear-gradient(135deg, #1a237e, #4fc3f7); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(26, 35, 126, 0.3);">
                 <div class="form-group" style="flex: 1; margin: 0;">
                     <label style="color: white; font-weight: 600; font-size: 0.95rem;">
                         <i class="fas fa-clipboard-list"></i> Tipo de Ingreso
@@ -1573,7 +1596,7 @@ require_once '../../includes/header.php';
 <!-- Modal Salida - ACTUALIZADO -->
 <div class="modal" id="modalSalida">
     <div class="modal-content large">
-        <div class="modal-header" style="background: linear-gradient(135deg, #dc3545, #c82333); color: white;">
+        <div class="modal-header">
             <h3><i class="fas fa-arrow-up"></i> Salida de Materias Primas</h3>
             <button class="modal-close" onclick="cerrarModal('modalSalida')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
@@ -1681,7 +1704,7 @@ require_once '../../includes/header.php';
 <!-- Modal Historial -->
 <div class="modal" id="modalHistorial">
     <div class="modal-content large">
-        <div class="modal-header" style="background: linear-gradient(135deg, #17a2b8, #138496); color: white;">
+        <div class="modal-header">
             <h3><i class="fas fa-history"></i> Historial de Movimientos</h3>
             <button class="modal-close" onclick="cerrarModal('modalHistorial')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
@@ -1745,18 +1768,19 @@ require_once '../../includes/header.php';
                 <table class="productos-table">
                     <thead>
                         <tr>
-                            <th style="width:100px;">Fecha</th>
-                            <th style="width:180px;">Documento</th>
-                            <th style="width:150px;">Tipo</th>
-                            <th style="width:120px; text-align:right;">Total</th>
-                            <th style="width:120px; text-align:center;">Estado</th>
+                            <th style="width:90px;">Fecha</th>
+                            <th style="width:150px;">Documento</th>
+                            <th style="width:110px;">Movimiento</th>
+                            <th style="width:140px;">Tipo</th>
+                            <th style="width:110px; text-align:right;">Total</th>
+                            <th style="width:110px; text-align:center;">Estado</th>
                             <th>Observaciones</th>
-                            <th style="width:100px; text-align:center;">Acciones</th>
+                            <th style="width:90px; text-align:center;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="historialBody">
                         <tr>
-                            <td colspan="7" style="text-align:center; padding:30px; color:#6c757d;">
+                            <td colspan="8" style="text-align:center; padding:30px; color:#6c757d;">
                                 <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i><br>
                                 Cargando...
                             </td>
@@ -1774,7 +1798,7 @@ require_once '../../includes/header.php';
 <!-- Modal Detalle de Documento -->
 <div class="modal" id="modalDetalle">
     <div class="modal-content">
-        <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #5a32a3); color: white;">
+        <div class="modal-header">
             <h3 id="detalleTitulo"><i class="fas fa-file-alt"></i> Detalle de Documento</h3>
             <button class="modal-close" onclick="cerrarModal('modalDetalle')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
@@ -1791,28 +1815,10 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
-<!-- Modal Detalle -->
-<div class="modal" id="modalDetalle">
-    <div class="modal-content">
-        <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #5a32a3); color: white;">
-            <h3><i class="fas fa-file-alt"></i> <span id="detalleTitulo">Detalle</span></h3>
-            <button class="modal-close" onclick="cerrarModal('modalDetalle')"
-                style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
-        </div>
-        <div class="modal-body" id="detalleContenido"></div>
-        <div class="modal-footer">
-            <button class="btn btn-danger" id="btnAnular" onclick="anularDocumento()" style="display:none;"><i
-                    class="fas fa-ban"></i> Anular</button>
-            <button class="btn btn-primary" onclick="imprimirDocumento()"><i class="fas fa-print"></i> Imprimir</button>
-            <button class="btn btn-secondary" onclick="cerrarModal('modalDetalle')">Cerrar</button>
-        </div>
-    </div>
-</div>
-
 <!-- Modal Kardex -->
 <div class="modal" id="modalKardex">
     <div class="modal-content large">
-        <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #e83e8c); color: white;">
+        <div class="modal-header">
             <h3><i class="fas fa-book"></i> Kardex - <span id="kardexProducto"></span></h3>
             <button class="modal-close" onclick="cerrarModal('modalKardex')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
@@ -1827,7 +1833,7 @@ require_once '../../includes/header.php';
             <div class="kardex-tabs"
                 style="display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #dee2e6;">
                 <button class="kardex-tab active" data-tipo="valorado" onclick="cambiarTabKardex('valorado')"
-                    style="padding: 10px 20px; background: #6f42c1; color: white; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600;">
+                    style="padding: 10px 20px; background: #1a237e; color: white; border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-dollar-sign"></i> Kardex Valorado
                 </button>
                 <button class="kardex-tab" data-tipo="fisico" onclick="cambiarTabKardex('fisico')"
@@ -1876,11 +1882,11 @@ require_once '../../includes/header.php';
                             <th>Documento</th>
                             <th width="90">Entrada</th>
                             <th width="90">Salida</th>
-                            <th width="90" style="background:#e8f5e9;">Saldo</th>
+                            <th width="90">Saldo</th>
                             <th width="110">Valor Entrada</th>
                             <th width="110">Valor Salida</th>
-                            <th width="110" style="background:#fff3e0;">Saldo Valor</th>
-                            <th width="100" style="background:#e3f2fd;">CPP</th>
+                            <th width="110">Saldo Valor</th>
+                            <th width="100">CPP</th>
                         </tr>
                     </thead>
                     <tbody id="kardexBody">
@@ -1894,7 +1900,11 @@ require_once '../../includes/header.php';
                 </table>
             </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="display: flex; justify-content: space-between; width: 100%;">
+            <button class="btn btn-warning" onclick="recalcularKardex(kardexActual.idInventario)"
+                style="background: #ffc107; color: #212529; border: none;">
+                <i class="fas fa-sync-alt"></i> Recalcular Costos
+            </button>
             <button class="btn btn-secondary" onclick="cerrarModal('modalKardex')">Cerrar</button>
         </div>
     </div>
@@ -1902,7 +1912,7 @@ require_once '../../includes/header.php';
 <!-- Modal Devolución a Proveedor -->
 <div class="modal" id="modalDevolucion">
     <div class="modal-content xlarge">
-        <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1, #5a32a3); color: white;">
+        <div class="modal-header">
             <h3><i class="fas fa-undo"></i> Devolución a Proveedor</h3>
             <button class="modal-close" onclick="cerrarModal('modalDevolucion')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
@@ -1957,14 +1967,12 @@ require_once '../../includes/header.php';
                                 <th style="min-width:250px;">PRODUCTO</th>
                                 <th style="width:100px; text-align:center;">CANT.<br>ORIGINAL</th>
                                 <th style="width:100px; text-align:center;">DEVUELTO<br>ANTES</th>
-                                <th style="width:100px; text-align:center; background:#d4edda;">DISPONIBLE</th>
+                                <th style="width:100px; text-align:center;">DISPONIBLE</th>
                                 <th style="width:60px; text-align:center;">UNID.</th>
-                                <th style="width:100px; background:#fff3cd; text-align:center;">CANTIDAD<br>A DEVOLVER
-                                </th>
+                                <th style="width:100px; text-align:center;">CANTIDAD<br>A DEVOLVER</th>
                                 <th style="width:120px; text-align:center;">COSTO ADQ.<br>(NETO)</th>
-                                <th style="width:100px; background:#fff9e6; text-align:center;" id="colIVADev">IVA 13%
-                                </th>
-                                <th style="width:120px; background:#d4edda; text-align:center;">SUBTOTAL</th>
+                                <th style="width:100px; text-align:center;" id="colIVADev">IVA 13%</th>
+                                <th style="width:120px; text-align:center;">SUBTOTAL</th>
                             </tr>
                         </thead>
                         <tbody id="devolucionLineasBody"></tbody>

@@ -1,7 +1,7 @@
 <?php
 /**
- * API para Reportes de Materia Prima
- * ERP Hermen Ltda.
+ * API para Reportes de Colorantes y Auxiliares Químicos
+ * MES Hermen Ltda.
  */
 ob_start();
 ob_clean();
@@ -87,7 +87,7 @@ try {
                 FROM movimientos_inventario m
                 JOIN inventarios p ON m.id_inventario = p.id_inventario
                 WHERE DATE(m.fecha_movimiento) BETWEEN :desde AND :hasta
-                AND m.id_tipo_inventario = 1 -- Solo Materia Prima
+                AND m.id_tipo_inventario = 2 -- Solo Colorantes y Auxiliares Químicos
             ";
 
             if ($tipo) {
@@ -121,7 +121,7 @@ try {
                     SUM(p.stock_actual * p.costo_promedio) as valor_total
                 FROM inventarios p
                 JOIN categorias_inventario c ON p.id_categoria = c.id_categoria
-                WHERE p.activo = 1 AND p.id_tipo_inventario = 1
+                WHERE p.activo = 1 AND p.id_tipo_inventario = 2
                 GROUP BY c.id_categoria
             ";
             $resCat = $db->query($sqlCat)->fetchAll(PDO::FETCH_ASSOC);
@@ -130,7 +130,7 @@ try {
             $sqlTop = "
                 SELECT nombre, (stock_actual * costo_promedio) as valor
                 FROM inventarios
-                WHERE activo = 1 AND id_tipo_inventario = 1
+                WHERE activo = 1 AND id_tipo_inventario = 2
                 ORDER BY valor DESC
                 LIMIT 10
             ";

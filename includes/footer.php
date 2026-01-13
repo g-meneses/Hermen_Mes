@@ -45,7 +45,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
-<script src="<?php echo SITE_URL; ?>/modules/inventarios/js/reportes_mp.js"></script>
+<script src="<?php echo SITE_URL; ?>/modules/inventarios/js/reportes_mp.js?v=<?php echo time(); ?>"></script>
 <script>
     // Función global para cerrar modales
     function cerrarModalGlobal(id) {

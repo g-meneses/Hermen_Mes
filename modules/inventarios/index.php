@@ -2375,6 +2375,7 @@ require_once '../../includes/header.php';
         // Mapeo de redireccionamiento por tipo de inventario
         const rutas = {
             1: 'materias_primas.php',
+            2: 'colorantes_quimicos.php',
             // Añadir más rutas según se implementen los módulos
         };
 

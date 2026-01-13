@@ -436,6 +436,10 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                 <li><a href="javascript:void(0)" onclick="abrirReporte('analisis')" class="menu-link"><i
                                             class="fas fa-chart-pie"></i><span class="menu-text">Análisis</span></a>
                                 </li>
+                                <li><a href="javascript:void(0)" onclick="abrirReporte('tipos_categorias')"
+                                        class="menu-link"><i class="fas fa-sitemap"></i><span class="menu-text">Tipos y
+                                            Categorías</span></a>
+                                </li>
                             </ul>
                         </li>
                     </ul>

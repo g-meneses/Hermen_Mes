@@ -26,21 +26,27 @@ if (typeof formatNum === 'undefined') {
     };
 }
 
-let reporteActual = {
-    tipo: null,
-    filtros: {}
-};
+if (typeof window.reporteActual === 'undefined') {
+    window.reporteActual = {
+        tipo: null,
+        filtros: {}
+    };
+}
+var reporteActual = window.reporteActual;
+
+console.log('📊 reportes_mp.js cargado correctamente');
 
 /**
  * Abre el modal de reporte con la configuración inicial
  */
-function abrirReporte(tipo) {
+window.abrirReporte = function (tipo) {
     reporteActual.tipo = tipo;
     const titulos = {
         'consolidado': 'Reporte Consolidado de Inventarios',
         'stock_valorizado': 'Reporte de Stock Valorizado',
         'movimientos': 'Reporte de Movimientos de Inventario',
-        'analisis': 'Análisis Estadístico de Inventario'
+        'analisis': 'Análisis Estadístico de Inventario',
+        'tipos_categorias': 'Reporte de Tipos y Categorías'
     };
 
     document.getElementById('reporteTitulo').innerHTML = `<i class="fas fa-chart-bar"></i> ${titulos[tipo] || 'Reporte'}`;
@@ -53,7 +59,7 @@ function abrirReporte(tipo) {
 
     // Mostrar modal
     document.getElementById('modalReporte').classList.add('show');
-}
+};
 
 /**
  * Renderiza los campos de filtro necesarios para cada reporte
@@ -68,25 +74,32 @@ function renderFiltrosReporte(tipo) {
     if (tipo === 'consolidado') {
         html = `<p style="margin:0; color:#666;"><i class="fas fa-info-circle"></i> Resumen de todos los tipos de inventario del sistema.</p>`;
     } else if (tipo === 'stock_valorizado') {
-        const catsDisponibles = (typeof categorias !== 'undefined' && categorias.length > 0) ? categorias : [];
-
         html = `
-            <div class="form-group" style="flex:1;">
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Tipo Inventario</label>
+                <select id="repFiltroTipo" onchange="actualizarCategoriasReporte()">
+                    <option value="">Todos los tipos</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
                 <label>Categoría</label>
-                <select id="repFiltroCat" onchange="cargarReporte('stock_valorizado')">
+                <select id="repFiltroCat" onchange="actualizarSubcategoriasReporte()">
                     <option value="">Todas las categorías</option>
-                    ${catsDisponibles.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Subcategoría</label>
+                <select id="repFiltroSubcat">
+                    <option value="">Todas las subcategorías</option>
                 </select>
             </div>
             <div class="form-group" style="display:flex; align-items:flex-end;">
-                <button class="btn btn-primary" onclick="cargarReporte('stock_valorizado')"><i class="fas fa-sync"></i> Actualizar</button>
+                <button class="btn btn-primary" onclick="cargarReporte('stock_valorizado')"><i class="fas fa-search"></i> Filtrar</button>
             </div>
         `;
 
-        // Si no hay categorías en memoria, intentar cargarlas de la API si estamos en stock_valorizado
-        if (catsDisponibles.length === 0) {
-            setTimeout(fetchCategoriasParaReporte, 100);
-        }
+        // Cargar tipos de inventario
+        setTimeout(cargarTiposParaReporte, 100);
     } else if (tipo === 'movimientos') {
         html = `
             <div class="form-group">
@@ -111,6 +124,8 @@ function renderFiltrosReporte(tipo) {
         `;
     } else if (tipo === 'analisis') {
         html = `<p style="margin:0; color:#666;"><i class="fas fa-info-circle"></i> Resumen ejecutivo del estado actual del inventario.</p>`;
+    } else if (tipo === 'tipos_categorias') {
+        html = `<p style="margin:0; color:#666;"><i class="fas fa-info-circle"></i> Tipos de inventario con sus categorías y valores.</p>`;
     }
 
     container.innerHTML = html;
@@ -127,8 +142,12 @@ async function cargarReporte(tipo) {
         let url = `${baseUrl}/api/reportes_mp.php?action=${tipo}`;
 
         if (tipo === 'stock_valorizado') {
+            const tipoId = document.getElementById('repFiltroTipo')?.value;
             const catId = document.getElementById('repFiltroCat')?.value;
+            const subcatId = document.getElementById('repFiltroSubcat')?.value;
+            if (tipoId) url += `&id_tipo=${tipoId}`;
             if (catId) url += `&id_categoria=${catId}`;
+            if (subcatId) url += `&id_subcategoria=${subcatId}`;
         } else if (tipo === 'movimientos') {
             const desde = document.getElementById('repDesde').value;
             const hasta = document.getElementById('repHasta').value;
@@ -162,10 +181,10 @@ function renderDataReporte(tipo, data) {
             <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
                 <thead>
                     <tr style="background:#1a237e; color:white;">
-                        <th style="padding:10px; text-align:left;">Tipo de Inventario</th>
-                        <th style="padding:10px; text-align:right;">Total Items</th>
-                        <th style="padding:10px; text-align:right;">Alertas</th>
-                        <th style="padding:10px; text-align:right;">Valor Total</th>
+                        <th style="padding:10px; text-align:left; color:white;">Tipo de Inventario</th>
+                        <th style="padding:10px; text-align:right; color:white;">Total Items</th>
+                        <th style="padding:10px; text-align:right; color:white;">Alertas</th>
+                        <th style="padding:10px; text-align:right; color:white;">Valor Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -197,14 +216,14 @@ function renderDataReporte(tipo, data) {
         html = `
             <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
                 <thead>
-                    <tr style="background:#1a237e; color:white;">
-                        <th style="padding:10px; text-align:left;">Cod.</th>
-                        <th style="padding:10px; text-align:left;">Producto</th>
-                        <th style="padding:10px; text-align:left;">Categoría</th>
-                        <th style="padding:10px; text-align:right;">Stock</th>
-                        <th style="padding:10px; text-align:center;">Unid.</th>
-                        <th style="padding:10px; text-align:right;">CPP</th>
-                        <th style="padding:10px; text-align:right;">Valor Total</th>
+                    <tr style="background:#1a237e;">
+                        <th style="padding:10px; text-align:left; color:white;">Cod.</th>
+                        <th style="padding:10px; text-align:left; color:white;">Producto</th>
+                        <th style="padding:10px; text-align:left; color:white;">Categoría</th>
+                        <th style="padding:10px; text-align:right; color:white;">Stock</th>
+                        <th style="padding:10px; text-align:center; color:white;">Unid.</th>
+                        <th style="padding:10px; text-align:right; color:white;">CPP</th>
+                        <th style="padding:10px; text-align:right; color:white;">Valor Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -283,6 +302,56 @@ function renderDataReporte(tipo, data) {
                     </table>
                 </div>
             </div>
+        `;
+    } else if (tipo === 'tipos_categorias') {
+        html = `
+            <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#1a237e;">
+                        <th style="padding:12px; text-align:left; color:white;">Tipo / Categoría</th>
+                        <th style="padding:12px; text-align:right; color:white;">Items</th>
+                        <th style="padding:12px; text-align:right; color:white;">Valor Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.tipos.map(tipo => `
+                        <tr style="background:#e3f2fd; font-weight:700;">
+                            <td style="padding:12px;">
+                                <i class="${tipo.icono}" style="color:${tipo.color}; margin-right:8px;"></i>
+                                ${tipo.nombre}
+                            </td>
+                            <td style="padding:12px; text-align:right;">${formatNum(tipo.subtotal_items, 0)}</td>
+                            <td style="padding:12px; text-align:right; color:#1565c0;">Bs. ${formatNum(tipo.subtotal_valor, 2)}</td>
+                        </tr>
+                        ${tipo.categorias.length > 0 ? tipo.categorias.map(cat => `
+                            <tr style="border-bottom:1px solid #eee;">
+                                <td style="padding:10px 10px 10px 40px; color:#555;">
+                                    <i class="fas fa-folder-open" style="color:#90a4ae; margin-right:8px;"></i>
+                                    ${cat.nombre}
+                                </td>
+                                <td style="padding:10px; text-align:right;">${formatNum(cat.items, 0)}</td>
+                                <td style="padding:10px; text-align:right;">Bs. ${formatNum(cat.valor, 2)}</td>
+                            </tr>
+                        `).join('') : `
+                            <tr style="border-bottom:1px solid #eee;">
+                                <td style="padding:10px 10px 10px 40px; color:#999; font-style:italic;">
+                                    <i class="fas fa-folder" style="color:#ccc; margin-right:8px;"></i>
+                                    Sin categorías registradas
+                                </td>
+                                <td style="padding:10px; text-align:right; color:#999;">-</td>
+                                <td style="padding:10px; text-align:right; color:#999;">-</td>
+                            </tr>
+                        `}
+                    `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#1a237e; color:white; font-weight:700; font-size:1.1rem;">
+                        <td style="padding:14px;">TOTAL GENERAL</td>
+                        <td style="padding:14px; text-align:right;">${formatNum(data.total_general.items, 0)}</td>
+                        <td style="padding:14px; text-align:right;">Bs. ${formatNum(data.total_general.valor, 2)}</td>
+                    </tr>
+                </tfoot>
+            </table>
         `;
     }
 
@@ -486,18 +555,95 @@ async function fetchCategoriasParaReporte() {
     }
 }
 
+// ========== FUNCIONES PARA FILTROS EN CASCADA ==========
+
+// Cargar tipos de inventario en el dropdown
+async function cargarTiposParaReporte() {
+    try {
+        const response = await fetch(`${baseUrl}/api/categorias.php?action=get_tipos`);
+        const data = await response.json();
+        if (data.success) {
+            const select = document.getElementById('repFiltroTipo');
+            if (select) {
+                select.innerHTML = '<option value="">Todos los tipos</option>' +
+                    data.tipos.map(t => `<option value="${t.id_tipo_inventario}">${t.nombre}</option>`).join('');
+            }
+        }
+    } catch (e) {
+        console.error('Error cargando tipos:', e);
+    }
+}
+
+// Actualizar categorías según el tipo seleccionado
+window.actualizarCategoriasReporte = async function () {
+    const tipoId = document.getElementById('repFiltroTipo')?.value;
+    const selectCat = document.getElementById('repFiltroCat');
+    const selectSubcat = document.getElementById('repFiltroSubcat');
+
+    if (selectCat) {
+        selectCat.innerHTML = '<option value="">Cargando...</option>';
+    }
+    if (selectSubcat) {
+        selectSubcat.innerHTML = '<option value="">Todas las subcategorías</option>';
+    }
+
+    try {
+        let url = `${baseUrl}/api/categorias.php?action=get_categorias`;
+        if (tipoId) url += `&id_tipo=${tipoId}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.success && selectCat) {
+            selectCat.innerHTML = '<option value="">Todas las categorías</option>' +
+                data.categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
+        }
+    } catch (e) {
+        console.error('Error cargando categorías:', e);
+        if (selectCat) selectCat.innerHTML = '<option value="">Error al cargar</option>';
+    }
+};
+
+// Actualizar subcategorías según la categoría seleccionada
+window.actualizarSubcategoriasReporte = async function () {
+    const catId = document.getElementById('repFiltroCat')?.value;
+    const selectSubcat = document.getElementById('repFiltroSubcat');
+
+    if (!selectSubcat) return;
+
+    if (!catId) {
+        selectSubcat.innerHTML = '<option value="">Todas las subcategorías</option>';
+        return;
+    }
+
+    selectSubcat.innerHTML = '<option value="">Cargando...</option>';
+
+    try {
+        const response = await fetch(`${baseUrl}/api/categorias.php?action=get_subcategorias&id_categoria=${catId}`);
+        const data = await response.json();
+        if (data.success) {
+            selectSubcat.innerHTML = '<option value="">Todas las subcategorías</option>' +
+                data.subcategorias.map(s => `<option value="${s.id_subcategoria}">${s.nombre}</option>`).join('');
+        }
+    } catch (e) {
+        console.error('Error cargando subcategorías:', e);
+        selectSubcat.innerHTML = '<option value="">Error al cargar</option>';
+    }
+};
+
 // ========== ESTILOS ADICIONALES PARA REPORTES ==========
-const estilosReportesMP = `
-<style>
-.modal-content.xlarge {
-    width: 95% !important;
-    max-width: 1200px !important;
+if (typeof window.estilosReportesMP === 'undefined') {
+    window.estilosReportesMP = `
+    <style>
+    .modal-content.xlarge {
+        width: 95% !important;
+        max-width: 1200px !important;
+    }
+    .tabla-reporte th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    </style>
+    `;
+    document.head.insertAdjacentHTML('beforeend', window.estilosReportesMP);
 }
-.tabla-reporte th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-</style>
-`;
-document.head.insertAdjacentHTML('beforeend', estilosReportesMP);

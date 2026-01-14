@@ -3179,7 +3179,7 @@ require_once '../../includes/header.php';
         }
 
         lista.innerHTML = tipos.map(tipo => `
-        <div class="config-item">
+        <div class="config-item" style="cursor: pointer;" onclick="verCategoriasDeTipo(${tipo.id_tipo_inventario})">
             <div class="config-item-info">
                 <div class="config-item-icon" style="background: ${tipo.color || '#007bff'}">
                     <i class="fas ${tipo.icono || 'fa-box'}"></i>
@@ -3190,7 +3190,7 @@ require_once '../../includes/header.php';
                 </div>
             </div>
             <div class="config-item-actions">
-                <button class="btn-editar-config" onclick="editarTipo(${tipo.id_tipo_inventario})" title="Editar">
+                <button class="btn-editar-config" onclick="event.stopPropagation(); editarTipo(${tipo.id_tipo_inventario})" title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
             </div>
@@ -3330,7 +3330,7 @@ require_once '../../includes/header.php';
                 const color = (tipo && tipo.color) ? tipo.color : '#6c757d';
 
                 html += `
-                <div class="config-item">
+                <div class="config-item" style="cursor: pointer;" onclick="verSubcategoriasDeCategoria(${cat.id_categoria})">
                     <div class="config-item-info">
                         <div class="config-item-icon" style="background: ${color}">
                             <i class="fas fa-folder"></i>
@@ -3341,7 +3341,7 @@ require_once '../../includes/header.php';
                         </div>
                     </div>
                     <div class="config-item-actions">
-                        <button class="btn-editar-config" onclick="editarCategoria(${cat.id_categoria})" title="Editar">
+                        <button class="btn-editar-config" onclick="event.stopPropagation(); editarCategoria(${cat.id_categoria})" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
                     </div>
@@ -3590,6 +3590,31 @@ require_once '../../includes/header.php';
             console.error('Error:', error);
             alert('❌ Error de conexión');
         }
+    }
+
+    // ========== NAVEGACIÓN EN CASCADA ==========
+    function verCategoriasDeTipo(idTipo) {
+        // Seleccionar tab categorías
+        cambiarTabConfig('categorias');
+        
+        // Establecer filtro
+        const select = document.getElementById('filtroTipoCategoria');
+        select.value = idTipo;
+        
+        // Disparar evento change y cargar
+        cargarCategoriasPorTipo();
+    }
+
+    function verSubcategoriasDeCategoria(idCategoria) {
+        // Seleccionar tab subcategorías
+        cambiarTabConfig('subcategorias');
+        
+        // Establecer filtro
+        const select = document.getElementById('filtroCategoriaSub');
+        select.value = idCategoria;
+        
+        // Cargar (el change no se dispara solo al cambiar value programáticamente)
+        cargarSubcategoriasPorCategoria();
     }
 
     // ========== VARIABLES GLOBALES ADICIONALES ==========

@@ -427,6 +427,11 @@ require_once '../../includes/header.php';
         color: #212529;
     }
 
+    .btn-icon.eliminar {
+        background: #dc3545;
+        color: white;
+    }
+
     /* MODALES */
     .modal {
         display: none;

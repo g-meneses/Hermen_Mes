@@ -330,6 +330,7 @@ function renderProductos() {
             <td>
                 <button class="btn-icon kardex" onclick="abrirKardexSafe(${p.id_inventario})" title="Kardex"><i class="fas fa-book"></i></button>
                 <button class="btn-icon editar" onclick="editarItem(${p.id_inventario})" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon eliminar" onclick="eliminarItem(${p.id_inventario}, '${p.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -470,6 +471,28 @@ async function guardarItem() {
     } catch (e) {
         console.error('Error:', e);
         alert('Error al guardar');
+    }
+}
+
+async function eliminarItem(id, nombre) {
+    if (!confirm(`¿Está seguro de que desea eliminar el item "${nombre}"? \nEsta acción no se puede deshacer.`)) return;
+
+    try {
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_inventario: id })
+        });
+        const d = await r.json();
+        if (d.success) {
+            alert('✅ ' + d.message);
+            cargarDatos();
+        } else {
+            alert('❌ ' + d.message);
+        }
+    } catch (e) {
+        console.error('Error:', e);
+        alert('Error al eliminar');
     }
 }
 

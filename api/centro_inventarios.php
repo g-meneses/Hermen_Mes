@@ -553,6 +553,7 @@ try {
                             ci.codigo AS categoria_codigo,
                             ci.nombre AS categoria_nombre,
                             i.id_subcategoria,
+                            i.id_unidad,
                             um.abreviatura AS unidad,
                             i.stock_actual,
                             i.stock_minimo,

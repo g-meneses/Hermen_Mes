@@ -394,9 +394,9 @@ async function editarItem(id) {
     document.getElementById('itemId').value = item.id_inventario;
     document.getElementById('itemCodigo').value = item.codigo || '';
     document.getElementById('itemNombre').value = item.nombre || '';
-    document.getElementById('itemCategoria').value = item.id_categoria || '';
+    document.getElementById('itemCategoria_modal').value = item.id_categoria || '';
     await cargarSubcategoriasItem();
-    document.getElementById('itemSubcategoria').value = item.id_subcategoria || '';
+    document.getElementById('itemSubcategoria_modal').value = item.id_subcategoria || '';
     document.getElementById('itemUnidad').value = item.id_unidad || '';
     document.getElementById('itemStockActual').value = item.stock_actual || 0;
     document.getElementById('itemStockMinimo').value = item.stock_minimo || 0;
@@ -407,24 +407,72 @@ async function editarItem(id) {
 }
 
 async function cargarSubcategoriasItem() {
-    const catId = document.getElementById('itemCategoria').value;
-    const subSelect = document.getElementById('itemSubcategoria');
-    subSelect.innerHTML = '<option value="">Sin subcategoría</option>';
-    if (!catId) return;
+    const catId = document.getElementById('itemCategoria_modal').value;
+    const subSelect = document.getElementById('itemSubcategoria_modal');
+
+    // 🔍 DEBUG: Ver qué categoría se seleccionó
+    console.log('🔍 Cargando subcategorías para categoría ID:', catId);
+
+    const valorActual = subSelect.value;
+    subSelect.innerHTML = '<option value="0">Sin subcategoría</option>';
+
+    if (!catId) {
+        console.log('⚠️ No hay categoría seleccionada');
+        return;
+    }
 
     try {
-        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
+        const url = `${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`;
+        console.log('🔍 URL llamada:', url);
+
+        const r = await fetch(url);
         const d = await r.json();
-        if (d.success && d.subcategorias) {
-            d.subcategorias.forEach(s => {
-                subSelect.innerHTML += `<option value="${s.id_subcategoria}">${s.nombre}</option>`;
+
+        console.log('🔍 Respuesta completa del API:', d);
+
+        if (d.success && d.subcategorias && d.subcategorias.length > 0) {
+            console.log('🔍 Total subcategorías encontradas:', d.subcategorias.length);
+
+            // Construir opciones con LOG detallado
+            d.subcategorias.forEach((s, index) => {
+                console.log(`  📦 Subcategoría ${index + 1}:`);
+                console.log(`     - ID: ${s.id_subcategoria} (tipo: ${typeof s.id_subcategoria})`);
+                console.log(`     - Código: ${s.codigo || 'N/A'}`);
+                console.log(`     - Nombre: ${s.nombre}`);
+
+                const optionHTML = `<option value="${s.id_subcategoria}">${s.nombre}</option>`;
+                console.log(`     - HTML generado: ${optionHTML}`);
+
+                subSelect.innerHTML += optionHTML;
             });
+
+            console.log('🔍 Total opciones en select después de agregar:', subSelect.options.length);
+
+            // Mostrar todas las opciones finales
+            console.log('🔍 Verificación final de opciones:');
+            for (let i = 0; i < subSelect.options.length; i++) {
+                console.log(`     Opción ${i}: value="${subSelect.options[i].value}" text="${subSelect.options[i].text}"`);
+            }
+
+            // Restaurar valor si existe
+            if (valorActual && valorActual !== '0') {
+                subSelect.value = valorActual;
+                console.log('🔍 Intentando restaurar valor:', valorActual);
+                console.log('🔍 Valor actual después de restaurar:', subSelect.value);
+            }
+        } else {
+            console.log('⚠️ No se encontraron subcategorías');
+            console.log('   - success:', d.success);
+            console.log('   - subcategorias existe:', !!d.subcategorias);
+            console.log('   - subcategorias.length:', d.subcategorias ? d.subcategorias.length : 'N/A');
         }
-    } catch (e) { console.error('Error:', e); }
+    } catch (e) {
+        console.error('❌ Error cargando subcategorías:', e);
+    }
 }
 
 function poblarSelects() {
-    const catSelect = document.getElementById('itemCategoria');
+    const catSelect = document.getElementById('itemCategoria_modal');
     const currentCat = catSelect.value;
     catSelect.innerHTML = '<option value="">Seleccione...</option>' +
         categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
@@ -445,8 +493,8 @@ async function guardarItem() {
         id_tipo_inventario: TIPO_ID,
         codigo: document.getElementById('itemCodigo').value,
         nombre: document.getElementById('itemNombre').value,
-        id_categoria: document.getElementById('itemCategoria').value,
-        id_subcategoria: document.getElementById('itemSubcategoria').value || null,
+        id_categoria: document.getElementById('itemCategoria_modal').value,
+        id_subcategoria: document.getElementById('itemSubcategoria_modal').value || null,
         id_unidad: document.getElementById('itemUnidad').value,
         stock_actual: document.getElementById('itemStockActual').value || 0,
         stock_minimo: document.getElementById('itemStockMinimo').value || 0,
@@ -462,20 +510,47 @@ async function guardarItem() {
         });
         const d = await r.json();
         if (d.success) {
-            alert('✅ ' + d.message);
-            cerrarModal('modalItem');
-            cargarDatos();
+            Swal.fire({
+                icon: 'success',
+                title: '¡Éxito!',
+                text: d.message,
+                confirmButtonColor: '#28a745'
+            }).then(() => {
+                cerrarModal('modalItem');
+                location.reload();
+            });
         } else {
-            alert('❌ ' + d.message);
+            Swal.fire({
+                icon: 'error',
+                title: '⚠️ Advertencia',
+                text: d.message,
+                confirmButtonColor: '#dc3545'
+            });
         }
     } catch (e) {
         console.error('Error:', e);
-        alert('Error al guardar');
+        Swal.fire({
+            icon: 'error',
+            title: '⚠️ Advertencia',
+            text: 'Error al guardar',
+            confirmButtonColor: '#dc3545'
+        });
     }
 }
 
 async function eliminarItem(id, nombre) {
-    if (!confirm(`¿Está seguro de que desea eliminar el item "${nombre}"? \nEsta acción no se puede deshacer.`)) return;
+    const result = await Swal.fire({
+        title: '⚠️ Advertencia',
+        text: `¿Está seguro de eliminar "${nombre}"? Esta acción no se puede deshacer.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (!result.isConfirmed) return;
 
     try {
         const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
@@ -485,14 +560,30 @@ async function eliminarItem(id, nombre) {
         });
         const d = await r.json();
         if (d.success) {
-            alert('✅ ' + d.message);
-            cargarDatos();
+            Swal.fire({
+                icon: 'success',
+                title: '¡Eliminado!',
+                text: d.message,
+                confirmButtonColor: '#28a745'
+            }).then(() => {
+                location.reload();
+            });
         } else {
-            alert('❌ ' + d.message);
+            Swal.fire({
+                icon: 'error',
+                title: '⚠️ Advertencia',
+                text: d.message,
+                confirmButtonColor: '#dc3545'
+            });
         }
     } catch (e) {
         console.error('Error:', e);
-        alert('Error al eliminar');
+        Swal.fire({
+            icon: 'error',
+            title: '⚠️ Advertencia',
+            text: 'Error al eliminar',
+            confirmButtonColor: '#dc3545'
+        });
     }
 }
 

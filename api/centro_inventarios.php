@@ -1303,10 +1303,14 @@ try {
                 $descripcion = trim($data['descripcion'] ?? '');
                 $idTipoInventario = intval($data['id_tipo_inventario'] ?? 0);
                 $idCategoria = intval($data['id_categoria'] ?? 0);
-                // Capturar id_subcategoria (puede ser null si no se asigna)
-                $idSubcategoria = isset($data['id_subcategoria']) && $data['id_subcategoria'] !== null && $data['id_subcategoria'] !== ''
-                    ? intval($data['id_subcategoria'])
-                    : null;
+                // Capturar id_subcategoria con lógica robusta y validación
+                $rawSub = $data['id_subcategoria'] ?? null;
+                // Tratamos 0, "0", "", y null como NULL para la BD
+                $idSubcategoria = (!empty($rawSub) && $rawSub !== '0' && $rawSub !== 0) ? intval($rawSub) : null;
+
+                // Debug log para rastrear el problema
+                error_log("Guardar Inventario - Codigo: $codigo, SubCat Raw: " . var_export($rawSub, true) . ", Processed: " . var_export($idSubcategoria, true));
+
                 $idUnidad = intval($data['id_unidad'] ?? 0);
                 $stockActual = floatval($data['stock_actual'] ?? 0);
                 $stockMinimo = floatval($data['stock_minimo'] ?? 0);

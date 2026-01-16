@@ -29,6 +29,9 @@ require_once '../../includes/header.php';
 
 <!--<link rel="stylesheet" href="css/inventario_tipo.css"> -->
 
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
     :root {
         --tipo-color:
@@ -1365,10 +1368,10 @@ require_once '../../includes/header.php';
                     <div class="form-group"><label>Nombre *</label><input type="text" id="itemNombre" required></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Categoría *</label><select id="itemCategoria" required
+                    <div class="form-group"><label>Categoría *</label><select id="itemCategoria_modal" required
                             onchange="cargarSubcategoriasItem()"></select></div>
-                    <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria">
-                            <option value="">Sin subcategoría</option>
+                    <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria_modal">
+                            <option value="0">Sin subcategoría</option>
                         </select></div>
                 </div>
                 <div class="form-row">

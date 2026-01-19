@@ -25,7 +25,7 @@ try {
 
     $db = getDB();
     $method = $_SERVER['REQUEST_METHOD'];
-    $TIPO_INVENTARIO_CAQ = 2;
+    $TIPO_INVENTARIO_CAQ = 2; // ID fijo para Colorantes y Auxiliares Químicos
 
     switch ($method) {
         case 'GET':
@@ -259,19 +259,20 @@ try {
                         echo json_encode(['success' => false, 'message' => 'El motivo es obligatorio para ajustes de inventario']);
                         exit();
                     }
-
                     $db->beginTransaction();
 
                     try {
-                        // Generar número de documento según tipo
-                        $prefijos = [
-                            'PRODUCCION' => 'SCAQ-PR',
-                            'VENTA' => 'SCAQ-V',
-                            'MUESTRAS' => 'SCAQ-M',
-                            'AJUSTE' => 'SCAQ-A',
-                            'DEVOLUCION' => 'SCAQ-DV'
+                        // Generar número de documento con Prefijo Inteligente
+                        $codigosTipo = [
+                            'PRODUCCION' => 'P',
+                            'VENTA' => 'V',
+                            'MUESTRAS' => 'M',
+                            'AJUSTE' => 'A',
+                            'DEVOLUCION' => 'R'
                         ];
-                        $prefijo = $prefijos[$tipoSalida] ?? 'SAL-CAQ';
+                        $codigoTipo = $codigosTipo[$tipoSalida] ?? 'X';
+                        $prefijo = "OUT-CAQ-$codigoTipo";
+
                         $numeroDoc = generarNumeroDocumento($db, 'SALIDA', $prefijo);
 
                         // Calcular totales
@@ -352,13 +353,13 @@ try {
 
                         $stmtMovimiento = $db->prepare("
                             INSERT INTO movimientos_inventario (
-                                id_inventario, fecha_movimiento, tipo_movimiento, 
+                                id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento, 
                                 codigo_movimiento, documento_tipo, documento_numero, documento_id,
                                 cantidad, costo_unitario, costo_total,
                                 stock_anterior, stock_posterior,
                                 costo_promedio_anterior, costo_promedio_posterior,
                                 estado, creado_por
-                            ) VALUES (?, ?, ?, ?, 'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
+                            ) VALUES (?, ?, ?, ?, ?, 'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
                         ");
 
                         $fechaMovimiento = ($data['fecha'] ?? date('Y-m-d')) . ' ' . date('H:i:s');
@@ -447,6 +448,7 @@ try {
 
                             $stmtMovimiento->execute([
                                 $linea['id_inventario'],
+                                $TIPO_INVENTARIO_CAQ,
                                 $fechaMovimiento,
                                 $tipoMov,
                                 $codigoMovBase,
@@ -515,27 +517,38 @@ try {
                         foreach ($lineas as $linea) {
                             $stmtRevert->execute([$linea['cantidad'], $linea['id_inventario']]);
 
-                            // Registrar en Kardex la reversión
-                            $stmtStockAct = $db->prepare("SELECT stock_actual FROM inventarios WHERE id_inventario = ?");
+                            // Registrar en movimientos_inventario la reversión
+                            $stmtStockAct = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ?");
                             $stmtStockAct->execute([$linea['id_inventario']]);
-                            $stockActual = floatval($stmtStockAct->fetchColumn());
+                            $inv = $stmtStockAct->fetch(PDO::FETCH_ASSOC);
+                            $stockActual = floatval($inv['stock_actual'] ?? 0);
+                            $cppActual = floatval($inv['costo_promedio'] ?? 0);
 
-                            $stmtKardex = $db->prepare("
-                                INSERT INTO kardex_inventario (
-                                    id_inventario, fecha_movimiento, tipo_movimiento, id_documento,
-                                    documento_referencia, cantidad, costo_unitario, costo_total,
-                                    stock_anterior, stock_posterior, observaciones, creado_por
-                                ) VALUES (?, NOW(), 'ENTRADA', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            $codigoMovAnulacion = generarCodigoMovimiento($db);
+
+                            $stmtMovAnular = $db->prepare("
+                                INSERT INTO movimientos_inventario (
+                                    id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento,
+                                    codigo_movimiento, documento_tipo, documento_numero, documento_id,
+                                    cantidad, costo_unitario, costo_total,
+                                    stock_anterior, stock_posterior,
+                                    costo_promedio_anterior, costo_promedio_posterior,
+                                    observaciones, estado, creado_por
+                                ) VALUES (?, ?, NOW(), 'ENTRADA_AJUSTE', ?, 'ANULACION', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
                             ");
-                            $stmtKardex->execute([
+                            $stmtMovAnular->execute([
                                 $linea['id_inventario'],
-                                $id,
+                                $TIPO_INVENTARIO_CAQ,
+                                $codigoMovAnulacion,
                                 $doc['numero_documento'] . ' (ANULADO)',
+                                $id,
                                 $linea['cantidad'],
                                 $linea['costo_unitario'],
                                 $linea['subtotal'],
-                                $stockActual - $linea['cantidad'],
-                                $stockActual,
+                                $stockActual - $linea['cantidad'], // Stock antes de sumar (revertir)
+                                $stockActual,                       // Stock actual (ya sumado)
+                                $cppActual,                         // CPP se mantiene
+                                $cppActual,
                                 'Anulación: ' . $motivo,
                                 $_SESSION['user_id'] ?? null
                             ]);
@@ -561,6 +574,21 @@ try {
                         $db->rollBack();
                         throw $e;
                     }
+                    break;
+
+                case 'siguiente_numero':
+                    // REDIRIGIR a API centralizada con modo preview usando include
+                    $tipo = $_GET['tipo'] ?? 'PRODUCCION';
+
+                    // Configurar parámetros para la API centralizada
+                    $_GET['tipo_inventario'] = '2';
+                    $_GET['operacion'] = 'SALIDA';
+                    $_GET['tipo_movimiento'] = $tipo;
+                    $_GET['modo'] = 'preview';
+
+                    ob_clean();
+                    include 'obtener_siguiente_numero.php';
+                    exit();
                     break;
 
                 default:

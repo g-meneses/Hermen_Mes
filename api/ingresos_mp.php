@@ -65,8 +65,9 @@ try {
                             FROM documentos_inventario d
                             LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
                             WHERE d.tipo_documento = 'INGRESO' 
+                            AND d.id_tipo_inventario = ?
                             AND d.fecha_documento BETWEEN ? AND ?";
-                    $params = [$desde, $hasta];
+                    $params = [$TIPO_INVENTARIO_MP, $desde, $hasta];
 
                     $tipoFilter = $_GET['tipo'] ?? null;
                     if ($tipoFilter && $tipoFilter !== 'INGRESO') {
@@ -154,10 +155,18 @@ try {
                     break;
 
                 case 'siguiente_numero':
-                    // Obtener siguiente número de documento
-                    $numero = generarNumeroDocumento($db, 'INGRESO', 'ING-MP');
+                    // REDIRIGIR a API centralizada con modo preview usando include
+                    $tipo = $_GET['tipo'] ?? 'COMPRA';
+
+                    // Configurar parámetros para la API centralizada
+                    $_GET['tipo_inventario'] = '1';
+                    $_GET['operacion'] = 'INGRESO';
+                    $_GET['tipo_movimiento'] = $tipo;
+                    $_GET['modo'] = 'preview';
+
                     ob_clean();
-                    echo json_encode(['success' => true, 'numero' => $numero]);
+                    include 'obtener_siguiente_numero.php';
+                    exit();
                     break;
 
                 case 'resumen':
@@ -360,8 +369,17 @@ try {
                     $db->beginTransaction();
 
                     try {
-                        // Generar número de documento
-                        $numeroDoc = generarNumeroDocumento($db, 'INGRESO', 'ING-MP');
+                        // Generar número de documento con Prefijo Inteligente
+                        $codigosTipo = [
+                            'COMPRA' => 'C',
+                            'INICIAL' => 'I',
+                            'DEVOLUCION_PROD' => 'D',
+                            'AJUSTE_POS' => 'A'
+                        ];
+                        $codigoTipo = $codigosTipo[$tipoIngreso] ?? 'X';
+                        $prefijo = "IN-MP-$codigoTipo";
+
+                        $numeroDoc = generarNumeroDocumento($db, 'INGRESO', $prefijo);
 
                         // Calcular totales desde las líneas
                         $totalDocumento = 0;
@@ -440,13 +458,13 @@ try {
 
                         $stmtMovimiento = $db->prepare("
                             INSERT INTO movimientos_inventario (
-                                id_inventario, fecha_movimiento, tipo_movimiento, 
+                                id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento, 
                                 codigo_movimiento, documento_tipo, documento_numero, documento_id,
                                 cantidad, costo_unitario, costo_total,
                                 stock_anterior, stock_posterior,
                                 costo_promedio_anterior, costo_promedio_posterior,
                                 estado, creado_por
-                            ) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
+                            ) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
                         ");
 
                         $lineaNumero = 1;
@@ -505,7 +523,8 @@ try {
                             // ✅ Registrar en movimientos_inventario con estado ACTIVO
                             $costoTotalNeto = $cantidad * $costoUnit;
                             $stmtMovimiento->execute([
-                                $linea['id_inventario'],    // ✅ id_inventario correcto
+                                $linea['id_inventario'],    // id_inventario
+                                $TIPO_INVENTARIO_MP,        // id_tipo_inventario (1)
                                 $tipoMovimiento,            // ENTRADA_COMPRA o ENTRADA_AJUSTE
                                 $codigoMovimiento,          // Código único del movimiento
                                 $tipoDocumento,             // FACTURA o INVENTARIO INICIAL
@@ -584,16 +603,17 @@ try {
 
                             $stmtMovAnular = $db->prepare("
                                 INSERT INTO movimientos_inventario (
-                                    id_inventario, fecha_movimiento, tipo_movimiento,
+                                    id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento,
                                     codigo_movimiento, documento_tipo, documento_numero, documento_id,
                                     cantidad, costo_unitario, costo_total,
                                     stock_anterior, stock_posterior,
                                     costo_promedio_anterior, costo_promedio_posterior,
                                     observaciones, estado, creado_por
-                                ) VALUES (?, NOW(), 'SALIDA_AJUSTE', ?, 'ANULACION', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
+                                ) VALUES (?, ?, NOW(), 'SALIDA_AJUSTE', ?, 'ANULACION', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
                             ");
                             $stmtMovAnular->execute([
                                 $linea['id_inventario'],
+                                $TIPO_INVENTARIO_MP,
                                 $codigoMovAnulacion,
                                 $doc['numero_documento'] . ' (ANULADO)',
                                 $id,

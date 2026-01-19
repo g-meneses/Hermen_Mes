@@ -19,6 +19,10 @@ let productosFiltrados = [];
 let modoConFactura = false;
 let contadorDocIngreso = 0;
 
+// Cache global para números de documento (accesible desde HTML onchange)
+window.numerosSalidaCache = {};
+window.numerosIngresoCache = {};
+
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', cargarDatos);
 
@@ -379,10 +383,19 @@ async function cargarTodosProductos() {
 
 // ========== MODAL NUEVO/EDITAR ITEM ==========
 function abrirModalNuevoItem() {
+    poblarSelects();
     document.getElementById('formItem').reset();
     document.getElementById('itemId').value = '';
-    document.getElementById('modalItemTitulo').textContent = 'Nuevo Item de Colorante/Químico';
-    poblarSelects();
+    document.getElementById('modalItemTitulo').textContent = 'Nuevo Item';
+
+    // Resetear generador de códigos
+    modoManual = false;
+    document.getElementById('codigoPreviewSection').style.display = 'none';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+    document.getElementById('codigoAutomaticoView').style.display = 'block';
+    document.getElementById('codigoManualView').style.display = 'none';
+    document.getElementById('btnToggleTexto').textContent = 'Editar manualmente';
+
     document.getElementById('modalItem').classList.add('show');
 }
 
@@ -398,11 +411,21 @@ async function editarItem(id) {
     await cargarSubcategoriasItem();
     document.getElementById('itemSubcategoria_modal').value = item.id_subcategoria || '';
     document.getElementById('itemUnidad').value = item.id_unidad || '';
-    document.getElementById('itemStockActual').value = item.stock_actual || 0;
+    // document.getElementById('itemStockActual').value = item.stock_actual || 0; // Eliminado por centralización
     document.getElementById('itemStockMinimo').value = item.stock_minimo || 0;
     document.getElementById('itemCosto').value = item.costo_unitario || item.costo_promedio || 0;
     document.getElementById('itemDescripcion').value = item.descripcion || '';
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;
+
+    // En edición, mostrar en modo manual para que vean el código actual tranquilamente
+    modoManual = true;
+    document.getElementById('codigoPreviewSection').style.display = 'block';
+    document.getElementById('codigoAutomaticoView').style.display = 'none';
+    document.getElementById('codigoManualView').style.display = 'block';
+    document.getElementById('itemCodigoManual').value = item.codigo || '';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+    document.getElementById('btnToggleTexto').textContent = 'Usar automático';
+
     document.getElementById('modalItem').classList.add('show');
 }
 
@@ -496,7 +519,7 @@ async function guardarItem() {
         id_categoria: document.getElementById('itemCategoria_modal').value,
         id_subcategoria: document.getElementById('itemSubcategoria_modal').value || null,
         id_unidad: document.getElementById('itemUnidad').value,
-        stock_actual: document.getElementById('itemStockActual').value || 0,
+        stock_actual: 0, // Siempre 0 al crear/editar desde aquí. El stock se maneja por Ingresos/Salidas
         stock_minimo: document.getElementById('itemStockMinimo').value || 0,
         costo_unitario: document.getElementById('itemCosto').value || 0,
         descripcion: document.getElementById('itemDescripcion').value
@@ -1352,7 +1375,7 @@ async function guardarIngreso() {
         console.log('📦 Datos a enviar:', datosIngreso);
 
         // 7. Enviar al servidor
-        const response = await fetch(`${BASE_URL_API}/ingresos_mp.php`, {
+        const response = await fetch(`${BASE_URL_API}/ingresos_caq.php`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1398,11 +1421,19 @@ function cerrarModal(modalId) {
 let productosFiltradosSalida = [];
 
 function abrirModalSalida() {
-    // Tipo por defecto
-    document.getElementById('salidaTipo').value = 'PRODUCCION';
+    // Resetear caché para asegurar número fresco
+    window.numerosSalidaCache = {};
 
-    // Generar número según tipo
-    actualizarNumeroSalida();
+    // Tipo por defecto vacío
+    document.getElementById('salidaTipo').value = '';
+
+    // Limpiar documento
+    const docInput = document.getElementById('salidaDocumento');
+    if (docInput) {
+        docInput.value = '';
+        docInput.disabled = true;
+        docInput.placeholder = 'Seleccione tipo de salida...';
+    }
 
     // Fecha actual
     document.getElementById('salidaFecha').value = new Date().toISOString().split('T')[0];
@@ -1482,19 +1513,82 @@ async function filtrarProductosSalida() {
     renderLineasSalida();
 }
 
-function actualizarNumeroSalida() {
+async function actualizarNumeroSalida() {
     const tipo = document.getElementById('salidaTipo').value;
-    const prefijos = {
-        'PRODUCCION': 'SMP-PR',
-        'VENTA': 'SMP-V',
-        'MUESTRAS': 'SMP-M',
-        'AJUSTE': 'SMP-A',
-        'DEVOLUCION': 'SMP-DV'
-    };
-    const prefijo = prefijos[tipo] || 'SAL-MP';
-    document.getElementById('salidaDocumento').value = generarNumeroDoc(prefijo);
 
-    // Mostrar/ocultar indicador de motivo obligatorio
+    console.log('🔍 actualizarNumeroSalida llamado con tipo:', tipo);
+
+    if (!tipo || tipo === "") {
+        const docInput = document.getElementById('salidaDocumento');
+        if (docInput) {
+            docInput.value = '';
+            docInput.placeholder = 'Seleccione tipo de salida...';
+            docInput.disabled = true;
+        }
+        console.log('⚠️ Tipo vacío, campo limpiado');
+        return;
+    }
+
+    if (window.numerosSalidaCache[tipo]) {
+        const docInput = document.getElementById('salidaDocumento');
+        if (docInput) {
+            docInput.value = window.numerosSalidaCache[tipo];
+            docInput.disabled = false;
+        }
+        console.log('📋 Usando número en caché para', tipo, ':', window.numerosSalidaCache[tipo]);
+
+        const motivoObligatorio = document.getElementById('motivoObligatorio');
+        if (motivoObligatorio) {
+            motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
+        }
+        return;
+    }
+
+    try {
+        const docInput = document.getElementById('salidaDocumento');
+        if (docInput) {
+            docInput.value = '⏳ Generando...';
+            docInput.disabled = true;
+        }
+
+        // API CENTRALIZADA - tipo_inventario=2 para CAQ - MODO PREVIEW (no consume secuencia)
+        const url = `${BASE_URL_API}/obtener_siguiente_numero.php?tipo_inventario=2&operacion=SALIDA&tipo_movimiento=${tipo}&modo=preview`;
+        console.log('🌐 Pidiendo número para:', tipo);
+        console.log('🌐 URL completa:', url);
+
+        const r = await fetch(url);
+        console.log('📡 Respuesta HTTP status:', r.status, r.statusText);
+
+        if (!r.ok) {
+            throw new Error(`HTTP error! status: ${r.status}`);
+        }
+
+        const d = await r.json();
+        console.log('📦 Respuesta API:', d);
+
+        if (d.success && d.numero) {
+            window.numerosSalidaCache[tipo] = d.numero;
+            document.getElementById('salidaDocumento').value = d.numero;
+            document.getElementById('salidaDocumento').disabled = false;
+            console.log('✅ Número generado y cacheado:', d.numero);
+        } else {
+            throw new Error(d.message || 'La API no devolvió un número válido');
+        }
+    } catch (e) {
+        console.error('❌ Error al obtener número de salida:', e);
+        const docInput = document.getElementById('salidaDocumento');
+
+        // SIN FALLBACK - Mostrar error
+        if (docInput) {
+            docInput.value = 'ERROR - Reintentar';
+            docInput.disabled = false;
+            docInput.style.borderColor = '#dc3545';
+            docInput.style.color = '#dc3545';
+        }
+
+        alert('⚠️ Error al generar número de documento.\n\nCambie el tipo de salida para reintentar.\n\nError: ' + e.message);
+    }
+
     const motivoObligatorio = document.getElementById('motivoObligatorio');
     if (motivoObligatorio) {
         motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
@@ -1670,7 +1764,7 @@ async function guardarSalida() {
     console.log('Guardando salida:', data);
 
     try {
-        const r = await fetch(`${baseUrl}/api/salidas_mp.php`, {
+        const r = await fetch(`${baseUrl}/api/salidas_caq.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -1698,6 +1792,142 @@ function abrirModalHistorial() {
 function verKardex(id) {
     alert('Modal Kardex - Por implementar');
 }
+
+// ========== GENERACIÓN AUTOMÁTICA DE CÓDIGOS ==========
+
+let modoManual = false;
+let codigoTipo = 'CAQ';  // Código del tipo de inventario (Colorantes y Aux. Químicos)
+
+/**
+ * Actualiza el código sugerido cuando cambia categoría o subcategoría
+ */
+async function actualizarCodigoSugerido() {
+    const catId = document.getElementById('itemCategoria_modal').value;
+    const subcatId = document.getElementById('itemSubcategoria_modal').value;
+
+    // Cargar subcategorías si cambió la categoría
+    await cargarSubcategoriasItem();
+
+    if (!catId) {
+        document.getElementById('codigoPreviewSection').style.display = 'none';
+        document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+        return;
+    }
+
+    // Mostrar sección de preview
+    document.getElementById('codigoPreviewSection').style.display = 'block';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'flex';
+
+    // Obtener códigos de categoría y subcategoría
+    const categoria = categorias.find(c => c.id_categoria == catId);
+    const codigoCat = categoria ? categoria.codigo : 'XXX';
+
+    let codigoSubcat = '';
+    if (subcatId && subcatId !== '0') {
+        const rSub = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
+        const dSub = await rSub.json();
+        if (dSub.success && dSub.subcategorias) {
+            const sub = dSub.subcategorias.find(s => s.id_subcategoria == subcatId);
+            codigoSubcat = sub ? sub.codigo : '';
+            if (codigoSubcat.includes('-')) {
+                const partes = codigoSubcat.split('-');
+                codigoSubcat = partes[partes.length - 1];
+            }
+        }
+    }
+
+    // Construir prefijo
+    const prefijo = (subcatId && subcatId !== '0' && codigoSubcat)
+        ? `${codigoTipo}-${codigoCat}-${codigoSubcat}-`
+        : `${codigoTipo}-${codigoCat}-`;
+
+    // Obtener siguiente correlativo
+    const siguienteNum = await obtenerSiguienteCorrelativo(prefijo);
+
+    // Actualizar preview en UI
+    document.getElementById('previewPrefijo').textContent = prefijo;
+    document.getElementById('previewSufijo').textContent = siguienteNum;
+    document.getElementById('labelTipo').textContent = codigoTipo;
+    document.getElementById('labelCat').textContent = codigoCat;
+    document.getElementById('labelSubcat').textContent = codigoSubcat || '-';
+    document.getElementById('labelNum').textContent = siguienteNum;
+    document.getElementById('formatoSugerido').textContent = prefijo + 'XXX';
+
+    // Establecer sufijo por defecto
+    document.getElementById('itemSufijo').value = siguienteNum;
+
+    // Actualizar código final
+    if (!modoManual) {
+        actualizarCodigoFinal();
+    }
+}
+
+/**
+ * Obtiene el siguiente número correlativo disponible para un prefijo
+ */
+async function obtenerSiguienteCorrelativo(prefijo) {
+    try {
+        const response = await fetch(
+            `${baseUrl}/api/centro_inventarios.php?action=siguiente_codigo&tipo_id=${TIPO_ID}&prefijo=${encodeURIComponent(prefijo)}`
+        );
+        const data = await response.json();
+        return (data.success && data.siguiente) ? data.siguiente : '001';
+    } catch (error) {
+        console.error('Error obteniendo correlativo:', error);
+        return '001';
+    }
+}
+
+/**
+ * Actualiza el código final combinando prefijo + sufijo
+ */
+function actualizarCodigoFinal() {
+    const prefijo = document.getElementById('previewPrefijo').textContent;
+    const sufijo = document.getElementById('itemSufijo').value || '001';
+    const codigoFinal = prefijo + sufijo;
+
+    document.getElementById('itemCodigo').value = codigoFinal.toUpperCase();
+    document.getElementById('previewSufijo').textContent = sufijo;
+    document.getElementById('labelNum').textContent = sufijo;
+}
+
+/**
+ * Alternar entre modo automático y manual
+ */
+function toggleModoManual() {
+    modoManual = !modoManual;
+    const autoView = document.getElementById('codigoAutomaticoView');
+    const manualView = document.getElementById('codigoManualView');
+    const sufijoRow = document.getElementById('sufijoPersonalizadoRow');
+    const btnTexto = document.getElementById('btnToggleTexto');
+    const inputManual = document.getElementById('itemCodigoManual');
+
+    if (modoManual) {
+        autoView.style.display = 'none';
+        manualView.style.display = 'block';
+        sufijoRow.style.display = 'none';
+        btnTexto.textContent = 'Usar automático';
+
+        inputManual.value = document.getElementById('itemCodigo').value;
+        inputManual.focus();
+    } else {
+        autoView.style.display = 'block';
+        manualView.style.display = 'none';
+        sufijoRow.style.display = 'flex';
+        btnTexto.textContent = 'Editar manualmente';
+        actualizarCodigoFinal();
+    }
+}
+
+// Listener para el input manual
+document.addEventListener('DOMContentLoaded', () => {
+    const inputManual = document.getElementById('itemCodigoManual');
+    if (inputManual) {
+        inputManual.addEventListener('input', function () {
+            document.getElementById('itemCodigo').value = this.value.toUpperCase();
+        });
+    }
+});
 
 // ========== UTILIDADES ==========
 function cerrarModal(id) {

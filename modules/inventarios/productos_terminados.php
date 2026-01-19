@@ -1,23 +1,23 @@
 <?php
 /**
- * Módulo de Inventarios - Materias Primas
+ * Módulo de Inventarios - Productos Terminados
  * Sistema MES Hermen Ltda. v1.0
- * Página independiente para gestión completa de Materias Primas
+ * Página independiente para gestión completa de Productos Terminados
  */
 require_once '../../config/database.php';
 if (!isLoggedIn()) {
     redirect('index.php');
 }
 
-$pageTitle = 'Materias Primas - Inventarios';
-$currentPage = 'materias_primas';
+$pageTitle = 'Productos Terminados - Inventarios';
+$currentPage = 'productos_terminados';
 
 $db = getDB();
-$stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'MP' AND activo = 1");
+$stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'PT' AND activo = 1");
 $stmt->execute();
 $tipoInventario = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$tipoInventario) {
-    die('Error: Tipo de inventario "Materias Primas" no encontrado');
+    die('Error: Tipo de inventario "Productos Terminados" no encontrado');
 }
 
 $tipoId = $tipoInventario['id_tipo_inventario'];
@@ -2045,9 +2045,9 @@ require_once '../../includes/header.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/materias_primas.js"></script>
-<script src="js/materias_primas_dinamico.js"></script>
+<script src="js/productos_terminados.js"></script>
+<script src="js/productos_terminados_dinamico.js"></script>
 <script src="js/devolucion_proveedor.js"></script>
 <script src="js/historial_movimientos.js"></script>
-<script src="js/kardex_mp.js"></script>
+<script src="js/kardex_pt.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

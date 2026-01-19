@@ -30,9 +30,6 @@ let unidadesMedida = [];
 let usuariosAutorizados = [];
 // let lineasIngreso = []; //
 
-// ⭐ CACHE DE NÚMEROS DE DOCUMENTO POR SESIÓN
-let numerosDocumentoCache = {};
-
 /**
  * Configuración de columnas por tipo de ingreso
  * Define qué columnas mostrar para cada tipo
@@ -137,7 +134,7 @@ function logError(contexto, error) {
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('🚀 Inicializando módulo de Materias Primas...');
+    console.log('🚀 Inicializando módulo de Repuestos y Máquinas...');
     console.log('📁 API Base URL:', BASE_URL_API);
 
     cargarTiposIngreso();
@@ -256,18 +253,11 @@ async function cargarUnidadesMedida() {
 async function abrirModalIngreso() {
     console.log('📖 Abriendo modal de ingreso...');
 
-    // 1. PRIMERO: Cargar datos necesarios
     await cargarProveedores();
     await cargarCategoriasIngreso();
-
-    // 2. DESPUÉS: Resetear formulario (esto limpia los selects)
     resetearFormularioIngreso();
 
-    // 3. ⭐ NO GENERAR NÚMERO AQUÍ - Se generará cuando seleccione el tipo
-    // Limpiar caché de números al abrir nuevo modal
     numerosDocumentoCache = {};
-
-    // Dejar campo vacío y deshabilitado
     const docInput = document.getElementById('ingresoDocumento');
     if (docInput) {
         docInput.value = '';
@@ -275,19 +265,16 @@ async function abrirModalIngreso() {
         docInput.disabled = true;
     }
 
-    // 4. ESTABLECER FECHA ACTUAL
     const hoy = new Date().toISOString().split('T')[0];
     const fechaInput = document.getElementById('ingresoFecha');
     if (fechaInput) fechaInput.value = hoy;
 
-    // 5. ABRIR EL MODAL
     const modal = document.getElementById('modalIngreso');
     if (modal) modal.classList.add('show');
 }
 
 async function obtenerSiguienteNumero(tipo = null) {
     try {
-        // Si no se proporciona tipo, intentar obtenerlo del select
         if (!tipo) {
             const selectTipo = document.getElementById('ingresoTipoIngreso');
             if (selectTipo && selectTipo.value) {
@@ -296,39 +283,31 @@ async function obtenerSiguienteNumero(tipo = null) {
             }
         }
 
-        // Si aún no hay tipo, no hacer nada
-        if (!tipo) {
-            return;
-        }
+        if (!tipo) return;
 
-        // ⭐ VERIFICAR CACHÉ: Si ya tenemos un número para este tipo, usarlo
         if (numerosDocumentoCache[tipo]) {
             const docInput = document.getElementById('ingresoDocumento');
             if (docInput) {
                 docInput.value = numerosDocumentoCache[tipo];
                 docInput.disabled = false;
             }
-            console.log(`📋 Usando número en caché para ${tipo}:`, numerosDocumentoCache[tipo]);
             return;
         }
 
-        // Mostrar indicador de carga
         const docInput = document.getElementById('ingresoDocumento');
         if (docInput) {
             docInput.value = '⏳ Generando...';
             docInput.disabled = true;
         }
 
-        const url = `${BASE_URL_API}/ingresos_mp.php?action=siguiente_numero&tipo=${tipo}`;
+        const url = `${BASE_URL_API}/ingresos_rep.php?action=siguiente_numero&tipo=${tipo}`;
         const response = await fetch(url);
         const data = await response.json();
 
         if (data.success && docInput) {
-            // ⭐ GUARDAR EN CACHÉ
             numerosDocumentoCache[tipo] = data.numero;
             docInput.value = data.numero;
             docInput.disabled = false;
-            console.log(`✅ Número generado y cacheado para ${tipo}:`, data.numero);
         }
     } catch (error) {
         logError('obtenerSiguienteNumero', error);
@@ -737,7 +716,7 @@ async function cargarProveedores() {
 
 async function cargarCategoriasIngreso() {
     try {
-        const url = `${BASE_URL_API}/centro_inventarios.php?action=categorias&tipo_id=1`;
+        const url = `${BASE_URL_API}/centro_inventarios.php?action=categorias&tipo_id=7`;
         console.log('🔄 Cargando categorías desde:', url);
 
         const response = await fetch(url);

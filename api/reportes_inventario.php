@@ -378,8 +378,9 @@ try {
                     SUM(m.costo_total) AS total_compras,
                     MIN(m.fecha_movimiento) AS primera_compra,
                     MAX(m.fecha_movimiento) AS ultima_compra
-                FROM movimientos_inventario_erp m
-                LEFT JOIN proveedores p ON m.id_proveedor = p.id_proveedor
+                FROM movimientos_inventario m
+                JOIN documentos_inventario d ON m.documento_id = d.id_documento
+                LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
                 WHERE m.tipo_movimiento COLLATE utf8mb4_unicode_ci LIKE 'ENTRADA_%'
                 AND m.estado = 'ACTIVO'
             ";
@@ -439,16 +440,17 @@ try {
                     m.costo_unitario,
                     m.costo_total,
                     m.stock_anterior,
-                    m.stock_nuevo,
+                    m.stock_posterior AS stock_nuevo,
                     COALESCE(p.razon_social, '') AS proveedor,
                     u.nombre_completo AS usuario,
                     m.estado
-                FROM movimientos_inventario_erp m
+                FROM movimientos_inventario m
                 JOIN inventarios i ON m.id_inventario = i.id_inventario
                 JOIN tipos_inventario ti ON i.id_tipo_inventario = ti.id_tipo_inventario
                 JOIN unidades_medida um ON i.id_unidad = um.id_unidad
-                LEFT JOIN proveedores p ON m.id_proveedor = p.id_proveedor
-                LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
+                LEFT JOIN documentos_inventario d ON m.documento_id = d.id_documento
+                LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
+                LEFT JOIN usuarios u ON m.creado_por = u.id_usuario
                 WHERE 1=1
             ";
 

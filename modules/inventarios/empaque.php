@@ -1,23 +1,23 @@
 <?php
 /**
- * Módulo de Inventarios - Materias Primas
+ * Módulo de Inventarios - Material de Empaque
  * Sistema MES Hermen Ltda. v1.0
- * Página independiente para gestión completa de Materias Primas
+ * Página independiente para gestión completa de Material de Empaque
  */
 require_once '../../config/database.php';
 if (!isLoggedIn()) {
     redirect('index.php');
 }
 
-$pageTitle = 'Materias Primas - Inventarios';
-$currentPage = 'materias_primas';
+$pageTitle = 'Material de Empaque - Inventarios';
+$currentPage = 'empaque';
 
 $db = getDB();
-$stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'MP' AND activo = 1");
+$stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'EMP' AND activo = 1");
 $stmt->execute();
 $tipoInventario = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$tipoInventario) {
-    die('Error: Tipo de inventario "Materias Primas" no encontrado');
+    die('Error: Tipo de inventario "Material de Empaque" no encontrado');
 }
 
 $tipoId = $tipoInventario['id_tipo_inventario'];
@@ -2045,9 +2045,9 @@ require_once '../../includes/header.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/materias_primas.js"></script>
-<script src="js/materias_primas_dinamico.js"></script>
+<script src="js/empaque.js"></script>
+<script src="js/empaque_dinamico.js"></script>
 <script src="js/devolucion_proveedor.js"></script>
 <script src="js/historial_movimientos.js"></script>
-<script src="js/kardex_mp.js"></script>
+<script src="js/kardex_emp.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

@@ -5,14 +5,17 @@
  * Adaptado del módulo de Materias Primas
  */
 
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 ob_start();
-ob_clean();
+// ob_clean(); // Comentado temporalmente para debug
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 
-ini_set('display_errors', 0);
+// ini_set('display_errors', 0); // Comentado para debug
 error_reporting(E_ALL);
 
 try {
@@ -25,7 +28,7 @@ try {
 
     $db = getDB();
     $method = $_SERVER['REQUEST_METHOD'];
-    $TIPO_INVENTARIO_CAQ = 2; // ID de Colorantes y Auxiliares Químicos
+    $TIPO_INVENTARIO_CAQ = 2; // ID fijo para Colorantes y Auxiliares Químicos
 
     switch ($method) {
         case 'GET':
@@ -65,8 +68,9 @@ try {
                             FROM documentos_inventario d
                             LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
                             WHERE d.tipo_documento = 'INGRESO' 
+                            AND d.id_tipo_inventario = ?
                             AND d.fecha_documento BETWEEN ? AND ?";
-                    $params = [$desde, $hasta];
+                    $params = [$TIPO_INVENTARIO_CAQ, $desde, $hasta];
 
                     $tipoFilter = $_GET['tipo'] ?? null;
                     if ($tipoFilter && $tipoFilter !== 'INGRESO') {
@@ -154,10 +158,18 @@ try {
                     break;
 
                 case 'siguiente_numero':
-                    // Obtener siguiente número de documento
-                    $numero = generarNumeroDocumento($db, 'INGRESO', 'ING-CAQ');
+                    // REDIRIGIR a API centralizada con modo preview usando include
+                    $tipo = $_GET['tipo'] ?? 'COMPRA';
+
+                    // Configurar parámetros para la API centralizada
+                    $_GET['tipo_inventario'] = '2';
+                    $_GET['operacion'] = 'INGRESO';
+                    $_GET['tipo_movimiento'] = $tipo;
+                    $_GET['modo'] = 'preview';
+
                     ob_clean();
-                    echo json_encode(['success' => true, 'numero' => $numero]);
+                    include 'obtener_siguiente_numero.php';
+                    exit();
                     break;
 
                 case 'resumen':
@@ -360,8 +372,17 @@ try {
                     $db->beginTransaction();
 
                     try {
-                        // Generar número de documento
-                        $numeroDoc = generarNumeroDocumento($db, 'INGRESO', 'ING-CAQ');
+                        // Generar número de documento con Prefijo Inteligente
+                        $codigosTipo = [
+                            'COMPRA' => 'C',
+                            'INICIAL' => 'I',
+                            'DEVOLUCION_PROD' => 'D',
+                            'AJUSTE_POS' => 'A'
+                        ];
+                        $codigoTipo = $codigosTipo[$tipoIngreso] ?? 'X';
+                        $prefijo = "IN-CAQ-$codigoTipo";
+
+                        $numeroDoc = generarNumeroDocumento($db, 'INGRESO', $prefijo);
 
                         // Calcular totales desde las líneas
                         $totalDocumento = 0;
@@ -440,13 +461,13 @@ try {
 
                         $stmtMovimiento = $db->prepare("
                             INSERT INTO movimientos_inventario (
-                                id_inventario, fecha_movimiento, tipo_movimiento, 
+                                id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento, 
                                 codigo_movimiento, documento_tipo, documento_numero, documento_id,
                                 cantidad, costo_unitario, costo_total,
                                 stock_anterior, stock_posterior,
                                 costo_promedio_anterior, costo_promedio_posterior,
                                 estado, creado_por
-                            ) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
+                            ) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
                         ");
 
                         $lineaNumero = 1;
@@ -506,6 +527,7 @@ try {
                             $costoTotalNeto = $cantidad * $costoUnit;
                             $stmtMovimiento->execute([
                                 $linea['id_inventario'],    // ✅ id_inventario correcto
+                                $TIPO_INVENTARIO_CAQ,       // ✅ id_tipo_inventario
                                 $tipoMovimiento,            // ENTRADA_COMPRA o ENTRADA_AJUSTE
                                 $codigoMovimiento,          // Código único del movimiento
                                 $tipoDocumento,             // FACTURA o INVENTARIO INICIAL

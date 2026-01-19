@@ -30,6 +30,9 @@ let unidadesMedida = [];
 let usuariosAutorizados = [];
 // let lineasIngreso = []; //
 
+// ⭐ CACHE DE NÚMEROS DE DOCUMENTO POR SESIÓN
+let numerosDocumentoCache = {};
+
 /**
  * Configuración de columnas por tipo de ingreso
  * Define qué columnas mostrar para cada tipo
@@ -253,38 +256,70 @@ async function cargarUnidadesMedida() {
 async function abrirModalIngreso() {
     console.log('📖 Abriendo modal de ingreso...');
 
-    // 1. PRIMERO: Cargar datos necesarios
     await cargarProveedores();
     await cargarCategoriasIngreso();
-
-    // 2. DESPUÉS: Resetear formulario (esto limpia los selects)
     resetearFormularioIngreso();
 
-    // 3. LUEGO: Obtener siguiente número
-    await obtenerSiguienteNumero();
+    // ⭐ NO GENERAR NÚMERO AQUÍ
+    numerosDocumentoCache = {};
+    const docInput = document.getElementById('ingresoDocumento');
+    if (docInput) {
+        docInput.value = '';
+        docInput.placeholder = 'Seleccione tipo de ingreso...';
+        docInput.disabled = true;
+    }
 
-    // 4. ESTABLECER FECHA ACTUAL
     const hoy = new Date().toISOString().split('T')[0];
     const fechaInput = document.getElementById('ingresoFecha');
     if (fechaInput) fechaInput.value = hoy;
 
-    // 5. ABRIR EL MODAL
     const modal = document.getElementById('modalIngreso');
     if (modal) modal.classList.add('show');
 }
 
-async function obtenerSiguienteNumero() {
+async function obtenerSiguienteNumero(tipo = null) {
     try {
-        const url = `${BASE_URL_API}/ingresos_caq.php?action=siguiente_numero`;
+        if (!tipo) {
+            const selectTipo = document.getElementById('ingresoTipoIngreso');
+            if (selectTipo && selectTipo.value) {
+                const tipoConfig = tiposIngresoConfig[selectTipo.value];
+                tipo = tipoConfig ? tipoConfig.codigo : null;
+            }
+        }
+
+        if (!tipo) return;
+
+        if (numerosDocumentoCache[tipo]) {
+            const docInput = document.getElementById('ingresoDocumento');
+            if (docInput) {
+                docInput.value = numerosDocumentoCache[tipo];
+                docInput.disabled = false;
+            }
+            return;
+        }
+
+        const docInput = document.getElementById('ingresoDocumento');
+        if (docInput) {
+            docInput.value = '⏳ Generando...';
+            docInput.disabled = true;
+        }
+
+        const url = `${BASE_URL_API}/ingresos_caq.php?action=siguiente_numero&tipo=${tipo}`;
         const response = await fetch(url);
         const data = await response.json();
 
-        if (data.success) {
-            const docInput = document.getElementById('ingresoDocumento');
-            if (docInput) docInput.value = data.numero;
+        if (data.success && docInput) {
+            numerosDocumentoCache[tipo] = data.numero;
+            docInput.value = data.numero;
+            docInput.disabled = false;
         }
     } catch (error) {
         logError('obtenerSiguienteNumero', error);
+        const docInput = document.getElementById('ingresoDocumento');
+        if (docInput) {
+            docInput.value = '';
+            docInput.disabled = true;
+        }
     }
 }
 
@@ -422,6 +457,9 @@ async function cambiarTipoIngreso() {
 
     // 8. ACTUALIZAR ENCABEZADOS DE TABLA
     actualizarEncabezadosTabla(config);
+
+    // ⭐ 9. REGENERAR NÚMERO DE DOCUMENTO CON EL NUEVO TIPO
+    await obtenerSiguienteNumero(config.codigo);
 }
 
 // ⭐ NUEVA FUNCIÓN: Poblar select de proveedores

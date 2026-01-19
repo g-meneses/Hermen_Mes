@@ -161,28 +161,65 @@ try {
 
                 case 'subcategorias':
                     // Lista de subcategorías (opcionalmente filtrado por categoría)
-                    $categoriaId = $_GET['categoria_id'] ?? null;
-
-                    $sql = "
-                        SELECT s.id_subcategoria, s.codigo, s.nombre, s.id_categoria, s.orden,
-                               c.nombre AS categoria_nombre, c.codigo AS categoria_codigo,
-                               t.id_tipo_inventario, t.nombre AS tipo_nombre
-                        FROM subcategorias_inventario s
-                        JOIN categorias_inventario c ON s.id_categoria = c.id_categoria
-                        JOIN tipos_inventario t ON c.id_tipo_inventario = t.id_tipo_inventario
-                        WHERE s.activo = 1
-                    ";
-
-                    if ($categoriaId) {
-                        $sql .= " AND s.id_categoria = " . intval($categoriaId);
+                    $catId = $_GET['categoria_id'] ?? null;
+                    if (!$catId) {
+                        ob_clean();
+                        echo json_encode(['success' => false, 'message' => 'Falta categoria_id']);
+                        exit();
                     }
-                    $sql .= " ORDER BY c.orden, s.orden, s.nombre";
-
-                    $stmt = $db->query($sql);
+                    $stmt = $db->prepare("SELECT id_subcategoria, nombre, codigo FROM subcategorias_inventario WHERE id_categoria = ? AND activo = 1 ORDER BY nombre");
+                    $stmt->execute([$catId]);
                     ob_clean();
                     echo json_encode([
                         'success' => true,
                         'subcategorias' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+                    ]);
+                    break;
+
+                case 'siguiente_codigo':
+                    $tipo_id = $_GET['tipo_id'] ?? null;
+                    $prefijo = $_GET['prefijo'] ?? '';
+
+                    if (!$tipo_id || !$prefijo) {
+                        ob_clean();
+                        echo json_encode(['success' => false, 'message' => 'Parámetros incompletos']);
+                        exit();
+                    }
+
+                    // Buscar el último código con ese prefijo
+                    $stmt = $db->prepare("
+                        SELECT codigo 
+                        FROM inventarios 
+                        WHERE id_tipo_inventario = ? 
+                          AND codigo LIKE CONCAT(?, '%')
+                        ORDER BY codigo DESC 
+                        LIMIT 1
+                    ");
+                    $stmt->execute([$tipo_id, $prefijo]);
+                    $ultimoCodigo = $stmt->fetchColumn();
+
+                    if ($ultimoCodigo) {
+                        // Extraer la parte numérica del final
+                        $sufijo = str_replace($prefijo, '', $ultimoCodigo);
+
+                        // Si es numérico, incrementar
+                        if (is_numeric($sufijo)) {
+                            $len = strlen($sufijo);
+                            $siguiente = str_pad((int) $sufijo + 1, $len > 0 ? $len : 3, '0', STR_PAD_LEFT);
+                        } else {
+                            // Si no es numérico puro (ej: AZ-001), intentar extraer solo el final numérico o sugerir 001
+                            $siguiente = '001';
+                        }
+                    } else {
+                        // No hay códigos previos, empezar en 001
+                        $siguiente = '001';
+                    }
+
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'siguiente' => $siguiente,
+                        'ultimo' => $ultimoCodigo
                     ]);
                     break;
 
@@ -314,17 +351,17 @@ try {
                             m.tipo_movimiento,
                             m.cantidad,
                             m.stock_anterior,
-                            m.stock_nuevo,
+                            m.stock_posterior AS stock_nuevo,
                             m.costo_unitario,
                             m.costo_total,
-                            m.costo_promedio_resultado,
+                            m.costo_promedio_posterior AS costo_promedio_resultado,
                             m.documento_tipo,
                             m.documento_numero,
                             m.observaciones,
                             m.estado,
                             u.nombre_completo AS usuario
-                        FROM movimientos_inventario_erp m
-                        LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
+                        FROM movimientos_inventario m
+                        LEFT JOIN usuarios u ON m.creado_por = u.id_usuario
                         WHERE m.id_inventario = ?
                         ORDER BY m.fecha_movimiento DESC
                         LIMIT 100
@@ -365,8 +402,8 @@ try {
                                 ELSE 'SALIDA'
                             END AS categoria,
                             MAX(m.estado) AS estado
-                        FROM movimientos_inventario_erp m
-                        LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
+                        FROM movimientos_inventario m
+                        LEFT JOIN usuarios u ON m.creado_por = u.id_usuario
                     ";
 
                     // Si hay filtro por tipo de inventario, hacer join
@@ -446,8 +483,8 @@ try {
                             MAX(m.estado) AS estado,
                             u.nombre_completo AS usuario,
                             SUM(costo_total) AS total_documento
-                        FROM movimientos_inventario_erp m
-                        LEFT JOIN usuarios u ON m.id_usuario = u.id_usuario
+                        FROM movimientos_inventario m
+                        LEFT JOIN usuarios u ON m.creado_por = u.id_usuario
                         WHERE documento_numero = ?
                         GROUP BY documento_numero, documento_tipo, tipo_movimiento, u.nombre_completo
                     ");
@@ -472,10 +509,10 @@ try {
                             m.costo_unitario,
                             m.costo_total,
                             m.stock_anterior,
-                            m.stock_nuevo,
-                            m.costo_promedio_resultado AS cpp_resultante,
+                            m.stock_posterior AS stock_nuevo,
+                            m.costo_promedio_posterior AS cpp_resultante,
                             m.estado
-                        FROM movimientos_inventario_erp m
+                        FROM movimientos_inventario m
                         JOIN inventarios i ON m.id_inventario = i.id_inventario
                         JOIN unidades_medida um ON i.id_unidad = um.id_unidad
                         WHERE m.documento_numero = ?
@@ -866,13 +903,13 @@ try {
                 try {
                     // Insertar movimiento con datos completos para Kardex Físico-Valorado
                     $stmt = $db->prepare("
-                        INSERT INTO movimientos_inventario_erp (
+                        INSERT INTO movimientos_inventario (
                             id_inventario, tipo_movimiento, cantidad,
-                            stock_anterior, stock_nuevo, 
-                            costo_unitario, costo_total, costo_promedio_resultado,
+                            stock_anterior, stock_posterior, 
+                            costo_unitario, costo_total, costo_promedio_posterior,
                             documento_tipo, documento_numero,
-                            id_usuario, observaciones
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            creado_por, observaciones, fecha_movimiento
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
                     ");
                     $stmt->execute([
                         $idInventario,
@@ -1042,12 +1079,12 @@ try {
 
                         // Insertar movimiento
                         $stmt = $db->prepare("
-                            INSERT INTO movimientos_inventario_erp (
+                            INSERT INTO movimientos_inventario (
                                 id_inventario, tipo_movimiento, cantidad,
-                                stock_anterior, stock_nuevo, 
-                                costo_unitario, costo_total, costo_promedio_resultado,
+                                stock_anterior, stock_posterior, 
+                                costo_unitario, costo_total, costo_promedio_posterior,
                                 documento_tipo, documento_numero,
-                                id_usuario, observaciones, fecha_movimiento
+                                creado_por, observaciones, fecha_movimiento
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
 
@@ -1329,22 +1366,21 @@ try {
                 if ($idInventario) {
                     // Actualizar
                     $stmt = $db->prepare("
-                        UPDATE inventarios SET
-                            codigo = ?,
-                            nombre = ?,
-                            descripcion = ?,
-                            id_tipo_inventario = ?,
-                            id_categoria = ?,
-                            id_subcategoria = ?,
-                            id_unidad = ?,
-                            stock_actual = ?,
-                            stock_minimo = ?,
-                            costo_unitario = ?,
-                            id_ubicacion = ?,
-                            id_linea_produccion = ?,
-                            proveedor_principal = ?
-                        WHERE id_inventario = ?
-                    ");
+                            UPDATE inventarios SET
+                                codigo = ?,
+                                nombre = ?,
+                                descripcion = ?,
+                                id_tipo_inventario = ?,
+                                id_categoria = ?,
+                                id_subcategoria = ?,
+                                id_unidad = ?,
+                                stock_minimo = ?,
+                                costo_unitario = ?,
+                                id_ubicacion = ?,
+                                id_linea_produccion = ?,
+                                proveedor_principal = ?
+                            WHERE id_inventario = ?
+                        ");
                     $stmt->execute([
                         $codigo,
                         $nombre,
@@ -1353,7 +1389,6 @@ try {
                         $idCategoria,
                         $idSubcategoria,
                         $idUnidad,
-                        $stockActual,
                         $stockMinimo,
                         $costoUnitario,
                         $idUbicacion,
@@ -1366,36 +1401,93 @@ try {
                     echo json_encode(['success' => true, 'message' => 'Inventario actualizado exitosamente']);
                 } else {
                     // Crear
-                    $stmt = $db->prepare("
-                        INSERT INTO inventarios (
-                            codigo, nombre, descripcion,
-                            id_tipo_inventario, id_categoria, id_subcategoria, id_unidad,
-                            stock_actual, stock_minimo, costo_unitario,
-                            id_ubicacion, id_linea_produccion, proveedor_principal
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ");
-                    $stmt->execute([
-                        $codigo,
-                        $nombre,
-                        $descripcion,
-                        $idTipoInventario,
-                        $idCategoria,
-                        $idSubcategoria,
-                        $idUnidad,
-                        $stockActual,
-                        $stockMinimo,
-                        $costoUnitario,
-                        $idUbicacion,
-                        $idLineaProduccion,
-                        $proveedorPrincipal
-                    ]);
+                    $db->beginTransaction();
 
-                    ob_clean();
-                    echo json_encode([
-                        'success' => true,
-                        'message' => 'Inventario creado exitosamente',
-                        'id_inventario' => $db->lastInsertId()
-                    ]);
+                    try {
+                        $stmt = $db->prepare("
+                            INSERT INTO inventarios (
+                                codigo, nombre, descripcion,
+                                id_tipo_inventario, id_categoria, id_subcategoria, id_unidad,
+                                stock_actual, stock_minimo, costo_unitario, costo_promedio,
+                                id_ubicacion, id_linea_produccion, proveedor_principal, activo
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                        ");
+
+                        $stockInicial = 0; // SIEMPRE 0. El saldo inicial se gestiona por Ingresos.
+                        $costoInicial = floatval($costoUnitario);
+
+                        $stmt->execute([
+                            $codigo,
+                            $nombre,
+                            $descripcion,
+                            $idTipoInventario,
+                            $idCategoria,
+                            $idSubcategoria,
+                            $idUnidad,
+                            $stockInicial,
+                            $stockMinimo,
+                            $costoInicial,
+                            $costoInicial, // CPP inicial = costo unitario
+                            $idUbicacion,
+                            $idLineaProduccion,
+                            $proveedorPrincipal
+                        ]);
+
+                        $idNuevoInventario = $db->lastInsertId();
+
+                        // ✅ NUEVO: Si hay stock inicial, registrar en kardex
+                        if ($stockInicial > 0) {
+                            $stmt_kardex = $db->prepare("
+                                INSERT INTO kardex_inventario (
+                                    id_inventario,
+                                    fecha_movimiento,
+                                    tipo_movimiento,
+                                    documento_referencia,
+                                    cantidad,
+                                    costo_unitario,
+                                    costo_total,
+                                    stock_anterior,
+                                    stock_posterior,
+                                    observaciones,
+                                    creado_por
+                                ) VALUES (
+                                    ?, NOW(), 'SALDO_INICIAL', 'SALDO-INICIAL', 
+                                    ?, ?, ?, 0, ?, 
+                                    'Saldo inicial al crear el producto', ?
+                                )
+                            ");
+
+                            $costoTotal = $stockInicial * $costoInicial;
+                            $userId = $_SESSION['user_id'] ?? 1;
+
+                            $stmt_kardex->execute([
+                                $idNuevoInventario,
+                                $stockInicial,
+                                $costoInicial,
+                                $costoTotal,
+                                $stockInicial,
+                                $userId
+                            ]);
+                        }
+
+                        $db->commit();
+
+                        ob_clean();
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Item creado exitosamente. Recuerde registrar el Saldo Inicial por el botón "Ingreso".',
+                            'id_inventario' => $idNuevoInventario
+                        ]);
+
+                    } catch (Exception $e) {
+                        $db->rollBack();
+                        ob_clean();
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'Error al crear item: ' . $e->getMessage()
+                        ]);
+                        exit();
+                    }
                 }
             }
             break;
@@ -1443,3 +1535,39 @@ try {
 
 ob_end_flush();
 exit();
+
+/**
+ * Genera el siguiente código de movimiento
+ * Copiado de ingresos_mp.php para mantener consistencia
+ */
+function generarCodigoMovimiento($db)
+{
+    $fecha = date('Ymd');
+
+    // Buscar o crear secuencia de movimientos
+    $stmt = $db->prepare("
+        SELECT ultimo_numero FROM secuencias_documento 
+        WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ?
+        FOR UPDATE
+    ");
+    $stmt->execute([date('Y'), date('m')]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($row) {
+        $siguiente = $row['ultimo_numero'] + 1;
+        $stmtUp = $db->prepare("
+            UPDATE secuencias_documento SET ultimo_numero = ?
+            WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ?
+        ");
+        $stmtUp->execute([$siguiente, date('Y'), date('m')]);
+    } else {
+        $siguiente = 1;
+        $stmtIn = $db->prepare("
+            INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero)
+            VALUES ('MOVIMIENTO', 'MOV', ?, ?, 1)
+        ");
+        $stmtIn->execute([date('Y'), date('m')]);
+    }
+
+    return 'MOV-' . $fecha . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
+}

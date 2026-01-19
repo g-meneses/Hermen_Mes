@@ -7,7 +7,7 @@
 const BASE_URL_API = window.location.origin + '/mes_hermen/api';
 const baseUrl = window.location.origin + '/mes_hermen';
 const iconTitle = document.querySelector('.mp-title-icon');
-const TIPO_ID = (iconTitle && iconTitle.dataset && iconTitle.dataset.tipoId) || 1;
+const TIPO_ID = (iconTitle && iconTitle.dataset && iconTitle.dataset.tipoId) || 3;
 
 let categorias = [], subcategorias = [], productos = [], productosCompletos = [];
 let unidades = [], proveedores = [];
@@ -1243,7 +1243,7 @@ async function guardarIngreso() {
         console.log('📦 Datos a enviar:', datosIngreso);
 
         // 7. Enviar al servidor
-        const response = await fetch(`${BASE_URL_API}/ingresos_mp.php`, {
+        const response = await fetch(`${BASE_URL_API}/ingresos_emp.php`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1381,7 +1381,6 @@ async function filtrarProductosSalida() {
 async function actualizarNumeroSalida() {
     const tipo = document.getElementById('salidaTipo').value;
 
-    // Si no hay tipo seleccionado, no hacer nada
     if (!tipo) {
         const docInput = document.getElementById('salidaDocumento');
         if (docInput) {
@@ -1392,16 +1391,13 @@ async function actualizarNumeroSalida() {
         return;
     }
 
-    // ⭐ VERIFICAR CACHÉ: Si ya tenemos un número para este tipo, usarlo
     if (window.numerosSalidaCache[tipo]) {
         const docInput = document.getElementById('salidaDocumento');
         if (docInput) {
             docInput.value = window.numerosSalidaCache[tipo];
             docInput.disabled = false;
         }
-        console.log(`📋 Usando número en caché para salida ${tipo}:`, numerosSalidaCache[tipo]);
 
-        // Actualizar indicador de motivo
         const motivoObligatorio = document.getElementById('motivoObligatorio');
         if (motivoObligatorio) {
             motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
@@ -1410,46 +1406,36 @@ async function actualizarNumeroSalida() {
     }
 
     try {
-        // Mostrar indicador de carga
         const docInput = document.getElementById('salidaDocumento');
         if (docInput) {
             docInput.value = '⏳ Generando...';
             docInput.disabled = true;
         }
 
-        const r = await fetch(`${BASE_URL_API}/salidas_mp.php?action=siguiente_numero&tipo=${tipo}`);
+        const r = await fetch(`${BASE_URL_API}/salidas_emp.php?action=siguiente_numero&tipo=${tipo}`);
         const d = await r.json();
 
         if (d.success) {
-            // ⭐ GUARDAR EN CACHÉ
             window.numerosSalidaCache[tipo] = d.numero;
-            if (docInput) {
-                docInput.value = d.numero;
-                docInput.disabled = false;
-                console.log(`✅ Número de salida generado y cacheado para ${tipo}:`, d.numero);
-            }
+            document.getElementById('salidaDocumento').value = d.numero;
+            document.getElementById('salidaDocumento').disabled = false;
         }
     } catch (e) {
         console.error('Error al obtener número de salida:', e);
-        // Fallback local por si falla la API
         const prefijos = {
-            'PRODUCCION': 'OUT-MP-P',
-            'VENTA': 'OUT-MP-V',
-            'MUESTRAS': 'OUT-MP-M',
-            'AJUSTE': 'OUT-MP-A',
-            'DEVOLUCION': 'OUT-MP-R'
+            'PRODUCCION': 'OUT-EMP-P',
+            'VENTA': 'OUT-EMP-V',
+            'MUESTRAS': 'OUT-EMP-M',
+            'AJUSTE': 'OUT-EMP-A',
+            'DEVOLUCION': 'OUT-EMP-R'
         };
-        const prefijo = prefijos[tipo] || 'OUT-MP-X';
-        const docInput = document.getElementById('salidaDocumento');
-        if (docInput) {
-            const numero = generarNumeroDoc(prefijo);
-            window.numerosSalidaCache[tipo] = numero;
-            docInput.value = numero;
-            docInput.disabled = false;
-        }
+        const prefijo = prefijos[tipo] || 'OUT-EMP-X';
+        const numero = generarNumeroDoc(prefijo);
+        window.numerosSalidaCache[tipo] = numero;
+        document.getElementById('salidaDocumento').value = numero;
+        document.getElementById('salidaDocumento').disabled = false;
     }
 
-    // Mostrar/ocultar indicador de motivo obligatorio
     const motivoObligatorio = document.getElementById('motivoObligatorio');
     if (motivoObligatorio) {
         motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
@@ -1625,7 +1611,7 @@ async function guardarSalida() {
     console.log('Guardando salida:', data);
 
     try {
-        const r = await fetch(`${baseUrl}/api/salidas_mp.php`, {
+        const r = await fetch(`${BASE_URL_API}/salidas_emp.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -1668,7 +1654,7 @@ function generarNumeroDoc(prefijo) {
     return `${prefijo}-${anio}${mes}${dia}-${rand}`;
 }
 
-console.log('✅ Módulo Materias Primas v1.9 cargado');
+console.log('✅ Módulo Material de Empaque v1.9 cargado');
 console.log('   - Modal Ingreso mejorado v2.0');
 console.log('   - Filtros por tipo proveedor y categoría');
 console.log('   - Cálculo IVA con columnas dinámicas');

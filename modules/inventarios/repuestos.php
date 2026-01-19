@@ -1,23 +1,23 @@
 <?php
 /**
- * Módulo de Inventarios - Materias Primas
+ * Módulo de Inventarios - Repuestos y Máquinas
  * Sistema MES Hermen Ltda. v1.0
- * Página independiente para gestión completa de Materias Primas
+ * Página independiente para gestión completa de Repuestos y Máquinas
  */
 require_once '../../config/database.php';
 if (!isLoggedIn()) {
     redirect('index.php');
 }
 
-$pageTitle = 'Materias Primas - Inventarios';
-$currentPage = 'materias_primas';
+$pageTitle = 'Repuestos y Máquinas - Inventarios';
+$currentPage = 'repuestos';
 
 $db = getDB();
-$stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'MP' AND activo = 1");
+$stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'REP' AND activo = 1");
 $stmt->execute();
 $tipoInventario = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$tipoInventario) {
-    die('Error: Tipo de inventario "Materias Primas" no encontrado');
+    die('Error: Tipo de inventario "Repuestos y Máquinas" no encontrado');
 }
 
 $tipoId = $tipoInventario['id_tipo_inventario'];
@@ -2045,9 +2045,9 @@ require_once '../../includes/header.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/materias_primas.js"></script>
-<script src="js/materias_primas_dinamico.js"></script>
+<script src="js/repuestos.js"></script>
+<script src="js/repuestos_dinamico.js"></script>
 <script src="js/devolucion_proveedor.js"></script>
 <script src="js/historial_movimientos.js"></script>
-<script src="js/kardex_mp.js"></script>
+<script src="js/kardex_rep.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

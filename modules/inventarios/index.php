@@ -2376,7 +2376,10 @@ require_once '../../includes/header.php';
         const rutas = {
             1: 'materias_primas.php',
             2: 'colorantes_quimicos.php',
-            // Añadir más rutas según se implementen los módulos
+            3: 'empaque.php',
+            4: 'accesorios.php',
+            6: 'productos_terminados.php',
+            7: 'repuestos.php'
         };
 
         const destino = rutas[idTipo];
@@ -3121,21 +3124,33 @@ require_once '../../includes/header.php';
         cargarDashboard();
     }
 
-    function cambiarTabConfig(tab) {
+    async function cambiarTabConfig(tab, tabButton = null) {
         // Cambiar tabs activos
         document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.config-panel').forEach(p => p.classList.remove('active'));
 
-        event.target.classList.add('active');
+        // Si se pasa un botón específico, usarlo; si no, buscar el botón correcto
+        if (tabButton) {
+            tabButton.classList.add('active');
+        } else {
+            // Buscar el botón de tab correcto por su onclick o data attribute
+            const tabs = document.querySelectorAll('.config-tab');
+            tabs.forEach(t => {
+                if (t.textContent.toLowerCase().includes(tab)) {
+                    t.classList.add('active');
+                }
+            });
+        }
+
         document.getElementById('panel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
 
-        // Cargar datos
+        // Cargar datos y esperar a que terminen
         if (tab === 'tipos') {
-            cargarTiposConfig();
+            await cargarTiposConfig();
         } else if (tab === 'categorias') {
-            cargarCategoriasConfig();
+            await cargarCategoriasConfig();
         } else if (tab === 'subcategorias') {
-            cargarSubcategoriasConfig();
+            await cargarSubcategoriasConfig();
         }
     }
 
@@ -3593,27 +3608,27 @@ require_once '../../includes/header.php';
     }
 
     // ========== NAVEGACIÓN EN CASCADA ==========
-    function verCategoriasDeTipo(idTipo) {
-        // Seleccionar tab categorías
-        cambiarTabConfig('categorias');
-        
+    async function verCategoriasDeTipo(idTipo) {
+        // Seleccionar tab categorías y esperar a que cargue
+        await cambiarTabConfig('categorias');
+
         // Establecer filtro
         const select = document.getElementById('filtroTipoCategoria');
         select.value = idTipo;
-        
+
         // Disparar evento change y cargar
         cargarCategoriasPorTipo();
     }
 
-    function verSubcategoriasDeCategoria(idCategoria) {
-        // Seleccionar tab subcategorías
-        cambiarTabConfig('subcategorias');
-        
-        // Establecer filtro
+    async function verSubcategoriasDeCategoria(idCategoria) {
+        // Seleccionar tab subcategorías y esperar a que cargue
+        await cambiarTabConfig('subcategorias');
+
+        // Ahora que los datos están cargados, establecer filtro
         const select = document.getElementById('filtroCategoriaSub');
         select.value = idCategoria;
-        
-        // Cargar (el change no se dispara solo al cambiar value programáticamente)
+
+        // Cargar subcategorías con el filtro aplicado
         cargarSubcategoriasPorCategoria();
     }
 

@@ -52,6 +52,9 @@ class Database
             $this->connection->exec("SET collation_database = 'utf8mb4_unicode_ci'");
             $this->connection->exec("SET collation_server = 'utf8mb4_unicode_ci'");
 
+            // ⭐ CONFIGURAR ZONA HORARIA DE MYSQL A BOLIVIA (UTC-4)
+            $this->connection->exec("SET time_zone = '-04:00'");
+
             // ⭐ ESTO ES CRÍTICO - Eliminar strict mode que causa problemas
             $this->connection->exec("SET SESSION sql_mode = ''");
 

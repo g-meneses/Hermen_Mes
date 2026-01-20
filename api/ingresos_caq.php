@@ -6,16 +6,16 @@
  */
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Modo producción
 
 ob_start();
-// ob_clean(); // Comentado temporalmente para debug
+ob_clean();
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// ini_set('display_errors', 0); // Comentado para debug
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
 try {
@@ -167,7 +167,7 @@ try {
                     $_GET['tipo_movimiento'] = $tipo;
                     $_GET['modo'] = 'preview';
 
-                    ob_clean();
+                    // No usar ob_clean aquí, el archivo incluido lo maneja
                     include 'obtener_siguiente_numero.php';
                     exit();
                     break;

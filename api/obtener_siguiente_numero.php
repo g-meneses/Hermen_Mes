@@ -5,17 +5,77 @@
  */
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0); // Desactivado para producción
 
-ob_start();
-// ob_clean(); // Comentado temporalmente para debug
-header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET');
-header('Access-Control-Allow-Headers: Content-Type');
+// Solo manejar buffer y headers si no estamos siendo incluidos
+if (!headers_sent()) {
+    ob_start();
+    // ob_clean(); // Comentado temporalmente para debug
+    header('Content-Type: application/json; charset=utf-8');
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET');
+    header('Access-Control-Allow-Headers: Content-Type');
+}
 
 // ini_set('display_errors', 0); // Comentado para debug
 error_reporting(E_ALL);
+
+// Definir función ANTES del try-catch para que esté disponible
+if (!function_exists('generarNumeroDocumento')) {
+    function generarNumeroDocumento($db, $tipo, $prefijo, $esPreview = false)
+    {
+        $anio = date('Y');
+        $mes = date('m');
+
+        if ($esPreview) {
+            // MODO PREVIEW: Solo leer, NO actualizar
+            $stmt = $db->prepare("
+                SELECT ultimo_numero FROM secuencias_documento 
+                WHERE tipo_documento COLLATE utf8mb4_unicode_ci = ? 
+                AND prefijo COLLATE utf8mb4_unicode_ci = ? 
+                AND anio = ? 
+                AND mes = ?
+            ");
+            $stmt->execute([$tipo, $prefijo, $anio, $mes]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Si existe, devolver siguiente sin actualizar
+            // Si no existe, devolver 1 (será el primero cuando se confirme)
+            $siguiente = $row ? ($row['ultimo_numero'] + 1) : 1;
+
+        } else {
+            // MODO COMMIT: Leer con lock y actualizar
+            $stmt = $db->prepare("
+                SELECT ultimo_numero FROM secuencias_documento 
+                WHERE tipo_documento COLLATE utf8mb4_unicode_ci = ? 
+                AND prefijo COLLATE utf8mb4_unicode_ci = ? 
+                AND anio = ? 
+                AND mes = ?
+                FOR UPDATE
+            ");
+            $stmt->execute([$tipo, $prefijo, $anio, $mes]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row) {
+                $siguiente = $row['ultimo_numero'] + 1;
+                $stmtUp = $db->prepare("
+                    UPDATE secuencias_documento SET ultimo_numero = ?
+                    WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ?
+                ");
+                $stmtUp->execute([$siguiente, $tipo, $prefijo, $anio, $mes]);
+            } else {
+                $siguiente = 1;
+                $stmtIn = $db->prepare("
+                    INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero)
+                    VALUES (?, ?, ?, ?, 1)
+                ");
+                $stmtIn->execute([$tipo, $prefijo, $anio, $mes]);
+            }
+        }
+
+        return $prefijo . '-' . $anio . $mes . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
+    }
+}
 
 try {
     // Solo cargar database si no está ya cargada (cuando se llama directamente)
@@ -86,7 +146,7 @@ try {
     $esPreview = (strtolower($modo) === 'preview');
     $numero = generarNumeroDocumento($db, $tipoDoc, $prefijo, $esPreview);
 
-    ob_clean();
+    // ob_clean(); // Comentado para evitar conflictos cuando se incluye
     echo json_encode([
         'success' => true,
         'numero' => $numero,
@@ -101,74 +161,16 @@ try {
 
 } catch (PDOException $e) {
     error_log("Error en obtener_siguiente_numero.php: " . $e->getMessage());
-    ob_clean();
+    // ob_clean(); // Comentado para evitar conflictos
     echo json_encode([
         'success' => false,
         'message' => 'Error de base de datos: ' . $e->getMessage()
     ]);
 } catch (Exception $e) {
     error_log("Error en obtener_siguiente_numero.php: " . $e->getMessage());
-    ob_clean();
+    // ob_clean(); // Comentado para evitar conflictos
     echo json_encode([
         'success' => false,
         'message' => 'Error: ' . $e->getMessage()
     ]);
 }
-
-
-if (!function_exists('generarNumeroDocumento')) {
-    function generarNumeroDocumento($db, $tipo, $prefijo, $esPreview = false)
-    {
-        $anio = date('Y');
-        $mes = date('m');
-
-        if ($esPreview) {
-            // MODO PREVIEW: Solo leer, NO actualizar
-            $stmt = $db->prepare("
-                SELECT ultimo_numero FROM secuencias_documento 
-                WHERE tipo_documento COLLATE utf8mb4_unicode_ci = ? 
-                AND prefijo COLLATE utf8mb4_unicode_ci = ? 
-                AND anio = ? 
-                AND mes = ?
-            ");
-            $stmt->execute([$tipo, $prefijo, $anio, $mes]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            // Si existe, devolver siguiente sin actualizar
-            // Si no existe, devolver 1 (será el primero cuando se confirme)
-            $siguiente = $row ? ($row['ultimo_numero'] + 1) : 1;
-
-        } else {
-            // MODO COMMIT: Leer con lock y actualizar
-            $stmt = $db->prepare("
-                SELECT ultimo_numero FROM secuencias_documento 
-                WHERE tipo_documento COLLATE utf8mb4_unicode_ci = ? 
-                AND prefijo COLLATE utf8mb4_unicode_ci = ? 
-                AND anio = ? 
-                AND mes = ?
-                FOR UPDATE
-            ");
-            $stmt->execute([$tipo, $prefijo, $anio, $mes]);
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($row) {
-                $siguiente = $row['ultimo_numero'] + 1;
-                $stmtUp = $db->prepare("
-                    UPDATE secuencias_documento SET ultimo_numero = ?
-                    WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ?
-                ");
-                $stmtUp->execute([$siguiente, $tipo, $prefijo, $anio, $mes]);
-            } else {
-                $siguiente = 1;
-                $stmtIn = $db->prepare("
-                    INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero)
-                    VALUES (?, ?, ?, ?, 1)
-                ");
-                $stmtIn->execute([$tipo, $prefijo, $anio, $mes]);
-            }
-        }
-
-        return $prefijo . '-' . $anio . $mes . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
-    }
-}
-

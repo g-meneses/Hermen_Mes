@@ -585,7 +585,6 @@ try {
                     $_GET['tipo_movimiento'] = $tipo;
                     $_GET['modo'] = 'preview';
 
-                    ob_clean();
                     include 'obtener_siguiente_numero.php';
                     exit();
                     break;

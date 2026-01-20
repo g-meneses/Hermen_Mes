@@ -2050,4 +2050,58 @@ require_once '../../includes/header.php';
 <script src="js/devolucion_proveedor.js"></script>
 <script src="js/historial_movimientos.js"></script>
 <script src="js/kardex_mp.js"></script>
+<!-- Inyectar fecha del servidor como variable global -->
+<script>
+    window.FECHA_SERVIDOR = '<?php echo date("Y-m-d"); ?>';
+    console.log('📅 Fecha del servidor inyectada:', window.FECHA_SERVIDOR);
+</script>
+<!-- Control de Fechas - INLINE para evitar problemas de caché -->
+<script>
+(function() {
+    'use strict';
+    
+    const FECHA_SERVIDOR = window.FECHA_SERVIDOR || '<?php echo date("Y-m-d"); ?>';
+    console.log('🚀 Control de fechas iniciado con fecha:', FECHA_SERVIDOR);
+    
+    function configurarInputFecha(input) {
+        if (!input.value || input.value === '' || input.value > FECHA_SERVIDOR) {
+            input.value = FECHA_SERVIDOR;
+        }
+        input.setAttribute('max', FECHA_SERVIDOR);
+        input.setAttribute('readonly', 'readonly');
+        input.style.backgroundColor = '#e9ecef';
+        input.style.cursor = 'not-allowed';
+        input.setAttribute('title', 'Fecha automática del servidor: ' + FECHA_SERVIDOR);
+        console.log('✅ Campo configurado:', input.id || input.name, '=', FECHA_SERVIDOR);
+    }
+    
+    function configurarTodos() {
+        const inputs = document.querySelectorAll('input[type="date"]');
+        console.log('🔍 Encontrados', inputs.length, 'campos de fecha');
+        inputs.forEach(configurarInputFecha);
+    }
+    
+    // Observador para campos dinámicos
+    const observer = new MutationObserver(() => {
+        document.querySelectorAll('input[type="date"]').forEach(input => {
+            if (!input.hasAttribute('data-fecha-configurada')) {
+                input.setAttribute('data-fecha-configurada', 'true');
+                configurarInputFecha(input);
+            }
+        });
+    });
+    
+    function init() {
+        configurarTodos();
+        observer.observe(document.body, { childList: true, subtree: true });
+        setInterval(configurarTodos, 3000);
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
 <?php require_once '../../includes/footer.php'; ?>

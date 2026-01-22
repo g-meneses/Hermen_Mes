@@ -1356,19 +1356,74 @@ require_once '../../includes/header.php';
             <form id="formItem">
                 <input type="hidden" id="itemId">
                 <div class="form-row">
-                    <div class="form-group"><label>Código *</label><input type="text" id="itemCodigo" required></div>
+                    <div class="form-group"><label>Categoría *</label><select id="itemCategoria_modal" required
+                            onchange="actualizarCodigoSugerido()"></select></div>
+                    <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria_modal"
+                            onchange="actualizarCodigoSugerido()">
+                            <option value="0">Sin subcategoría</option>
+                        </select></div>
+                </div>
+
+                <!-- NUEVA SECCIÓN: Preview del código -->
+                <div class="codigo-preview-section" id="codigoPreviewSection"
+                    style="display:none; margin-bottom: 20px; padding: 15px; background: #e8f4fd; border-left: 4px solid #2196F3; border-radius: 8px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.85rem; color: #1976D2; font-weight: 600;">
+                            <i class="fas fa-lightbulb"></i> Código sugerido:
+                        </span>
+                        <button type="button" class="btn-link" onclick="toggleModoManual()"
+                            style="font-size: 0.75rem; color: #1976D2; border: none; background: none; cursor: pointer; text-decoration: underline;">
+                            <span id="btnToggleTexto">Editar manualmente</span>
+                        </button>
+                    </div>
+
+                    <div id="codigoAutomaticoView">
+                        <div
+                            style="font-size: 1.3rem; font-weight: 700; color: #0D47A1; letter-spacing: 1px; margin-bottom: 8px;">
+                            <span id="previewPrefijo">EMP-ETQ-TR-</span><span id="previewSufijo"
+                                style="color: #2196F3;">001</span>
+                        </div>
+                        <div style="font-size: 0.7rem; color: #666; display: flex; gap: 10px;">
+                            <span>Tipo: <strong id="labelTipo">EMP</strong></span>
+                            <span>•</span>
+                            <span>Cat: <strong id="labelCat">ETQ</strong></span>
+                            <span>•</span>
+                            <span>Subcat: <strong id="labelSubcat">TR</strong></span>
+                            <span>•</span>
+                            <span>Nº: <strong id="labelNum">001</strong></span>
+                        </div>
+                    </div>
+
+                    <div id="codigoManualView" style="display:none;">
+                        <input type="text" id="itemCodigoManual" class="form-control" placeholder="EMP-ETQ-TR-001"
+                            style="font-family: monospace; font-size: 1.1rem; font-weight: 600; width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <div style="font-size: 0.75rem; color: #666; margin-top: 5px;">
+                            💡 Formato sugerido: <code id="formatoSugerido">EMP-ETQ-TR-XXX</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campo de sufijo personalizado -->
+                <div class="form-row" id="sufijoPersonalizadoRow" style="display:none;">
+                    <div class="form-group">
+                        <label>Sufijo del código <small style="color: #666;">(opcional - déjalo como está o
+                                personaliza)</small></label>
+                        <input type="text" id="itemSufijo" placeholder="001" maxlength="20"
+                            oninput="actualizarCodigoFinal()">
+                        <small style="display: block; margin-top: 5px; color: #666;">Ejemplos: <code>001</code>,
+                            <code>AZ-001</code>, <code>AZUL-001</code></small>
+                    </div>
+                </div>
+
+                <!-- Campo oculto para el código final -->
+                <input type="hidden" id="itemCodigo">
+
+                <div class="form-row">
                     <div class="form-group"><label>Nombre *</label><input type="text" id="itemNombre" required></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Categoría *</label><select id="itemCategoria" required
-                            onchange="cargarSubcategoriasItem()"></select></div>
-                    <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria">
-                            <option value="">Sin subcategoría</option>
-                        </select></div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group"><label>Stock Actual</label><input type="number" id="itemStockActual"
-                            step="0.01" value="0"></div>
+                    <!-- Stock Actual ELIMINADO para centralizar ingreso por módulo de Ingresos -->
                     <div class="form-group"><label>Stock Mínimo</label><input type="number" id="itemStockMinimo"
                             step="0.01" value="0"></div>
                 </div>
@@ -1420,7 +1475,7 @@ require_once '../../includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Fecha</label>
-                    <input type="date" id="ingresoFecha">
+                    <input type="date" id="ingresoFecha" max="<?php echo date('Y-m-d'); ?>">
                 </div>
             </div>
 
@@ -1610,7 +1665,7 @@ require_once '../../includes/header.php';
                 </div>
                 <div class="form-group">
                     <label>Fecha</label>
-                    <input type="date" id="salidaFecha">
+                    <input type="date" id="salidaFecha" max="<?php echo date('Y-m-d'); ?>">
                 </div>
             </div>
 

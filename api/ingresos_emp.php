@@ -1,24 +1,34 @@
 <?php
 /**
- * API para Gestión de Ingresos - Material de Empaque (EMP)
- * ID de Inventario: 3
+ * API de Ingresos de Material de Empaque (EMP)
+ * Sistema MES Hermen Ltda.
+ * Adaptado del módulo de Colorantes y Auxiliares Químicos
  */
 
-require_once '../config/database.php';
-require_once '../config/auth.php';
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Modo producción
 
-header('Content-Type: application/json');
+ob_start();
+ob_clean();
+header('Content-Type: application/json; charset=utf-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+header('Access-Control-Allow-Headers: Content-Type');
 
-if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'message' => 'No autorizado']);
-    exit;
-}
-
-$TIPO_INVENTARIO_EMP = 3; // ID fijo para Material de Empaque
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
 
 try {
+    require_once '../config/database.php';
+
+    if (!isLoggedIn()) {
+        echo json_encode(['success' => false, 'message' => 'No autorizado']);
+        exit();
+    }
+
     $db = getDB();
     $method = $_SERVER['REQUEST_METHOD'];
+    $TIPO_INVENTARIO_EMP = 3; // ID fijo para Material de Empaque
 
     switch ($method) {
         case 'GET':
@@ -26,30 +36,125 @@ try {
 
             switch ($action) {
                 case 'list':
+                    // Listar documentos de ingreso
                     $desde = $_GET['desde'] ?? date('Y-m-01');
-                    $hasta = $_GET['hasta'] ?? date('Y-m-t');
+                    $hasta = $_GET['hasta'] ?? date('Y-m-d');
+                    $proveedor = $_GET['proveedor'] ?? null;
+                    $estado = $_GET['estado'] ?? 'todos';
 
-                    $stmt = $db->prepare("SELECT 
+                    // Consulta directa sin depender de la vista
+                    $sql = "SELECT 
                                 d.id_documento,
-                                d.fecha_documento,
                                 d.numero_documento,
+                                d.fecha_documento,
                                 d.tipo_documento,
+                                d.tipo_ingreso,
+                                d.id_tipo_ingreso,
+                                d.id_tipo_inventario,
+                                d.id_proveedor,
+                                p.codigo AS proveedor_codigo,
+                                p.razon_social AS proveedor_nombre,
+                                p.nombre_comercial AS proveedor_comercial,
+                                p.tipo AS proveedor_tipo,
+                                d.referencia_externa,
+                                d.con_factura,
+                                d.moneda,
+                                d.subtotal,
+                                d.iva,
+                                d.total,
                                 d.estado,
-                                d.total_documento,
-                                d.creado_por,
-                                u.nombre_usuario as usuario,
-                                p.nombre_proveedor
+                                d.observaciones,
+                                d.fecha_creacion
                             FROM documentos_inventario d
                             LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
-                            LEFT JOIN usuarios u ON d.creado_por = u.id_usuario
                             WHERE d.tipo_documento = 'INGRESO' 
                             AND d.id_tipo_inventario = ?
-                            AND d.fecha_documento BETWEEN ? AND ?
-                            ORDER BY d.fecha_documento DESC, d.created_at DESC");
-                    $stmt->execute([$TIPO_INVENTARIO_EMP, $desde, $hasta]);
+                            AND d.fecha_documento BETWEEN ? AND ?";
+                    $params = [$TIPO_INVENTARIO_EMP, $desde, $hasta];
+
+                    $tipoFilter = $_GET['tipo'] ?? null;
+                    if ($tipoFilter && $tipoFilter !== 'INGRESO') {
+                        // Mapear filtros de frontend a base de datos si es necesario
+                        $mapaFiltros = [
+                            'DEVOLUCION_PRODUCCION' => 'DEVOLUCION_PROD',
+                            'AJUSTE_POSITIVO' => 'AJUSTE_POS',
+                            'INGRESO_INICIAL' => 'INICIAL'
+                        ];
+                        $valFiltro = $mapaFiltros[$tipoFilter] ?? $tipoFilter;
+
+                        $sql .= " AND (d.tipo_ingreso = ? OR d.id_tipo_ingreso = ?)";
+                        $params[] = $valFiltro;
+                        $params[] = $valFiltro; // En caso de que se pase un ID
+                    }
+
+                    if ($proveedor) {
+                        $sql .= " AND d.id_proveedor = ?";
+                        $params[] = $proveedor;
+                    }
+
+                    if ($estado !== 'todos') {
+                        $sql .= " AND d.estado = ?";
+                        $params[] = $estado;
+                    }
+
+                    $sql .= " ORDER BY d.fecha_documento DESC, d.id_documento DESC";
+
+                    $stmt = $db->prepare($sql);
+                    $stmt->execute($params);
                     $documentos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-                    echo json_encode(['success' => true, 'data' => $documentos]);
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'documentos' => $documentos,
+                        'total' => count($documentos)
+                    ]);
+                    break;
+
+                case 'get':
+                    // Obtener un documento con su detalle
+                    $id = $_GET['id'] ?? null;
+                    if (!$id) {
+                        echo json_encode(['success' => false, 'message' => 'ID requerido']);
+                        exit();
+                    }
+
+                    // Documento principal
+                    $stmt = $db->prepare("
+                        SELECT d.*, p.razon_social, p.nombre_comercial
+                        FROM documentos_inventario d
+                        LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
+                        WHERE d.id_documento = ? AND d.id_tipo_inventario = ?
+                    ");
+                    $stmt->execute([$id, $TIPO_INVENTARIO_EMP]);
+                    $documento = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$documento) {
+                        echo json_encode(['success' => false, 'message' => 'Documento no encontrado']);
+                        exit();
+                    }
+
+                    // Detalle del documento
+                    $stmtDet = $db->prepare("
+                        SELECT 
+                            dd.*,
+                            i.codigo AS producto_codigo,
+                            i.nombre AS producto_nombre,
+                            um.abreviatura AS unidad
+                        FROM documentos_inventario_detalle dd
+                        JOIN inventarios i ON dd.id_inventario = i.id_inventario
+                        LEFT JOIN unidades_medida um ON i.id_unidad = um.id_unidad
+                        WHERE dd.id_documento = ?
+                    ");
+                    $stmtDet->execute([$id]);
+                    $detalle = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'documento' => $documento,
+                        'detalle' => $detalle
+                    ]);
                     break;
 
                 case 'siguiente_numero':
@@ -62,248 +167,447 @@ try {
                     $_GET['tipo_movimiento'] = $tipo;
                     $_GET['modo'] = 'preview';
 
+                    // No usar ob_clean aquí, el archivo incluido lo maneja
                     include 'obtener_siguiente_numero.php';
                     exit();
                     break;
 
-                case 'get':
-                    $id = $_GET['id'] ?? null;
-                    if (!$id)
-                        throw new Exception("ID de documento requerido");
-
-                    // Obtener cabecera
-                    $stmt = $db->prepare("SELECT d.*, p.nombre_proveedor, u.nombre_usuario 
-                                        FROM documentos_inventario d
-                                        LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
-                                        LEFT JOIN usuarios u ON d.creado_por = u.id_usuario
-                                        WHERE d.id_documento = ? AND d.id_tipo_inventario = ?");
-                    $stmt->execute([$id, $TIPO_INVENTARIO_EMP]);
-                    $doc = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                    if (!$doc)
-                        throw new Exception("Documento no encontrado o no corresponde a EMP");
-
-                    // Obtener líneas usando movimientos_inventario
-                    $stmtLines = $db->prepare("SELECT 
-                                            m.id_movimiento,
-                                            m.id_inventario,
-                                            m.cantidad,
-                                            m.costo_unitario,
-                                            m.costo_total,
-                                            i.codigo,
-                                            i.nombre,
-                                            u.abreviatura as unidad
-                                        FROM movimientos_inventario m
-                                        JOIN inventario i ON m.id_inventario = i.id_inventario
-                                        LEFT JOIN unidades_medida u ON i.id_unidad_medida = u.id_unidad_medida
-                                        WHERE m.documento_id = ? AND m.documento_tipo = 'INGRESO' AND m.documento_numero = ?");
-                    $stmtLines->execute([$id, $doc['numero_documento']]);
-                    $lineas = $stmtLines->fetchAll(PDO::FETCH_ASSOC);
-
-                    echo json_encode([
-                        'success' => true,
-                        'documento' => $doc,
-                        'lineas' => $lineas
-                    ]);
-                    break;
-
                 default:
-                    throw new Exception("Acción no válida");
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Acción no válida']);
             }
             break;
 
         case 'POST':
-            $input = json_decode(file_get_contents('php://input'), true);
-            $action = $input['action'] ?? 'crear';
+            $data = json_decode(file_get_contents('php://input'), true);
+            $action = $data['action'] ?? 'crear';
 
             switch ($action) {
                 case 'crear':
-                    $tipoIngreso = $input['id_tipo_ingreso'] ?? null; // ID del tipo de ingreso (config)
-                    // Nota: El frontend manda 'id_tipo_ingreso' como INT, pero usamos códigos para prefijo?
-                    // Asumiremos que el frontend manda el CÓDIGO o que tenemos un mapa.
-                    // Si el frontend manda ID, necesitamos convertirlo a CÓDIGO (COMPRA, INICIAL, etc)
-                    // Para simplificar y dado el request usuario, asumiremos que identificamos el tipo.
-                    // En materias_primas.js se usa tiposIngresoConfig que tiene el 'codigo'.
-                    // Ajuste: Vamos a requerir el 'codigo_tipo' o deducirlo. 
-                    // Si el input trae 'tipo_ingreso' (string) como 'COMPRA', usaremos eso.
+                    // Validaciones
+                    $idTipoIngreso = $data['id_tipo_ingreso'] ?? null;
+                    $tipoIngreso = $data['tipo_ingreso'] ?? null;
 
-                    // Mapeo temporal si viene ID (Esto debería venir del front idealmente, pero...)
-                    $tipoCodigo = 'COMPRA'; // Default
-                    // Buscar código en base de datos si es necesario, o confiar en un param extra
-                    // Por ahora usaremos 'COMPRA' si no se especifica, pero debe ser dinámico.
-                    // En ingresos_mp.php vimos $tipoIngreso usado directamente en el switch de prefijos.
-                    // Asumiendo que $input['id_tipo_ingreso'] es el CÓDIGO (string) o Texto.
-
-                    // REVISIÓN: En ingresos_mp.php $tipoIngreso venía de ?? null.
-                    // Si miramos el JS: datosIngreso.id_tipo_ingreso = tipoId.
-
-                    // ERROR POTENCIAL: id_tipo_ingreso es un INT.
-                    // Necesitamos obtener el código ('COMPRA', etc) de la tabla tipos_ingreso_config o similar?
-                    // O el frontend debería mandarlo.
-                    // Para no romper nada, haremos una consulta rápida del código si es numérico.
-
-                    if (is_numeric($tipoIngreso)) {
-                        $stmtTipo = $db->prepare("SELECT codigo FROM tipos_ingreso_config WHERE id_tipo_ingreso = ?");
-                        $stmtTipo->execute([$tipoIngreso]);
-                        $tipoData = $stmtTipo->fetch(PDO::FETCH_ASSOC);
-                        $tipoCodigoString = $tipoData['codigo'] ?? 'OTRO';
-                    } else {
-                        $tipoCodigoString = $tipoIngreso ?? 'OTRO';
+                    // Si no viene tipo_ingreso pero sí id_tipo_ingreso, deducirlo
+                    if (!$tipoIngreso && $idTipoIngreso) {
+                        // Mapeo de IDs a tipos (según base de datos)
+                        $mapaTipos = [
+                            1 => 'COMPRA',
+                            2 => 'INICIAL',
+                            3 => 'DEVOLUCION_PROD',
+                            4 => 'AJUSTE_POS'
+                        ];
+                        $tipoIngreso = $mapaTipos[$idTipoIngreso] ?? 'COMPRA';
                     }
 
-                    $fecha = $input['fecha'] ?? date('Y-m-d');
-                    $observaciones = $input['observaciones'] ?? '';
-                    $lineas = $input['lineas'] ?? [];
+                    // Por defecto COMPRA
+                    if (!$tipoIngreso) {
+                        $tipoIngreso = 'COMPRA';
+                    }
 
-                    if (empty($lineas))
-                        throw new Exception("No hay líneas en el ingreso");
+                    // ✅ Validación de fecha futura
+                    $fecha = $data['fecha'] ?? date('Y-m-d');
+                    if ($fecha > date('Y-m-d')) {
+                        echo json_encode(['success' => false, 'message' => 'No se permiten fechas futuras']);
+                        exit();
+                    }
+
+                    // Solo requiere proveedor obligatoriamente para COMPRAS
+                    if ($tipoIngreso === 'COMPRA') {
+                        if (empty($data['id_proveedor']) || $data['id_proveedor'] === '' || $data['id_proveedor'] === null) {
+                            echo json_encode(['success' => false, 'message' => 'Seleccione un proveedor']);
+                            exit();
+                        }
+                    }
+
+                    if (empty($data['lineas']) || count($data['lineas']) === 0) {
+                        echo json_encode(['success' => false, 'message' => 'Agregue al menos una línea']);
+                        exit();
+                    }
 
                     $db->beginTransaction();
 
                     try {
-                        // Smart Prefix Logic
+                        // Generar número de documento con Prefijo Inteligente
                         $codigosTipo = [
                             'COMPRA' => 'C',
                             'INICIAL' => 'I',
                             'DEVOLUCION_PROD' => 'D',
                             'AJUSTE_POS' => 'A'
                         ];
-                        $codigoLetra = $codigosTipo[$tipoCodigoString] ?? 'X';
-                        $prefijo = "IN-EMP-$codigoLetra";
+                        $codigoTipo = $codigosTipo[$tipoIngreso] ?? 'X';
+                        $prefijo = "IN-EMP-$codigoTipo";
 
                         $numeroDoc = generarNumeroDocumento($db, 'INGRESO', $prefijo);
 
-                        // Calcular totales
-                        $totalDoc = 0;
-                        foreach ($lineas as $l) {
-                            $totalDoc += ($l['cantidad'] * $l['costo_unitario']);
+                        // Calcular totales desde las líneas
+                        $totalDocumento = 0;
+                        $totalNeto = 0;
+                        $iva = 0;
+                        $conFactura = $data['con_factura'] ?? false;
+
+                        foreach ($data['lineas'] as $linea) {
+                            $subtotalLinea = floatval($linea['subtotal'] ?? ($linea['valor_total_item'] ?? ($linea['cantidad'] * ($linea['costo_unitario'] ?? 0))));
+                            $totalDocumento += $subtotalLinea;
+
+                            if ($conFactura) {
+                                // Neto = Subtotal * 0.87
+                                $netoLinea = $subtotalLinea * 0.87;
+                                $totalNeto += $netoLinea;
+                                $iva += $subtotalLinea * 0.13;
+                            } else {
+                                $totalNeto += $subtotalLinea;
+                            }
                         }
 
-                        // Insertar Documento
-                        $stmtDoc = $db->prepare("INSERT INTO documentos_inventario (
-                            id_tipo_inventario, tipo_documento, numero_documento, fecha_documento, 
-                            observaciones, estado, total_documento, creado_por, created_at,
-                            id_proveedor, referencia, con_factura
-                        ) VALUES (?, 'INGRESO', ?, ?, ?, 'CONFIRMADO', ?, ?, NOW(), ?, ?, ?)");
+                        // Insertar documento
+                        $stmt = $db->prepare("
+                            INSERT INTO documentos_inventario (
+                                tipo_documento, tipo_ingreso, id_tipo_ingreso, 
+                                numero_documento, fecha_documento,
+                                id_tipo_inventario, id_proveedor, referencia_externa,
+                                con_factura, moneda, subtotal, iva, total,
+                                observaciones, estado, creado_por
+                            ) VALUES (
+                                'INGRESO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
+                            )
+                        ");
 
-                        $idProveedor = $input['id_proveedor'] ?? null;
-                        $referencia = $input['referencia'] ?? null;
-                        $conFactura = $input['con_factura'] ?? 0;
-
-                        $stmtDoc->execute([
-                            $TIPO_INVENTARIO_EMP,
-                            $numeroDoc,
-                            $fecha,
-                            $observaciones,
-                            $totalDoc,
-                            $_SESSION['user_id'] ?? 1,
-                            $idProveedor,
-                            $referencia,
-                            $conFactura
+                        $stmt->execute([
+                            $tipoIngreso,           // 1
+                            $idTipoIngreso,         // 2
+                            $numeroDoc,             // 3
+                            $fecha,                 // 4
+                            $TIPO_INVENTARIO_EMP,   // 5
+                            (!empty($data['id_proveedor']) && $data['id_proveedor'] !== '') ? $data['id_proveedor'] : null,  // 6
+                            $data['referencia'] ?? null,  // 7
+                            $conFactura ? 1 : 0,    // 8
+                            $data['moneda'] ?? 'BOB',  // 9
+                            $totalNeto,             // 10
+                            $iva,                   // 11
+                            $totalDocumento,        // 12
+                            $data['observaciones'] ?? null,  // 13
+                            $_SESSION['user_id'] ?? null     // 14
                         ]);
 
                         $idDocumento = $db->lastInsertId();
 
-                        // Insertar Movimientos
-                        $stmtMov = $db->prepare("INSERT INTO movimientos_inventario (
-                            id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento,
-                            codigo_movimiento, documento_tipo, documento_numero, documento_id,
-                            cantidad, costo_unitario, costo_total,
-                            stock_anterior, stock_posterior,
-                            costo_promedio_anterior, costo_promedio_posterior,
-                            estado, creado_por
-                        ) VALUES (?, ?, NOW(), 'ENTRADA_COMPRA', ?, 'INGRESO', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)");
+                        // Generar código de movimiento base
+                        $codigoMovBase = generarCodigoMovimiento($db);
 
-                        foreach ($lineas as $l) {
-                            // Obtener datos actuales del producto (CPP, Stock)
-                            $stmtProd = $db->prepare("SELECT stock_actual, costo_promedio FROM inventario WHERE id_inventario = ?");
-                            $stmtProd->execute([$l['id_inventario']]);
-                            $prod = $stmtProd->fetch(PDO::FETCH_ASSOC);
+                        // Insertar líneas y actualizar stock
+                        $stmtLinea = $db->prepare("
+                            INSERT INTO documentos_inventario_detalle (
+                                id_documento, id_inventario, cantidad, costo_unitario, costo_con_iva, subtotal
+                            ) VALUES (?, ?, ?, ?, ?, ?)
+                        ");
 
-                            $stockAnt = $prod['stock_actual'] ?? 0;
-                            $cppAnt = $prod['costo_promedio'] ?? 0;
+                        $stmtStock = $db->prepare("
+                            UPDATE inventarios 
+                            SET stock_actual = ?,
+                                costo_promedio = ?,
+                                costo_unitario = ?
+                            WHERE id_inventario = ?
+                        ");
 
-                            $cantidad = $l['cantidad'];
-                            $costoUnit = $l['costo_unitario'];
-                            $costoTotal = $cantidad * $costoUnit;
+                        // Determinar tipo de movimiento según el tipo de ingreso
+                        $tipoMovimiento = ($tipoIngreso === 'INICIAL') ? 'ENTRADA_AJUSTE' : 'ENTRADA_COMPRA';
+                        $tipoDocumento = ($tipoIngreso === 'INICIAL') ? 'INVENTARIO INICIAL' : 'FACTURA';
 
-                            $stockNuevo = $stockAnt + $cantidad;
-                            // Nuevo CPP Ponderado
-                            $nuevoCpp = (($stockAnt * $cppAnt) + $costoTotal) / $stockNuevo;
+                        $stmtMovimiento = $db->prepare("
+                            INSERT INTO movimientos_inventario (
+                                id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento, 
+                                codigo_movimiento, documento_tipo, documento_numero, documento_id,
+                                cantidad, costo_unitario, costo_total,
+                                stock_anterior, stock_posterior,
+                                costo_promedio_anterior, costo_promedio_posterior,
+                                estado, creado_por
+                            ) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
+                        ");
 
-                            $codMov = generarCodigoMovimiento($db);
+                        $lineaNumero = 1;
+                        foreach ($data['lineas'] as $linea) {
+                            $cantidad = floatval($linea['cantidad']);
+                            $subtotalLinea = floatval($linea['subtotal'] ?? ($linea['valor_total_item'] ?? ($linea['cantidad'] * ($linea['costo_unitario'] ?? 0))));
+                            $costoConIva = $cantidad > 0 ? $subtotalLinea / $cantidad : 0;
+                            // Costo sin IVA = Costo Bruto * 0.87
+                            $costoUnit = $conFactura ? $costoConIva * 0.87 : $costoConIva;
 
-                            $stmtMov->execute([
-                                $l['id_inventario'],
+                            // Insertar línea
+                            $stmtLinea->execute([
+                                $idDocumento,
+                                $linea['id_inventario'],
+                                $cantidad,
+                                $costoUnit,       // Costo sin IVA (para inventario)
+                                $costoConIva,     // Costo bruto (del documento)
+                                $subtotalLinea    // Subtotal del documento
+                            ]);
+
+                            // Obtener stock y CPP anterior
+                            $stmtStockAnt = $db->prepare("
+                                SELECT stock_actual, costo_promedio 
+                                FROM inventarios 
+                                WHERE id_inventario = ?
+                                FOR UPDATE
+                            ");
+                            $stmtStockAnt->execute([$linea['id_inventario']]);
+                            $datosAnt = $stmtStockAnt->fetch(PDO::FETCH_ASSOC);
+                            $stockAnterior = floatval($datosAnt['stock_actual'] ?? 0);
+                            $cppAnterior = floatval($datosAnt['costo_promedio'] ?? 0);
+
+                            // Calcular nuevo CPP con 4 decimales
+                            $stockNuevo = $stockAnterior + $cantidad;
+                            if ($stockAnterior == 0) {
+                                $cppNuevo = $costoUnit;
+                            } else {
+                                $cppNuevo = (($stockAnterior * $cppAnterior) + ($cantidad * $costoUnit)) / $stockNuevo;
+                            }
+                            $cppNuevo = round($cppNuevo, 4); // ✅ 4 decimales de precisión
+
+                            // Actualizar stock e inventario (usar costo sin IVA para el inventario)
+                            $stmtStock->execute([
+                                $stockNuevo,
+                                $cppNuevo,
+                                $costoUnit,
+                                $linea['id_inventario']
+                            ]);
+
+                            // Generar código de movimiento único para cada línea
+                            if ($lineaNumero == 1) {
+                                $codigoMovimiento = $codigoMovBase;
+                            } else {
+                                $codigoMovimiento = generarCodigoMovimiento($db);
+                            }
+
+                            // Registrar en movimientos_inventario con estado ACTIVO
+                            $costoTotalNeto = $cantidad * $costoUnit;
+                            $stmtMovimiento->execute([
+                                $linea['id_inventario'],
                                 $TIPO_INVENTARIO_EMP,
-                                $codMov,
+                                $tipoMovimiento,
+                                $codigoMovimiento,
+                                $tipoDocumento,
                                 $numeroDoc,
                                 $idDocumento,
                                 $cantidad,
                                 $costoUnit,
-                                $costoTotal,
-                                $stockAnt,
+                                $costoTotalNeto,
+                                $stockAnterior,
                                 $stockNuevo,
-                                $cppAnt,
-                                $nuevoCpp,
-                                $_SESSION['user_id'] ?? 1
+                                $cppAnterior,
+                                $cppNuevo,
+                                $_SESSION['user_id'] ?? null
                             ]);
 
-                            // Actualizar Inventario Maestro
-                            $stmtUpd = $db->prepare("UPDATE inventario SET stock_actual = ?, costo_promedio = ? WHERE id_inventario = ?");
-                            $stmtUpd->execute([$stockNuevo, $nuevoCpp, $l['id_inventario']]);
+                            $lineaNumero++;
                         }
 
                         $db->commit();
-                        echo json_encode(['success' => true, 'message' => "Ingreso EMP $numeroDoc registrado"]);
+
+                        ob_clean();
+                        echo json_encode([
+                            'success' => true,
+                            'message' => "Ingreso $numeroDoc registrado exitosamente",
+                            'id_documento' => $idDocumento,
+                            'numero_documento' => $numeroDoc
+                        ]);
 
                     } catch (Exception $e) {
                         $db->rollBack();
                         throw $e;
                     }
                     break;
+
+                case 'anular':
+                    $id = $data['id_documento'] ?? null;
+                    $motivo = $data['motivo'] ?? 'Sin especificar';
+
+                    if (!$id) {
+                        echo json_encode(['success' => false, 'message' => 'ID requerido']);
+                        exit();
+                    }
+
+                    $db->beginTransaction();
+
+                    try {
+                        // Verificar que el documento existe y está confirmado
+                        $stmt = $db->prepare("SELECT * FROM documentos_inventario WHERE id_documento = ? AND estado = 'CONFIRMADO'");
+                        $stmt->execute([$id]);
+                        $doc = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                        if (!$doc) {
+                            echo json_encode(['success' => false, 'message' => 'Documento no encontrado o ya anulado']);
+                            exit();
+                        }
+
+                        // Obtener detalle para revertir stock
+                        $stmtDet = $db->prepare("SELECT * FROM documentos_inventario_detalle WHERE id_documento = ?");
+                        $stmtDet->execute([$id]);
+                        $lineas = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+
+                        // Revertir stock
+                        $stmtRevert = $db->prepare("UPDATE inventarios SET stock_actual = stock_actual - ? WHERE id_inventario = ?");
+
+                        foreach ($lineas as $linea) {
+                            $stmtRevert->execute([$linea['cantidad'], $linea['id_inventario']]);
+
+                            // Registrar en movimientos_inventario la reversión
+                            $stmtStockAct = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ?");
+                            $stmtStockAct->execute([$linea['id_inventario']]);
+                            $inv = $stmtStockAct->fetch(PDO::FETCH_ASSOC);
+                            $stockActual = floatval($inv['stock_actual'] ?? 0);
+                            $cppActual = floatval($inv['costo_promedio'] ?? 0);
+
+                            $codigoMovAnulacion = generarCodigoMovimiento($db);
+
+                            $stmtMovAnular = $db->prepare("
+                                INSERT INTO movimientos_inventario (
+                                    id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento,
+                                    codigo_movimiento, documento_tipo, documento_numero, documento_id,
+                                    cantidad, costo_unitario, costo_total,
+                                    stock_anterior, stock_posterior,
+                                    costo_promedio_anterior, costo_promedio_posterior,
+                                    observaciones, estado, creado_por
+                                ) VALUES (?, ?, NOW(), 'SALIDA_AJUSTE', ?, 'ANULACION', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
+                            ");
+                            $stmtMovAnular->execute([
+                                $linea['id_inventario'],
+                                $TIPO_INVENTARIO_EMP,
+                                $codigoMovAnulacion,
+                                $doc['numero_documento'] . ' (ANULADO)',
+                                $id,
+                                $linea['cantidad'],
+                                $linea['costo_unitario'],
+                                $linea['subtotal'],
+                                $stockActual + $linea['cantidad'],
+                                $stockActual,
+                                $cppActual,
+                                $cppActual,
+                                'Anulación: ' . $motivo,
+                                $_SESSION['user_id'] ?? null
+                            ]);
+                        }
+
+                        // Marcar documento como anulado
+                        $stmtAnular = $db->prepare("
+                            UPDATE documentos_inventario 
+                            SET estado = 'ANULADO', fecha_anulacion = NOW(), motivo_anulacion = ?, actualizado_por = ?
+                            WHERE id_documento = ?
+                        ");
+                        $stmtAnular->execute([$motivo, $_SESSION['user_id'] ?? null, $id]);
+
+                        $db->commit();
+
+                        ob_clean();
+                        echo json_encode([
+                            'success' => true,
+                            'message' => 'Documento anulado exitosamente'
+                        ]);
+
+                    } catch (Exception $e) {
+                        $db->rollBack();
+                        throw $e;
+                    }
+                    break;
+
+                default:
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Acción no válida']);
             }
             break;
+
+        default:
+            ob_clean();
+            echo json_encode(['success' => false, 'message' => 'Método no permitido']);
     }
+
+} catch (PDOException $e) {
+    error_log("Error en ingresos_emp.php: " . $e->getMessage());
+    ob_clean();
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error de base de datos: ' . $e->getMessage()
+    ]);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    error_log("Error en ingresos_emp.php: " . $e->getMessage());
+    ob_clean();
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error: ' . $e->getMessage()
+    ]);
 }
 
-// Funciones auxiliares copiadas/adaptadas
+/**
+ * Genera el siguiente número de documento
+ */
 function generarNumeroDocumento($db, $tipo, $prefijo)
 {
-    // Lógica idéntica a MP
     $anio = date('Y');
     $mes = date('m');
-    $stmt = $db->prepare("SELECT ultimo_numero FROM secuencias_documento WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ? FOR UPDATE");
+
+    // Buscar o crear secuencia
+    $stmt = $db->prepare("
+        SELECT ultimo_numero FROM secuencias_documento 
+        WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ?
+        FOR UPDATE
+    ");
     $stmt->execute([$tipo, $prefijo, $anio, $mes]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($row) {
-        $sig = $row['ultimo_numero'] + 1;
-        $db->prepare("UPDATE secuencias_documento SET ultimo_numero = ? WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ?")->execute([$sig, $tipo, $prefijo, $anio, $mes]);
+        $siguiente = $row['ultimo_numero'] + 1;
+        $stmtUp = $db->prepare("
+            UPDATE secuencias_documento SET ultimo_numero = ?
+            WHERE tipo_documento = ? AND prefijo = ? AND anio = ? AND mes = ?
+        ");
+        $stmtUp->execute([$siguiente, $tipo, $prefijo, $anio, $mes]);
     } else {
-        $sig = 1;
-        $db->prepare("INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero) VALUES (?, ?, ?, ?, 1)")->execute([$tipo, $prefijo, $anio, $mes]);
+        $siguiente = 1;
+        $stmtIn = $db->prepare("
+            INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero)
+            VALUES (?, ?, ?, ?, 1)
+        ");
+        $stmtIn->execute([$tipo, $prefijo, $anio, $mes]);
     }
-    return $prefijo . '-' . $anio . $mes . '-' . str_pad($sig, 4, '0', STR_PAD_LEFT);
+
+    return $prefijo . '-' . $anio . $mes . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
 }
 
+/**
+ * Genera el siguiente código de movimiento
+ */
 function generarCodigoMovimiento($db)
 {
     $fecha = date('Ymd');
-    // ... misma lógica ...
-    // Simplificado para brevedad, idealmente esto debería estar en un helper compartido, pero por reglas de "sin dependencias ocultas" lo incluyo.
-    $stmt = $db->prepare("SELECT ultimo_numero FROM secuencias_documento WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ? FOR UPDATE");
+
+    // Buscar o crear secuencia de movimientos
+    $stmt = $db->prepare("
+        SELECT ultimo_numero FROM secuencias_documento 
+        WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ?
+        FOR UPDATE
+    ");
     $stmt->execute([date('Y'), date('m')]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
     if ($row) {
-        $sig = $row['ultimo_numero'] + 1;
-        $db->prepare("UPDATE secuencias_documento SET ultimo_numero = ? WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ?")->execute([$sig, 'MOV', date('Y'), date('m')]);
+        $siguiente = $row['ultimo_numero'] + 1;
+        $stmtUp = $db->prepare("
+            UPDATE secuencias_documento SET ultimo_numero = ?
+            WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ?
+        ");
+        $stmtUp->execute([$siguiente, date('Y'), date('m')]);
     } else {
-        $sig = 1;
-        $db->prepare("INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero) VALUES ('MOVIMIENTO', 'MOV', ?, ?, 1)")->execute([date('Y'), date('m')]);
+        $siguiente = 1;
+        $stmtIn = $db->prepare("
+            INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero)
+            VALUES ('MOVIMIENTO', 'MOV', ?, ?, 1)
+        ");
+        $stmtIn->execute([date('Y'), date('m')]);
     }
-    return 'MOV-' . $fecha . '-' . str_pad($sig, 4, '0', STR_PAD_LEFT);
+
+    return 'MOV-' . $fecha . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
 }
+
+ob_end_flush();
+exit();
 ?>

@@ -24,6 +24,10 @@ let productosFiltrados = [];
 let modoConFactura = false;
 let contadorDocIngreso = 0;
 
+// ========== VARIABLES PARA GENERADOR DE CÓDIGOS ==========
+let modoManual = false; // Para controlar modo de edición de código
+const codigoTipo = 'EMP'; // Prefijo fijo para Material de Empaque
+
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', cargarDatos);
 
@@ -385,7 +389,14 @@ async function cargarTodosProductos() {
 function abrirModalNuevoItem() {
     document.getElementById('formItem').reset();
     document.getElementById('itemId').value = '';
-    document.getElementById('modalItemTitulo').textContent = 'Nuevo Item de Materia Prima';
+    document.getElementById('modalItemTitulo').textContent = 'Nuevo Item de Material de Empaque';
+
+    // Resetear estado del generador de códigos
+    modoManual = false;
+    document.getElementById('codigoPreviewSection').style.display = 'none';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+    document.getElementById('itemCodigo').value = '';
+
     poblarSelects();
     document.getElementById('modalItem').classList.add('show');
 }
@@ -411,9 +422,14 @@ async function editarItem(id) {
 }
 
 async function cargarSubcategoriasItem() {
-    const catId = document.getElementById('itemCategoria').value;
-    const subSelect = document.getElementById('itemSubcategoria');
-    subSelect.innerHTML = '<option value="">Sin subcategoría</option>';
+    const catSelect = document.getElementById('itemCategoria_modal');
+    const subSelect = document.getElementById('itemSubcategoria_modal');
+
+    // Verificar que los elementos existan
+    if (!catSelect || !subSelect) return;
+
+    const catId = catSelect.value;
+    subSelect.innerHTML = '<option value="0">Sin subcategoría</option>';
     if (!catId) return;
 
     try {
@@ -424,35 +440,70 @@ async function cargarSubcategoriasItem() {
                 subSelect.innerHTML += `<option value="${s.id_subcategoria}">${s.nombre}</option>`;
             });
         }
-    } catch (e) { console.error('Error:', e); }
+    } catch (e) { console.error('Error cargando subcategorías:', e); }
 }
 
 function poblarSelects() {
-    const catSelect = document.getElementById('itemCategoria');
-    const currentCat = catSelect.value;
-    catSelect.innerHTML = '<option value="">Seleccione...</option>' +
-        categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
-    if (currentCat) catSelect.value = currentCat;
+    // Poblar categorías (usar ID con sufijo _modal)
+    const catSelect = document.getElementById('itemCategoria_modal');
+    if (catSelect) {
+        const currentCat = catSelect.value;
+        catSelect.innerHTML = '<option value="">Seleccione categoría...</option>' +
+            categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
+        if (currentCat) catSelect.value = currentCat;
+    }
 
+    // Poblar subcategorías (usar ID con sufijo _modal)
+    const subcatSelect = document.getElementById('itemSubcategoria_modal');
+    if (subcatSelect) {
+        subcatSelect.innerHTML = '<option value="0">Sin subcategoría</option>';
+    }
+
+    // Poblar unidades
     const unidSelect = document.getElementById('itemUnidad');
-    const currentUnid = unidSelect.value;
-    unidSelect.innerHTML = '<option value="">Seleccione...</option>' +
-        unidades.map(u => `<option value="${u.id_unidad}">${u.nombre} (${u.abreviatura})</option>`).join('');
-    if (currentUnid) unidSelect.value = currentUnid;
+    if (unidSelect) {
+        const currentUnid = unidSelect.value;
+        unidSelect.innerHTML = '<option value="">Seleccione unidad...</option>' +
+            unidades.map(u => `<option value="${u.id_unidad}">${u.nombre} (${u.abreviatura})</option>`).join('');
+        if (currentUnid) unidSelect.value = currentUnid;
+    }
 }
 
 async function guardarItem() {
     const id = document.getElementById('itemId').value;
+
+    // Obtener código según el modo
+    let codigoFinal;
+    if (modoManual) {
+        const inputManual = document.getElementById('itemCodigoManual');
+        codigoFinal = inputManual ? inputManual.value.trim().toUpperCase() : '';
+    } else {
+        codigoFinal = document.getElementById('itemCodigo').value.trim().toUpperCase();
+    }
+
+    // Validaciones
+    if (!codigoFinal) {
+        Swal.fire({
+            title: '⚠️ Advertencia',
+            text: 'Debe generar o ingresar un código para el producto',
+            icon: 'warning',
+            confirmButtonText: 'Entendido'
+        });
+        return;
+    }
+
+    const catSelect = document.getElementById('itemCategoria_modal');
+    const subcatSelect = document.getElementById('itemSubcategoria_modal');
+
     const data = {
         action: id ? 'update' : 'create',
         id_inventario: id || null,
         id_tipo_inventario: TIPO_ID,
-        codigo: document.getElementById('itemCodigo').value,
+        codigo: codigoFinal,
         nombre: document.getElementById('itemNombre').value,
-        id_categoria: document.getElementById('itemCategoria').value,
-        id_subcategoria: document.getElementById('itemSubcategoria').value || null,
+        id_categoria: catSelect ? catSelect.value : null,
+        id_subcategoria: (subcatSelect && subcatSelect.value !== '0') ? subcatSelect.value : null,
         id_unidad: document.getElementById('itemUnidad').value,
-        stock_actual: document.getElementById('itemStockActual').value || 0,
         stock_minimo: document.getElementById('itemStockMinimo').value || 0,
         costo_unitario: document.getElementById('itemCosto').value || 0,
         descripcion: document.getElementById('itemDescripcion').value
@@ -466,15 +517,31 @@ async function guardarItem() {
         });
         const d = await r.json();
         if (d.success) {
-            alert('✅ ' + d.message);
+            Swal.fire({
+                title: '✅ Éxito',
+                text: d.message,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
             cerrarModal('modalItem');
             cargarDatos();
         } else {
-            alert('❌ ' + d.message);
+            Swal.fire({
+                title: '❌ Error',
+                text: d.message,
+                icon: 'error',
+                confirmButtonText: 'Entendido'
+            });
         }
     } catch (e) {
         console.error('Error:', e);
-        alert('Error al guardar');
+        Swal.fire({
+            title: '❌ Error',
+            text: 'Error al guardar el producto',
+            icon: 'error',
+            confirmButtonText: 'Entendido'
+        });
     }
 }
 
@@ -1652,6 +1719,134 @@ function generarNumeroDoc(prefijo) {
     const dia = String(f.getDate()).padStart(2, '0');
     const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     return `${prefijo}-${anio}${mes}${dia}-${rand}`;
+}
+
+// ========== FUNCIONES DE GENERACIÓN DE CÓDIGO ==========
+
+/**
+ * Actualiza el código sugerido cuando cambia categoría o subcategoría
+ */
+async function actualizarCodigoSugerido() {
+    const catId = document.getElementById('itemCategoria_modal').value;
+    const subcatId = document.getElementById('itemSubcategoria_modal').value;
+
+    // Cargar subcategorías si cambió la categoría
+    await cargarSubcategoriasItem();
+
+    if (!catId) {
+        document.getElementById('codigoPreviewSection').style.display = 'none';
+        document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+        return;
+    }
+
+    // Mostrar sección de preview
+    document.getElementById('codigoPreviewSection').style.display = 'block';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'flex';
+
+    // Obtener códigos de categoría y subcategoría
+    const categoria = categorias.find(c => c.id_categoria == catId);
+    const codigoCat = categoria ? categoria.codigo : 'XXX';
+
+    let codigoSubcat = '';
+    if (subcatId && subcatId !== '0') {
+        const rSub = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
+        const dSub = await rSub.json();
+        if (dSub.success && dSub.subcategorias) {
+            const sub = dSub.subcategorias.find(s => s.id_subcategoria == subcatId);
+            codigoSubcat = sub ? sub.codigo : '';
+            if (codigoSubcat.includes('-')) {
+                const partes = codigoSubcat.split('-');
+                codigoSubcat = partes[partes.length - 1];
+            }
+        }
+    }
+
+    // Construir prefijo
+    const prefijo = (subcatId && subcatId !== '0' && codigoSubcat)
+        ? `${codigoTipo}-${codigoCat}-${codigoSubcat}-`
+        : `${codigoTipo}-${codigoCat}-`;
+
+    // Obtener siguiente correlativo
+    const siguienteNum = await obtenerSiguienteCorrelativo(prefijo);
+
+    // Actualizar preview en UI
+    document.getElementById('previewPrefijo').textContent = prefijo;
+    document.getElementById('previewSufijo').textContent = siguienteNum;
+    document.getElementById('labelTipo').textContent = codigoTipo;
+    document.getElementById('labelCat').textContent = codigoCat;
+    document.getElementById('labelSubcat').textContent = codigoSubcat || '-';
+    document.getElementById('labelNum').textContent = siguienteNum;
+    document.getElementById('formatoSugerido').textContent = prefijo + 'XXX';
+
+    // Establecer sufijo por defecto
+    document.getElementById('itemSufijo').value = siguienteNum;
+
+    // Actualizar código final
+    if (!modoManual) {
+        actualizarCodigoFinal();
+    }
+}
+
+/**
+ * Obtiene el siguiente número correlativo disponible para un prefijo
+ */
+async function obtenerSiguienteCorrelativo(prefijo) {
+    try {
+        const response = await fetch(
+            `${baseUrl}/api/centro_inventarios.php?action=siguiente_codigo&tipo_id=${TIPO_ID}&prefijo=${encodeURIComponent(prefijo)}`
+        );
+        const data = await response.json();
+        return (data.success && data.siguiente) ? data.siguiente : '001';
+    } catch (error) {
+        console.error('Error obteniendo correlativo:', error);
+        return '001';
+    }
+}
+
+/**
+ * Actualiza el código final combinando prefijo + sufijo
+ */
+function actualizarCodigoFinal() {
+    const prefijo = document.getElementById('previewPrefijo').textContent;
+    const sufijo = document.getElementById('itemSufijo').value || '001';
+    const codigoFinal = prefijo + sufijo;
+
+    document.getElementById('itemCodigo').value = codigoFinal.toUpperCase();
+    document.getElementById('previewSufijo').textContent = sufijo;
+    document.getElementById('labelNum').textContent = sufijo;
+}
+
+/**
+ * Alternar entre modo automático y manual
+ */
+function toggleModoManual() {
+    modoManual = !modoManual;
+    const autoView = document.getElementById('codigoAutomaticoView');
+    const manualView = document.getElementById('codigoManualView');
+    const sufijoRow = document.getElementById('sufijoPersonalizadoRow');
+    const btnTexto = document.getElementById('btnToggleTexto');
+    const inputManual = document.getElementById('itemCodigoManual');
+
+    if (modoManual) {
+        autoView.style.display = 'none';
+        manualView.style.display = 'block';
+        sufijoRow.style.display = 'none';
+        btnTexto.textContent = 'Usar automático';
+
+        inputManual.value = document.getElementById('itemCodigo').value;
+        inputManual.focus();
+
+        // Actualizar el código oculto cuando se edita manualmente
+        inputManual.addEventListener('input', function () {
+            document.getElementById('itemCodigo').value = this.value.toUpperCase();
+        });
+    } else {
+        autoView.style.display = 'block';
+        manualView.style.display = 'none';
+        sufijoRow.style.display = 'flex';
+        btnTexto.textContent = 'Editar manualmente';
+        actualizarCodigoFinal();
+    }
 }
 
 console.log('✅ Módulo Material de Empaque v1.9 cargado');

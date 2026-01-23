@@ -1332,6 +1332,47 @@ try {
                     exit();
                 }
 
+            } else if ($action === 'delete') {
+                // ========== ELIMINAR INVENTARIO ==========
+                $idInventario = $data['id_inventario'] ?? null;
+
+                if (!$idInventario) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'ID de inventario requerido']);
+                    exit();
+                }
+
+                // Verificar si tiene movimientos (si tiene, no se debería borrar físicamente, solo desactivar)
+                // Pero según requerimiento de limpieza, permitiremos borrar si se solicita explícitamente
+                // Ojo: Lo ideal es soft-delete (activo = 0)
+
+                try {
+                    // Verificar movimientos
+                    $stmt = $db->prepare("SELECT COUNT(*) FROM movimientos_inventario WHERE id_inventario = ?");
+                    $stmt->execute([$idInventario]);
+                    $count = $stmt->fetchColumn();
+
+                    if ($count > 0) {
+                        // Soft delete
+                        $stmt = $db->prepare("UPDATE inventarios SET activo = 0 WHERE id_inventario = ?");
+                        $stmt->execute([$idInventario]);
+                        $mensaje = 'Producto desactivado (tiene historial)';
+                    } else {
+                        // Hard delete
+                        $stmt = $db->prepare("DELETE FROM inventarios WHERE id_inventario = ?");
+                        $stmt->execute([$idInventario]);
+                        $mensaje = 'Producto eliminado permanentemente';
+                    }
+
+                    ob_clean();
+                    echo json_encode(['success' => true, 'message' => $mensaje]);
+
+                } catch (PDOException $e) {
+                    ob_clean();
+                    echo json_encode(['success' => false, 'message' => 'Error al eliminar: ' . $e->getMessage()]);
+                }
+                exit();
+
             } else {
                 // Crear o actualizar inventario
                 $idInventario = $data['id_inventario'] ?? null;

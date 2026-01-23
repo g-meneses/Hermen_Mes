@@ -33,6 +33,23 @@ document.addEventListener('DOMContentLoaded', cargarDatos);
 
 async function cargarDatos() {
     await Promise.all([cargarKPIs(), cargarCategorias(), cargarUnidades(), cargarProveedores(), cargarTodosProductos()]);
+
+    // Si hay una vista activa, refrescarla para que se reflejen los cambios (ej: eliminación)
+    if (subcategoriaSeleccionada) {
+        if (subcategoriaSeleccionada.id_subcategoria === -1) {
+            cargarProductosCategoria(categoriaSeleccionada.id_categoria);
+        } else if (subcategoriaSeleccionada.id_subcategoria === 0) {
+            cargarProductosSinSubcategoria(categoriaSeleccionada.id_categoria);
+        } else {
+            cargarProductosSubcategoria(subcategoriaSeleccionada.id_subcategoria);
+        }
+    } else if (categoriaSeleccionada) {
+        // En teoría, si hay categoría pero no subcategoría seleccionada, estamos viendo subcategorías o productos
+        // Si estamos viendo productos (ej: estado inicial o tras cargar), intentar refrescar
+        if (document.getElementById('productosSection').style.display !== 'none') {
+            cargarProductosCategoria(categoriaSeleccionada.id_categoria);
+        }
+    }
 }
 
 // ========== FUNCIONES DE FORMATO ==========
@@ -339,6 +356,7 @@ function renderProductos() {
             <td>
                 <button class="btn-icon kardex" onclick="abrirKardexSafe(${p.id_inventario})" title="Kardex"><i class="fas fa-book"></i></button>
                 <button class="btn-icon editar" onclick="editarItem(${p.id_inventario})" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon eliminar" onclick="eliminarItem(${p.id_inventario}, '${p.codigo}', '${p.nombre}')" title="Eliminar"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -387,6 +405,7 @@ async function cargarTodosProductos() {
 
 // ========== MODAL NUEVO/EDITAR ITEM ==========
 function abrirModalNuevoItem() {
+    lastLoadedCategoryId = null; // Resetear caché de subcategorías
     document.getElementById('formItem').reset();
     document.getElementById('itemId').value = '';
     document.getElementById('modalItemTitulo').textContent = 'Nuevo Item de Material de Empaque';
@@ -403,33 +422,65 @@ function abrirModalNuevoItem() {
 
 async function editarItem(id) {
     const item = productosCompletos.find(p => p.id_inventario == id);
-    if (!item) { alert('❌ No se encontró el item'); return; }
+    if (!item) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró el producto',
+            confirmButtonColor: '#d33'
+        });
+        return;
+    }
 
     poblarSelects();
+
+    // Llenar campos del formulario
     document.getElementById('itemId').value = item.id_inventario;
-    document.getElementById('itemCodigo').value = item.codigo || '';
     document.getElementById('itemNombre').value = item.nombre || '';
-    document.getElementById('itemCategoria').value = item.id_categoria || '';
+    document.getElementById('itemCategoria_modal').value = item.id_categoria || '';
+
+    // Cargar subcategorías y seleccionar
     await cargarSubcategoriasItem();
-    document.getElementById('itemSubcategoria').value = item.id_subcategoria || '';
+    document.getElementById('itemSubcategoria_modal').value = item.id_subcategoria || '0';
+
     document.getElementById('itemUnidad').value = item.id_unidad || '';
-    document.getElementById('itemStockActual').value = item.stock_actual || 0;
     document.getElementById('itemStockMinimo').value = item.stock_minimo || 0;
     document.getElementById('itemCosto').value = item.costo_unitario || item.costo_promedio || 0;
     document.getElementById('itemDescripcion').value = item.descripcion || '';
+
+    // Manejar el código en modo manual
+    modoManual = true;
+    document.getElementById('codigoPreviewSection').style.display = 'block';
+    document.getElementById('codigoAutomaticoView').style.display = 'none';
+    document.getElementById('codigoManualView').style.display = 'block';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+    document.getElementById('btnToggleTexto').textContent = 'Usar automático';
+    document.getElementById('itemCodigoManual').value = item.codigo || '';
+    document.getElementById('itemCodigo').value = item.codigo || '';
+
+    // Actualizar título del modal
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;
     document.getElementById('modalItem').classList.add('show');
 }
 
-async function cargarSubcategoriasItem() {
+// Variable global para controlar recarga de subcategorías
+let lastLoadedCategoryId = null;
+
+async function cargarSubcategoriasItem(selectedSubcatId = null) {
     const catSelect = document.getElementById('itemCategoria_modal');
     const subSelect = document.getElementById('itemSubcategoria_modal');
 
-    // Verificar que los elementos existan
     if (!catSelect || !subSelect) return;
 
     const catId = catSelect.value;
-    subSelect.innerHTML = '<option value="0">Sin subcategoría</option>';
+
+    // Si la categoría es la misma y ya hay opciones, no recargar (salvo que se fuerce selección en edición)
+    if (catId === lastLoadedCategoryId && subSelect.options.length > 1 && selectedSubcatId === null) {
+        return;
+    }
+
+    lastLoadedCategoryId = catId;
+    subSelect.innerHTML = '<option value="0">Sin subcategoría</option>'; // Resetear y añadir opción por defecto
     if (!catId) return;
 
     try {
@@ -437,8 +488,15 @@ async function cargarSubcategoriasItem() {
         const d = await r.json();
         if (d.success && d.subcategorias) {
             d.subcategorias.forEach(s => {
-                subSelect.innerHTML += `<option value="${s.id_subcategoria}">${s.nombre}</option>`;
+                const option = document.createElement('option');
+                option.value = s.id_subcategoria;
+                option.textContent = s.nombre;
+                subSelect.appendChild(option);
             });
+            // Seleccionar la subcategoría si se proporcionó un ID
+            if (selectedSubcatId !== null) {
+                subSelect.value = selectedSubcatId;
+            }
         }
     } catch (e) { console.error('Error cargando subcategorías:', e); }
 }
@@ -481,15 +539,51 @@ async function guardarItem() {
         codigoFinal = document.getElementById('itemCodigo').value.trim().toUpperCase();
     }
 
-    // Validaciones
+    // Validaciones básicas
     if (!codigoFinal) {
-        Swal.fire({
-            title: '⚠️ Advertencia',
-            text: 'Debe generar o ingresar un código para el producto',
-            icon: 'warning',
-            confirmButtonText: 'Entendido'
-        });
+        alert('⚠️ Debe generar o ingresar un código para el producto');
         return;
+    }
+
+    const nombre = document.getElementById('itemNombre').value.trim();
+    if (!nombre) {
+        alert('⚠️ Debe ingresar un nombre para el producto');
+        return;
+    }
+
+    // Validar duplicados (solo al crear, no al editar)
+    if (!id) {
+        // Verificar código duplicado
+        const codigoDuplicado = productosCompletos.find(p =>
+            p.codigo && p.codigo.toUpperCase() === codigoFinal
+        );
+
+        if (codigoDuplicado) {
+            alert(
+                `❌ ERROR: Código duplicado\n\n` +
+                `El código "${codigoFinal}" ya existe:\n` +
+                `Producto: ${codigoDuplicado.nombre}\n\n` +
+                `Por favor, use un código diferente o edite el producto existente.`
+            );
+            return;
+        }
+
+        // Verificar nombre duplicado
+        const nombreDuplicado = productosCompletos.find(p =>
+            p.nombre && p.nombre.trim().toUpperCase() === nombre.toUpperCase()
+        );
+
+        if (nombreDuplicado) {
+            const confirmar = confirm(
+                `⚠️ ADVERTENCIA: Nombre similar detectado\n\n` +
+                `Ya existe un producto con nombre similar:\n` +
+                `Código: ${nombreDuplicado.codigo}\n` +
+                `Nombre: ${nombreDuplicado.nombre}\n\n` +
+                `¿Desea continuar de todas formas?`
+            );
+
+            if (!confirmar) return;
+        }
     }
 
     const catSelect = document.getElementById('itemCategoria_modal');
@@ -500,7 +594,7 @@ async function guardarItem() {
         id_inventario: id || null,
         id_tipo_inventario: TIPO_ID,
         codigo: codigoFinal,
-        nombre: document.getElementById('itemNombre').value,
+        nombre: nombre,
         id_categoria: catSelect ? catSelect.value : null,
         id_subcategoria: (subcatSelect && subcatSelect.value !== '0') ? subcatSelect.value : null,
         id_unidad: document.getElementById('itemUnidad').value,
@@ -517,30 +611,72 @@ async function guardarItem() {
         });
         const d = await r.json();
         if (d.success) {
-            Swal.fire({
-                title: '✅ Éxito',
-                text: d.message,
-                icon: 'success',
-                timer: 2000,
-                showConfirmButton: false
-            });
+            alert('✅ ' + d.message);
             cerrarModal('modalItem');
             cargarDatos();
         } else {
+            alert('❌ ' + d.message);
+        }
+    } catch (e) {
+        console.error('Error:', e);
+        alert('❌ Error al guardar el producto');
+    }
+}
+
+async function eliminarItem(id, codigo, nombre) {
+    // Confirmar eliminación con SweetAlert2
+    const result = await Swal.fire({
+        icon: 'warning',
+        title: '¿Eliminar producto?',
+        html: `<strong>Código:</strong> ${codigo}<br>` +
+            `<strong>Nombre:</strong> ${nombre}<br><br>` +
+            `Esta acción no se puede deshacer.`,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        reverseButtons: true
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'delete',
+                id_inventario: id
+            })
+        });
+        const d = await r.json();
+        if (d.success) {
+            // Recargar datos INMEDIATAMENTE para que el usuario vea el cambio
+            cargarDatos();
+
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Eliminado!',
+                text: 'Producto eliminado correctamente',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        } else {
             Swal.fire({
-                title: '❌ Error',
-                text: d.message,
                 icon: 'error',
-                confirmButtonText: 'Entendido'
+                title: 'Error',
+                text: d.message,
+                confirmButtonColor: '#d33'
             });
         }
     } catch (e) {
         console.error('Error:', e);
         Swal.fire({
-            title: '❌ Error',
-            text: 'Error al guardar el producto',
             icon: 'error',
-            confirmButtonText: 'Entendido'
+            title: 'Error',
+            text: 'Error al eliminar el producto',
+            confirmButtonColor: '#d33'
         });
     }
 }
@@ -1699,8 +1835,90 @@ async function guardarSalida() {
     }
 }
 
-function abrirModalHistorial() {
-    alert('Modal Historial - Por implementar');
+// ========== MODAL HISTORIAL ==========
+async function abrirModalHistorial() {
+    // Fechas por defecto: Últimos 30 días
+    const hoy = new Date();
+    const hace30dias = new Date();
+    hace30dias.setDate(hoy.getDate() - 30);
+
+    document.getElementById('historialFechaDesde').value = hace30dias.toISOString().split('T')[0];
+    document.getElementById('historialFechaHasta').value = hoy.toISOString().split('T')[0];
+    document.getElementById('historialTipoMov').value = '';
+    document.getElementById('historialBuscar').value = '';
+
+    await cargarHistorial();
+    document.getElementById('modalHistorial').classList.add('show');
+}
+
+async function cargarHistorial() {
+    const desde = document.getElementById('historialFechaDesde').value;
+    const hasta = document.getElementById('historialFechaHasta').value;
+    const tipo = document.getElementById('historialTipoMov').value;
+    const buscar = document.getElementById('historialBuscar').value;
+    const body = document.getElementById('historialBody');
+
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+
+    try {
+        let url = `${baseUrl}/api/centro_inventarios.php?action=historial&tipo_id=${TIPO_ID}`;
+        if (desde) url += `&fecha_desde=${desde}`;
+        if (hasta) url += `&fecha_hasta=${hasta}`;
+        if (tipo) url += `&tipo_mov=${tipo}`;
+        if (buscar) url += `&buscar=${encodeURIComponent(buscar)}`;
+
+        const r = await fetch(url);
+        const d = await r.json();
+
+        if (d.success && d.documentos) {
+            renderHistorial(d.documentos);
+        } else {
+            body.innerHTML = '<tr><td colspan="7" style="text-align:center;">No se encontraron movimientos</td></tr>';
+        }
+    } catch (e) {
+        console.error('Error historial:', e);
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Error al cargar historial</td></tr>';
+    }
+}
+
+function renderHistorial(docs) {
+    const body = document.getElementById('historialBody');
+    if (docs.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;">No hay movimientos en este rango</td></tr>';
+        return;
+    }
+
+    body.innerHTML = docs.map(d => {
+        let badgeClass = 'secondary';
+        if (d.categoria === 'ENTRADA') badgeClass = 'success';
+        else if (d.categoria === 'SALIDA') badgeClass = 'danger';
+        else if (d.categoria === 'DEVOLUCION') badgeClass = 'warning';
+
+        const estadoBadge = d.estado === 'ANULADO'
+            ? '<span class="badge badge-danger">ANULADO</span>'
+            : '<span class="badge badge-success">ACTIVO</span>';
+
+        return `
+            <tr>
+                <td>${d.fecha}</td>
+                <td><span class="badge badge-${badgeClass}">${d.tipo_movimiento}</span></td>
+                <td><strong>${d.documento_numero}</strong><br><small>${d.documento_tipo}</small></td>
+                <td>${d.usuario || '-'}</td>
+                <td style="text-align:center;">${d.total_lineas}</td>
+                <td style="text-align:right;">Bs. ${formatNum(d.total_documento)}</td>
+                <td>${estadoBadge}</td>
+                <td style="text-align:center;">
+                    <button class="btn-icon" onclick="verDetalleDocumento('${d.documento_numero}')" title="Ver Detalle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    ${d.estado !== 'ANULADO' ?
+                `<button class="btn-icon" style="background:#dc3545;color:white;" onclick="anularDocumento('${d.documento_numero}')" title="Anular">
+                            <i class="fas fa-ban"></i>
+                        </button>` : ''}
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function verKardex(id) {

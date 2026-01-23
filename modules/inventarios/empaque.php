@@ -27,7 +27,8 @@ $tipoIcono = $tipoInventario['icono'] ?? 'fa-box';
 require_once '../../includes/header.php';
 ?>
 
-<!--<link rel="stylesheet" href="css/inventario_tipo.css"> -->
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
     :root {
@@ -1252,7 +1253,8 @@ require_once '../../includes/header.php';
         <div class="mp-header-left">
             <a href="index.php" class="btn-volver"><i class="fas fa-arrow-left"></i> Volver</a>
             <div class="mp-title">
-                <div class="mp-title-icon"><i class="fas <?php echo $tipoIcono; ?>"></i></div>
+                <div class="mp-title-icon" data-tipo-id="<?php echo $tipoId; ?>"><i
+                        class="fas <?php echo $tipoIcono; ?>"></i></div>
                 <div>
                     <h1>Materias Primas</h1>
                     <p>Gestión de inventario de materias primas</p>
@@ -2100,7 +2102,7 @@ require_once '../../includes/header.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/empaque.js"></script>
+<script src="js/empaque.js?v=<?php echo time(); ?>"></script>
 <script src="js/empaque_dinamico.js"></script>
 <script src="js/devolucion_proveedor.js"></script>
 <script src="js/historial_movimientos.js"></script>

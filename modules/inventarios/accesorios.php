@@ -27,6 +27,9 @@ $tipoIcono = $tipoInventario['icono'] ?? 'fa-box';
 require_once '../../includes/header.php';
 ?>
 
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <!--<link rel="stylesheet" href="css/inventario_tipo.css"> -->
 
 <style>
@@ -1252,10 +1255,11 @@ require_once '../../includes/header.php';
         <div class="mp-header-left">
             <a href="index.php" class="btn-volver"><i class="fas fa-arrow-left"></i> Volver</a>
             <div class="mp-title">
-                <div class="mp-title-icon"><i class="fas <?php echo $tipoIcono; ?>"></i></div>
+                <div class="mp-title-icon" data-tipo-id="<?php echo $tipoId; ?>"><i
+                        class="fas <?php echo $tipoIcono; ?>"></i></div>
                 <div>
-                    <h1>Materias Primas</h1>
-                    <p>Gestión de inventario de materias primas</p>
+                    <h1>Accesorios de Confección</h1>
+                    <p>Gestión de inventario de accesorios</p>
                 </div>
             </div>
         </div>
@@ -1356,19 +1360,74 @@ require_once '../../includes/header.php';
             <form id="formItem">
                 <input type="hidden" id="itemId">
                 <div class="form-row">
-                    <div class="form-group"><label>Código *</label><input type="text" id="itemCodigo" required></div>
-                    <div class="form-group"><label>Nombre *</label><input type="text" id="itemNombre" required></div>
-                </div>
-                <div class="form-row">
                     <div class="form-group"><label>Categoría *</label><select id="itemCategoria" required
-                            onchange="cargarSubcategoriasItem()"></select></div>
-                    <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria">
+                            onchange="actualizarCodigoSugerido()"></select></div>
+                    <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria"
+                            onchange="actualizarCodigoSugerido()">
                             <option value="">Sin subcategoría</option>
                         </select></div>
                 </div>
+
+                <!-- NUEVA SECCIÓN: Preview del código -->
+                <div class="codigo-preview-section" id="codigoPreviewSection"
+                    style="display:none; margin-bottom: 20px; padding: 15px; background: #e8f4fd; border-left: 4px solid #2196F3; border-radius: 8px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.85rem; color: #1976D2; font-weight: 600;">
+                            <i class="fas fa-lightbulb"></i> Código sugerido:
+                        </span>
+                        <button type="button" class="btn-link" onclick="toggleModoManual()"
+                            style="font-size: 0.75rem; color: #1976D2; border: none; background: none; cursor: pointer; text-decoration: underline;">
+                            <span id="btnToggleTexto">Editar manualmente</span>
+                        </button>
+                    </div>
+
+                    <div id="codigoAutomaticoView">
+                        <div
+                            style="font-size: 1.3rem; font-weight: 700; color: #0D47A1; letter-spacing: 1px; margin-bottom: 8px;">
+                            <span id="previewPrefijo">ACC-XXX-</span><span id="previewSufijo"
+                                style="color: #2196F3;">001</span>
+                        </div>
+                        <div style="font-size: 0.7rem; color: #666; display: flex; gap: 10px;">
+                            <span>Tipo: <strong id="labelTipo">ACC</strong></span>
+                            <span>•</span>
+                            <span>Cat: <strong id="labelCat">XXX</strong></span>
+                            <span>•</span>
+                            <span>Subcat: <strong id="labelSubcat">-</strong></span>
+                            <span>•</span>
+                            <span>Nº: <strong id="labelNum">001</strong></span>
+                        </div>
+                    </div>
+
+                    <div id="codigoManualView" style="display:none;">
+                        <input type="text" id="itemCodigoManual" class="form-control" placeholder="ACC-XXX-001"
+                            style="font-family: monospace; font-size: 1.1rem; font-weight: 600; width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <div style="font-size: 0.75rem; color: #666; margin-top: 5px;">
+                            💡 Formato sugerido: <code id="formatoSugerido">ACC-XXX-XXX</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campo de sufijo personalizado -->
+                <div class="form-row" id="sufijoPersonalizadoRow" style="display:none;">
+                    <div class="form-group">
+                        <label>Sufijo del código <small style="color: #666;">(opcional - déjalo como está o
+                                personaliza)</small></label>
+                        <input type="text" id="itemSufijo" placeholder="001" maxlength="20"
+                            oninput="actualizarCodigoFinal()">
+                        <small style="display: block; margin-top: 5px; color: #666;">Ejemplos: <code>001</code>,
+                            <code>AZ-001</code>, <code>AZUL-001</code></small>
+                    </div>
+                </div>
+
+                <!-- Campo oculto para el código final -->
+                <input type="hidden" id="itemCodigo">
+
                 <div class="form-row">
-                    <div class="form-group"><label>Stock Actual</label><input type="number" id="itemStockActual"
-                            step="0.01" value="0"></div>
+                    <div class="form-group"><label>Nombre *</label><input type="text" id="itemNombre" required></div>
+                </div>
+                <div class="form-row">
+                    <!-- Stock Actual ELIMINADO para centralizar ingreso por módulo de Ingresos -->
                     <div class="form-group"><label>Stock Mínimo</label><input type="number" id="itemStockMinimo"
                             step="0.01" value="0"></div>
                 </div>
@@ -1714,19 +1773,19 @@ require_once '../../includes/header.php';
             <!-- Filtros -->
             <div
                 style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <div class="form-group" style="flex:1; min-width: 150px;">
+                <div class="form-group" style="flex:1; min-width: 130px;">
                     <label style="font-size:0.85rem; font-weight:600;">Desde</label>
-                    <input type="date" id="historialDesde"
+                    <input type="date" id="historialFechaDesde"
                         style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
                 </div>
-                <div class="form-group" style="flex:1; min-width: 150px;">
+                <div class="form-group" style="flex:1; min-width: 130px;">
                     <label style="font-size:0.85rem; font-weight:600;">Hasta</label>
-                    <input type="date" id="historialHasta"
+                    <input type="date" id="historialFechaHasta"
                         style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
                 </div>
                 <div class="form-group" style="flex:1; min-width: 150px;">
-                    <label style="font-size:0.85rem; font-weight:600;">Tipo</label>
-                    <select id="historialTipo"
+                    <label style="font-size:0.85rem; font-weight:600;">Tipo Movimiento</label>
+                    <select id="historialTipoMov"
                         style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
                         <option value="">📋 Todos los movimientos</option>
 
@@ -1749,16 +1808,12 @@ require_once '../../includes/header.php';
                     </select>
                 </div>
                 <div class="form-group" style="flex:1; min-width: 150px;">
-                    <label style="font-size:0.85rem; font-weight:600;">Estado</label>
-                    <select id="historialEstado"
+                    <label style="font-size:0.85rem; font-weight:600;">Buscar Doc/Obs</label>
+                    <input type="text" id="historialBuscar" placeholder="N° Doc o Observación..."
                         style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
-                        <option value="todos">Todos</option>
-                        <option value="CONFIRMADO">Confirmados</option>
-                        <option value="ANULADO">Anulados</option>
-                    </select>
                 </div>
                 <div class="form-group" style="align-self: flex-end;">
-                    <button class="btn btn-primary" onclick="buscarHistorial()" style="padding:9px 20px;">
+                    <button class="btn btn-primary" onclick="cargarHistorial()" style="padding:9px 20px;">
                         <i class="fas fa-search"></i> Buscar
                     </button>
                 </div>
@@ -1770,12 +1825,12 @@ require_once '../../includes/header.php';
                     <thead>
                         <tr>
                             <th style="width:90px;">Fecha</th>
-                            <th style="width:150px;">Documento</th>
-                            <th style="width:110px;">Movimiento</th>
                             <th style="width:140px;">Tipo</th>
-                            <th style="width:110px; text-align:right;">Total</th>
-                            <th style="width:110px; text-align:center;">Estado</th>
-                            <th>Observaciones</th>
+                            <th style="width:130px;">Documento</th>
+                            <th>Usuario</th>
+                            <th style="width:60px; text-align:center;">Items</th>
+                            <th style="width:110px; text-align:right;">Total (Bs)</th>
+                            <th style="width:90px; text-align:center;">Estado</th>
                             <th style="width:90px; text-align:center;">Acciones</th>
                         </tr>
                     </thead>
@@ -2047,7 +2102,4 @@ require_once '../../includes/header.php';
 <!-- Scripts -->
 <script src="js/accesorios.js"></script>
 <script src="js/accesorios_dinamico.js"></script>
-<script src="js/devolucion_proveedor.js"></script>
-<script src="js/historial_movimientos.js"></script>
-<script src="js/kardex_acc.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

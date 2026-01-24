@@ -24,6 +24,10 @@ let productosFiltrados = [];
 let modoConFactura = false;
 let contadorDocIngreso = 0;
 
+// ========== VARIABLES PARA GENERADOR DE CÓDIGOS ==========
+let modoManual = false; // Para controlar modo de edición de código
+const codigoTipo = 'ACC'; // Prefijo fijo para Accesorios
+
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', cargarDatos);
 
@@ -382,38 +386,86 @@ async function cargarTodosProductos() {
 }
 
 // ========== MODAL NUEVO/EDITAR ITEM ==========
+// ========== MODAL NUEVO/EDITAR ITEM ==========
 function abrirModalNuevoItem() {
+    // Variable global para controlar recarga de subcategorías
+    lastLoadedCategoryId = null;
     document.getElementById('formItem').reset();
     document.getElementById('itemId').value = '';
-    document.getElementById('modalItemTitulo').textContent = 'Nuevo Item de Materia Prima';
+    document.getElementById('modalItemTitulo').textContent = 'Nuevo Item de Accesorio';
+
+    // Resetear estado del generador de códigos
+    modoManual = false;
+    document.getElementById('codigoPreviewSection').style.display = 'none';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+    document.getElementById('itemCodigo').value = '';
+
     poblarSelects();
     document.getElementById('modalItem').classList.add('show');
 }
 
 async function editarItem(id) {
     const item = productosCompletos.find(p => p.id_inventario == id);
-    if (!item) { alert('❌ No se encontró el item'); return; }
+    if (!item) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'No se encontró el producto',
+            confirmButtonColor: '#d33'
+        });
+        return;
+    }
 
     poblarSelects();
+
+    // Llenar campos del formulario
     document.getElementById('itemId').value = item.id_inventario;
-    document.getElementById('itemCodigo').value = item.codigo || '';
     document.getElementById('itemNombre').value = item.nombre || '';
     document.getElementById('itemCategoria').value = item.id_categoria || '';
-    await cargarSubcategoriasItem();
-    document.getElementById('itemSubcategoria').value = item.id_subcategoria || '';
+
+    // Cargar subcategorías y seleccionar
+    await cargarSubcategoriasItem(item.id_subcategoria);
+    // document.getElementById('itemSubcategoria').value = item.id_subcategoria || '0';
+
     document.getElementById('itemUnidad').value = item.id_unidad || '';
-    document.getElementById('itemStockActual').value = item.stock_actual || 0;
+    // document.getElementById('itemStockActual').value = item.stock_actual || 0; // Eliminado del form
     document.getElementById('itemStockMinimo').value = item.stock_minimo || 0;
     document.getElementById('itemCosto').value = item.costo_unitario || item.costo_promedio || 0;
     document.getElementById('itemDescripcion').value = item.descripcion || '';
+
+    // Manejar el código en modo manual
+    modoManual = true;
+    document.getElementById('codigoPreviewSection').style.display = 'block';
+    document.getElementById('codigoAutomaticoView').style.display = 'none';
+    document.getElementById('codigoManualView').style.display = 'block';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+    document.getElementById('btnToggleTexto').textContent = 'Usar automático';
+    document.getElementById('itemCodigoManual').value = item.codigo || '';
+    document.getElementById('itemCodigo').value = item.codigo || '';
+
+    // Actualizar título del modal
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;
     document.getElementById('modalItem').classList.add('show');
 }
 
-async function cargarSubcategoriasItem() {
-    const catId = document.getElementById('itemCategoria').value;
+// Variable global para controlar recarga de subcategorías
+let lastLoadedCategoryId = null;
+
+async function cargarSubcategoriasItem(selectedSubcatId = null) {
+    const catSelect = document.getElementById('itemCategoria');
     const subSelect = document.getElementById('itemSubcategoria');
-    subSelect.innerHTML = '<option value="">Sin subcategoría</option>';
+
+    if (!catSelect || !subSelect) return;
+
+    const catId = catSelect.value;
+
+    // Si la categoría es la misma y ya hay opciones, no recargar (salvo que se fuerce selección en edición)
+    if (catId === lastLoadedCategoryId && subSelect.options.length > 1 && selectedSubcatId === null) {
+        return;
+    }
+
+    lastLoadedCategoryId = catId;
+    subSelect.innerHTML = '<option value="0">Sin subcategoría</option>'; // Resetear y añadir opción por defecto
     if (!catId) return;
 
     try {
@@ -421,10 +473,17 @@ async function cargarSubcategoriasItem() {
         const d = await r.json();
         if (d.success && d.subcategorias) {
             d.subcategorias.forEach(s => {
-                subSelect.innerHTML += `<option value="${s.id_subcategoria}">${s.nombre}</option>`;
+                const option = document.createElement('option');
+                option.value = s.id_subcategoria;
+                option.textContent = s.nombre;
+                subSelect.appendChild(option);
             });
+            // Seleccionar la subcategoría si se proporcionó un ID
+            if (selectedSubcatId !== null) {
+                subSelect.value = selectedSubcatId;
+            }
         }
-    } catch (e) { console.error('Error:', e); }
+    } catch (e) { console.error('Error cargando subcategorías:', e); }
 }
 
 function poblarSelects() {
@@ -443,16 +502,77 @@ function poblarSelects() {
 
 async function guardarItem() {
     const id = document.getElementById('itemId').value;
+
+    // Obtener código según el modo
+    let codigoFinal;
+    if (modoManual) {
+        const inputManual = document.getElementById('itemCodigoManual');
+        codigoFinal = inputManual ? inputManual.value.trim().toUpperCase() : '';
+    } else {
+        codigoFinal = document.getElementById('itemCodigo').value.trim().toUpperCase();
+    }
+
+    // Validaciones básicas
+    if (!codigoFinal) {
+        alert('⚠️ Debe generar o ingresar un código para el producto');
+        return;
+    }
+
+    const nombre = document.getElementById('itemNombre').value.trim();
+    if (!nombre) {
+        alert('⚠️ Debe ingresar un nombre para el producto');
+        return;
+    }
+
+    // Validar duplicados (solo al crear, no al editar)
+    if (!id) {
+        // Verificar código duplicado
+        const codigoDuplicado = productosCompletos.find(p =>
+            p.codigo && p.codigo.toUpperCase() === codigoFinal
+        );
+
+        if (codigoDuplicado) {
+            alert(
+                `❌ ERROR: Código duplicado\n\n` +
+                `El código "${codigoFinal}" ya existe:\n` +
+                `Producto: ${codigoDuplicado.nombre}\n\n` +
+                `Por favor, use un código diferente o edite el producto existente.`
+            );
+            return;
+        }
+
+        // Verificar nombre duplicado
+        const nombreDuplicado = productosCompletos.find(p =>
+            p.nombre && p.nombre.trim().toUpperCase() === nombre.toUpperCase()
+        );
+
+        if (nombreDuplicado) {
+            const confirmar = confirm(
+                `⚠️ ADVERTENCIA: Nombre similar detectado\n\n` +
+                `Ya existe un producto con nombre similar:\n` +
+                `Código: ${nombreDuplicado.codigo}\n` +
+                `Nombre: ${nombreDuplicado.nombre}\n\n` +
+                `¿Desea continuar de todas formas?`
+            );
+
+            if (!confirmar) return;
+        }
+    }
+
+    const catSelect = document.getElementById('itemCategoria');
+    const subcatSelect = document.getElementById('itemSubcategoria');
+
     const data = {
         action: id ? 'update' : 'create',
         id_inventario: id || null,
         id_tipo_inventario: TIPO_ID,
-        codigo: document.getElementById('itemCodigo').value,
-        nombre: document.getElementById('itemNombre').value,
-        id_categoria: document.getElementById('itemCategoria').value,
-        id_subcategoria: document.getElementById('itemSubcategoria').value || null,
+        codigo: codigoFinal,
+        nombre: nombre,
+        id_categoria: catSelect ? catSelect.value : null,
+        id_subcategoria: (subcatSelect && subcatSelect.value !== '0') ? subcatSelect.value : null,
+        id_categoria: catSelect ? catSelect.value : null,
+        id_subcategoria: (subcatSelect && subcatSelect.value !== '0') ? subcatSelect.value : null,
         id_unidad: document.getElementById('itemUnidad').value,
-        stock_actual: document.getElementById('itemStockActual').value || 0,
         stock_minimo: document.getElementById('itemStockMinimo').value || 0,
         costo_unitario: document.getElementById('itemCosto').value || 0,
         descripcion: document.getElementById('itemDescripcion').value
@@ -474,7 +594,7 @@ async function guardarItem() {
         }
     } catch (e) {
         console.error('Error:', e);
-        alert('Error al guardar');
+        alert('❌ Error al guardar el producto');
     }
 }
 
@@ -1565,18 +1685,18 @@ async function guardarSalida() {
     const tipo = document.getElementById('salidaTipo').value;
 
     if (lineasSalida.length === 0) {
-        alert('⚠️ Agregue al menos una línea');
+        Swal.fire('Atención', 'Agregue al menos una línea', 'warning');
         return;
     }
 
     // Validar que todas las líneas tengan producto y cantidad
     for (let i = 0; i < lineasSalida.length; i++) {
         if (!lineasSalida[i].id_inventario) {
-            alert(`⚠️ Seleccione un producto en la línea ${i + 1}`);
+            Swal.fire('Atención', `Seleccione un producto en la línea ${i + 1}`, 'warning');
             return;
         }
         if (lineasSalida[i].cantidad <= 0) {
-            alert(`⚠️ Ingrese cantidad en la línea ${i + 1}`);
+            Swal.fire('Atención', `Ingrese cantidad mayor a 0 en la línea ${i + 1}`, 'warning');
             return;
         }
 
@@ -1584,14 +1704,20 @@ async function guardarSalida() {
         const prod = productosCompletos.find(p => p.id_inventario == lineasSalida[i].id_inventario);
         const stockDisp = prod ? toNum(prod.stock_actual) : 0;
         if (lineasSalida[i].cantidad > stockDisp) {
-            alert(`⚠️ Stock insuficiente para ${prod.nombre}. Disponible: ${formatNum(stockDisp)}`);
+            Swal.fire({
+                icon: 'error',
+                title: 'Stock Insuficiente',
+                html: `Producto: <strong>${prod.codigo} - ${prod.nombre}</strong><br>` +
+                    `Solicitado: <strong>${formatNum(lineasSalida[i].cantidad)}</strong><br>` +
+                    `Disponible: <strong style="color:red">${formatNum(stockDisp)}</strong>`
+            });
             return;
         }
     }
 
     // Validar motivo para ajustes
     if (tipo === 'AJUSTE' && !document.getElementById('salidaObservaciones').value.trim()) {
-        alert('⚠️ El motivo es obligatorio para ajustes de inventario');
+        Swal.fire('Atención', 'El motivo es obligatorio para ajustes de inventario', 'warning');
         return;
     }
 
@@ -1620,23 +1746,250 @@ async function guardarSalida() {
         console.log('Respuesta:', d);
 
         if (d.success) {
-            alert('✅ ' + d.message);
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Salida Registrada!',
+                text: d.message,
+                timer: 2000,
+                showConfirmButton: false
+            });
             cerrarModal('modalSalida');
             cargarDatos();
         } else {
-            alert('❌ ' + d.message);
+            Swal.fire('Error', d.message, 'error');
         }
     } catch (e) {
         console.error('Error:', e);
-        alert('Error al guardar la salida');
+        Swal.fire('Error', 'Error al guardar la salida', 'error');
     }
 }
 
-function abrirModalHistorial() {
-    alert('Modal Historial - Por implementar');
+// ========== MODAL HISTORIAL ==========
+async function abrirModalHistorial() {
+    // Fechas por defecto: Últimos 30 días
+    const hoy = new Date();
+    const hace30dias = new Date();
+    hace30dias.setDate(hoy.getDate() - 30);
+
+    document.getElementById('historialFechaDesde').value = hace30dias.toISOString().split('T')[0];
+    document.getElementById('historialFechaHasta').value = hoy.toISOString().split('T')[0];
+    document.getElementById('historialTipoMov').value = '';
+    document.getElementById('historialBuscar').value = '';
+
+    await cargarHistorial();
+    document.getElementById('modalHistorial').classList.add('show');
+}
+
+async function cargarHistorial() {
+    const desde = document.getElementById('historialFechaDesde').value;
+    const hasta = document.getElementById('historialFechaHasta').value;
+    const tipo = document.getElementById('historialTipoMov').value;
+    const buscar = document.getElementById('historialBuscar').value;
+    const body = document.getElementById('historialBody');
+
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+
+    try {
+        let url = `${baseUrl}/api/centro_inventarios.php?action=historial&tipo_id=${TIPO_ID}`;
+        if (desde) url += `&fecha_desde=${desde}`;
+        if (hasta) url += `&fecha_hasta=${hasta}`;
+        if (tipo) url += `&tipo_mov=${tipo}`;
+        if (buscar) url += `&buscar=${encodeURIComponent(buscar)}`;
+
+        const r = await fetch(url);
+        const d = await r.json();
+
+        if (d.success && d.documentos) {
+            renderHistorial(d.documentos);
+        } else {
+            body.innerHTML = '<tr><td colspan="7" style="text-align:center;">No se encontraron movimientos</td></tr>';
+        }
+    } catch (e) {
+        console.error('Error historial:', e);
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Error al cargar historial</td></tr>';
+    }
+}
+
+function renderHistorial(docs) {
+    const body = document.getElementById('historialBody');
+    if (docs.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" style="text-align:center;">No hay movimientos en este rango</td></tr>';
+        return;
+    }
+
+    body.innerHTML = docs.map(d => {
+        let badgeClass = 'secondary';
+        if (d.categoria === 'ENTRADA') badgeClass = 'success';
+        else if (d.categoria === 'SALIDA') badgeClass = 'danger';
+        else if (d.categoria === 'DEVOLUCION') badgeClass = 'warning';
+
+        const estadoBadge = d.estado === 'ANULADO'
+            ? '<span class="badge badge-danger">ANULADO</span>'
+            : '<span class="badge badge-success">ACTIVO</span>';
+
+        return `
+            <tr>
+                <td>${d.fecha}</td>
+                <td><span class="badge badge-${badgeClass}">${d.tipo_movimiento}</span></td>
+                <td><strong>${d.documento_numero}</strong><br><small>${d.documento_tipo}</small></td>
+                <td>${d.usuario || '-'}</td>
+                <td style="text-align:center;">${d.total_lineas}</td>
+                <td style="text-align:right;">Bs. ${formatNum(d.total_documento)}</td>
+                <td>${estadoBadge}</td>
+                <td style="text-align:center;">
+                    <button class="btn-icon" onclick="verDetalleDocumento('${d.documento_numero}')" title="Ver Detalle">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    ${d.estado !== 'ANULADO' ?
+                `<button class="btn-icon" style="background:#dc3545;color:white;" onclick="anularDocumento('${d.documento_numero}')" title="Anular">
+                            <i class="fas fa-ban"></i>
+                        </button>` : ''}
+                </td>
+            </tr>`;
+    }).join('');
+}
+
+// ========== DETALLE DE DOCUMENTO ==========
+async function verDetalleDocumento(docNumero) {
+    try {
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=documento_detalle&documento=${encodeURIComponent(docNumero)}`);
+        const d = await r.json();
+
+        if (d.success) {
+            mostrarDetalleDocumento(d.cabecera, d.lineas);
+        } else {
+            Swal.fire('Error', d.message || 'No se pudo cargar el detalle', 'error');
+        }
+    } catch (e) {
+        console.error('Error cargando detalle:', e);
+        Swal.fire('Error', 'Error de conexión al cargar detalle', 'error');
+    }
+}
+
+function mostrarDetalleDocumento(doc, detalle) {
+    const contenedor = document.getElementById('detalleContenido');
+
+    // Color según tipo
+    let color = '#6c757d';
+    if (doc.tipo_movimiento.includes('ENTRADA')) color = '#28a745';
+    else if (doc.tipo_movimiento.includes('SALIDA')) color = '#dc3545';
+    else if (doc.tipo_movimiento.includes('DEVOLUCION')) color = '#ffc107';
+
+    let html = `
+        <div style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:20px; border-left:5px solid ${color}">
+            <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
+                <div>
+                    <strong>Documento:</strong> <span style="font-size:1.1em; color:${color}">${doc.documento_numero}</span><br>
+                    <strong>Tipo:</strong> ${doc.documento_tipo} (${doc.tipo_movimiento})<br>
+                    <strong>Fecha:</strong> ${doc.fecha}
+                </div>
+                <div style="text-align:right;">
+                    <strong>Total:</strong> <span style="font-size:1.2em; font-weight:bold;">Bs. ${formatNum(doc.total_documento)}</span><br>
+                    <strong>Estado:</strong> ${doc.estado === 'ANULADO' ? '<span style="color:red;font-weight:bold">ANULADO</span>' : '<span style="color:green;font-weight:bold">ACTIVO</span>'}<br>
+                    <strong>Usuario:</strong> ${doc.usuario || '-'}
+                </div>
+            </div>
+            ${doc.observaciones ? `<div style="margin-top:10px; border-top:1px solid #ddd; padding-top:5px;"><strong>Obs:</strong> ${doc.observaciones}</div>` : ''}
+        </div>
+
+        <h5><i class="fas fa-list"></i> Detalle de Items</h5>
+        <div style="overflow-x:auto">
+            <table class="table-custom" style="font-size:0.9rem;">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Producto</th>
+                        <th style="text-align:right">Cant.</th>
+                        <th style="text-align:right">Costo U.</th>
+                        <th style="text-align:right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    html += detalle.map(item => `
+        <tr>
+            <td>${item.producto_codigo}</td>
+            <td>${item.producto_nombre}</td>
+            <td style="text-align:right">${formatNum(item.cantidad)} ${item.unidad || ''}</td>
+            <td style="text-align:right">Bs. ${formatNum(item.costo_unitario)}</td>
+            <td style="text-align:right; font-weight:bold;">Bs. ${formatNum(item.costo_total)}</td>
+        </tr>
+    `).join('');
+
+    html += `
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" style="text-align:right; font-weight:bold;">TOTAL</td>
+                        <td style="text-align:right; font-weight:bold; font-size:1.1em;">Bs. ${formatNum(doc.total_documento)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
+
+    contenedor.innerHTML = html;
+
+    // Configurar botón de anular en el modal
+    const btnAnular = document.getElementById('btnAnularDetalle');
+    if (doc.estado === 'ACTIVO' || doc.estado === 'CONFIRMADO') {
+        btnAnular.style.display = 'inline-block';
+        btnAnular.onclick = () => anularDocumento(doc.documento_numero);
+    } else {
+        btnAnular.style.display = 'none';
+    }
+
+    document.getElementById('modalDetalle').classList.add('show');
+}
+
+async function anularDocumento(docNumero) {
+    const { value: motivo } = await Swal.fire({
+        title: '¿Anular Documento?',
+        text: "Esta acción revertirá los movimientos de inventario. Ingrese el motivo:",
+        input: 'text',
+        inputPlaceholder: 'Motivo de anulación...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, anular',
+        inputValidator: (value) => {
+            if (!value) return 'El motivo es obligatorio';
+        }
+    });
+
+    if (motivo) {
+        try {
+            const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'anular_documento',
+                    documento: docNumero,
+                    motivo: motivo
+                })
+            });
+            const d = await r.json();
+
+            if (d.success) {
+                Swal.fire('¡Anulado!', d.message, 'success');
+                cerrarModal('modalDetalle');
+                cargarHistorial(); // Refrescar lista
+                cargarDatos(); // Refrescar KPIs
+            } else {
+                Swal.fire('Error', d.message, 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Error al procesar la anulación', 'error');
+        }
+    }
 }
 
 function verKardex(id) {
+    // Si necesitas redireccionar o abrir modal específico
+    // window.location.href = `kardex_acc.php?id=${id}`;
     alert('Modal Kardex - Por implementar');
 }
 
@@ -1652,6 +2005,145 @@ function generarNumeroDoc(prefijo) {
     const dia = String(f.getDate()).padStart(2, '0');
     const rand = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     return `${prefijo}-${anio}${mes}${dia}-${rand}`;
+}
+
+// ========== FUNCIONES DE GENERACIÓN DE CÓDIGO ==========
+
+/**
+ * Actualiza el código sugerido cuando cambia categoría o subcategoría
+ */
+async function actualizarCodigoSugerido() {
+    const catId = document.getElementById('itemCategoria').value;
+
+    // Cargar subcategorías si cambió la categoría
+    await cargarSubcategoriasItem();
+
+    const subcatId = document.getElementById('itemSubcategoria').value;
+
+    if (!catId) {
+        document.getElementById('codigoPreviewSection').style.display = 'none';
+        document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+        return;
+    }
+
+    // Mostrar sección de preview
+    document.getElementById('codigoPreviewSection').style.display = 'block';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'flex';
+
+    // Obtener códigos de categoría y subcategoría
+    const categoria = categorias.find(c => c.id_categoria == catId);
+    const codigoCat = categoria ? categoria.codigo : 'XXX';
+
+    let codigoSubcat = '';
+    if (subcatId && subcatId !== '0' && subcatId !== '') {
+        // La subcategoría ya debería estar cargada en el select, pero necesitamos su código.
+        // Podemos buscarla en el array global `subcategorias` si se cargaron todas, 
+        // pero `cargarSubcategoriasItem` hace un fetch local. 
+        // Mejor hacer fetch de nuevo o optimizar. 
+        // Como `cargarSubcategoriasItem` no guarda en variable global accesible facilmente (solo llena select),
+        // haremos fetch rápido para obtener código. OJO: Esto podría optimizarse.
+
+        try {
+            const rSub = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
+            const dSub = await rSub.json();
+            if (dSub.success && dSub.subcategorias) {
+                const sub = dSub.subcategorias.find(s => s.id_subcategoria == subcatId);
+                codigoSubcat = sub ? sub.codigo : '';
+                // Si el código ya incluye guiones, tomar la última parte
+                if (codigoSubcat.includes('-')) {
+                    const partes = codigoSubcat.split('-');
+                    codigoSubcat = partes[partes.length - 1];
+                }
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    // Construir prefijo
+    const prefijo = (subcatId && subcatId !== '0' && subcatId !== '' && codigoSubcat)
+        ? `${codigoTipo}-${codigoCat}-${codigoSubcat}-`
+        : `${codigoTipo}-${codigoCat}-`;
+
+    // Obtener siguiente correlativo
+    const siguienteNum = await obtenerSiguienteCorrelativo(prefijo);
+
+    // Actualizar preview en UI
+    document.getElementById('previewPrefijo').textContent = prefijo;
+    document.getElementById('previewSufijo').textContent = siguienteNum;
+    document.getElementById('labelTipo').textContent = codigoTipo;
+    document.getElementById('labelCat').textContent = codigoCat;
+    document.getElementById('labelSubcat').textContent = codigoSubcat || '-';
+    document.getElementById('labelNum').textContent = siguienteNum;
+    document.getElementById('formatoSugerido').textContent = prefijo + 'XXX';
+
+    // Establecer sufijo por defecto
+    document.getElementById('itemSufijo').value = siguienteNum;
+
+    // Actualizar código final
+    if (!modoManual) {
+        actualizarCodigoFinal();
+    }
+}
+
+/**
+ * Obtiene el siguiente número correlativo disponible para un prefijo
+ */
+async function obtenerSiguienteCorrelativo(prefijo) {
+    try {
+        const response = await fetch(
+            `${baseUrl}/api/centro_inventarios.php?action=siguiente_codigo&tipo_id=${TIPO_ID}&prefijo=${encodeURIComponent(prefijo)}`
+        );
+        const data = await response.json();
+        return (data.success && data.siguiente) ? data.siguiente : '001';
+    } catch (error) {
+        console.error('Error obteniendo correlativo:', error);
+        return '001';
+    }
+}
+
+/**
+ * Actualiza el código final combinando prefijo + sufijo
+ */
+function actualizarCodigoFinal() {
+    const prefijo = document.getElementById('previewPrefijo').textContent;
+    const sufijo = document.getElementById('itemSufijo').value || '001';
+    const codigoFinal = prefijo + sufijo;
+
+    document.getElementById('itemCodigo').value = codigoFinal.toUpperCase();
+    document.getElementById('previewSufijo').textContent = sufijo;
+    document.getElementById('labelNum').textContent = sufijo;
+}
+
+/**
+ * Alternar entre modo automático y manual
+ */
+function toggleModoManual() {
+    modoManual = !modoManual;
+    const autoView = document.getElementById('codigoAutomaticoView');
+    const manualView = document.getElementById('codigoManualView');
+    const sufijoRow = document.getElementById('sufijoPersonalizadoRow');
+    const btnTexto = document.getElementById('btnToggleTexto');
+    const inputManual = document.getElementById('itemCodigoManual');
+
+    if (modoManual) {
+        autoView.style.display = 'none';
+        manualView.style.display = 'block';
+        sufijoRow.style.display = 'none';
+        btnTexto.textContent = 'Usar automático';
+
+        inputManual.value = document.getElementById('itemCodigo').value;
+        inputManual.focus();
+
+        // Actualizar el código oculto cuando se edita manualmente
+        inputManual.addEventListener('input', function () {
+            document.getElementById('itemCodigo').value = this.value.toUpperCase();
+        });
+    } else {
+        autoView.style.display = 'block';
+        manualView.style.display = 'none';
+        sufijoRow.style.display = 'flex';
+        btnTexto.textContent = 'Editar manualmente';
+        actualizarCodigoFinal();
+    }
 }
 
 console.log('✅ Módulo Accesorios de Confección v1.9 cargado');

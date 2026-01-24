@@ -1851,7 +1851,415 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
+
+
+<!-- Modal Ingreso -->
+<div class="modal" id="modalIngreso">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3><i class="fas fa-arrow-down"></i> Ingreso de Accesorios</h3>
+            <button class="modal-close" onclick="cerrarModal('modalIngreso')"
+                style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Fila 1: Tipo y Documento -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo de Ingreso</label>
+                    <select id="ingresoTipoIngreso" onchange="cambiarTipoIngreso()">
+                        <option value="">Seleccione tipo...</option>
+                        <!-- Se llena dinámicamente -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Documento Nº</label>
+                    <div class="input-group">
+                        <input type="text" id="ingresoDocumento" placeholder="Generado autom." readonly
+                            style="background:#e9ecef; font-weight:bold;">
+                        <!-- <button class="btn-icon" onclick="obtenerSiguienteNumero()" title="Generar nuevo número"><i class="fas fa-sync"></i></button> -->
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="ingresoFecha">
+                </div>
+            </div>
+
+            <!-- ⭐ SECCIÓN PROVEEDOR (para compras) -->
+            <div id="seccionProveedor" class="d-none"
+                style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #007bff;">
+                <h5 style="margin-top:0; margin-bottom:10px; color:#007bff; font-size:0.95rem;">
+                    <i class="fas fa-truck"></i> Datos del Proveedor
+                </h5>
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Tipo Proveedor</label>
+                        <select id="ingresoTipoProveedor" onchange="filtrarProveedoresIngreso()">
+                            <option value="TODOS">Todos</option>
+                            <option value="LOCAL">Local</option>
+                            <option value="IMPORTACION">Importación</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 2;">
+                        <label>Proveedor <span class="text-danger">*</span></label>
+                        <select id="ingresoProveedor" class="select2-modal" onchange="actualizarInfoProveedor()">
+                            <option value="">Seleccione proveedor...</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="infoProveedorBox" style="display:none; margin-top:10px; font-size:0.85rem; color:#666;">
+                    <!-- Info extra del proveedor -->
+                </div>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label>Referencia / Factura Proveedor</label>
+                    <input type="text" id="ingresoReferencia" placeholder="Nº Factura, Nota de Remisión, etc.">
+                </div>
+            </div>
+
+            <!-- ⭐ SECCIÓN FACTURA (checkbox) -->
+            <div id="seccionFactura" class="d-none" style="margin-bottom: 15px;">
+                <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" id="ingresoConFactura"
+                        onchange="toggleFactura()">
+                    <label class="custom-control-label" for="ingresoConFactura"
+                        style="font-weight:600; color:#28a745;">
+                        <i class="fas fa-file-invoice-dollar"></i> Con Factura (Crédito Fiscal IVA)
+                    </label>
+                </div>
+            </div>
+
+            <!-- ⭐ SECCIÓN ÁREA (para devoluciones de producción) -->
+            <div id="seccionArea" class="d-none"
+                style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>🏭 Área que devuelve <span class="text-danger">*</span></label>
+                        <select id="ingresoArea" class="form-control">
+                            <option value="">Seleccione área...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>👤 Responsable Entrega</label>
+                        <input type="text" id="ingresoResponsableEntrega" class="form-control"
+                            placeholder="Nombre de quien entrega">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ⭐ SECCIÓN MOTIVO (para devoluciones y ajustes) -->
+            <div id="seccionMotivo" class="d-none"
+                style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div class="form-group" style="margin: 0;">
+                    <label>📋 Motivo <span class="text-danger">*</span></label>
+                    <select id="ingresoMotivo" class="form-control">
+                        <option value="">Seleccione motivo...</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- ⭐ SECCIÓN AUTORIZACIÓN (para ajustes) -->
+            <div id="seccionAutorizacion" class="d-none"
+                style="background: #f8d7da; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div class="form-group" style="margin: 0;">
+                    <label>✅ Autorizado Por <span class="text-danger">*</span></label>
+                    <select id="ingresoAutorizadoPor" class="form-control">
+                        <option value="">Seleccione usuario...</option>
+                        <!-- Se llenará con usuarios con permisos de autorización -->
+                    </select>
+                </div>
+            </div>
+
+            <!-- ⭐ SECCIÓN UBICACIÓN (para inventario inicial) -->
+            <div id="seccionUbicacion" class="d-none"
+                style="background: #d1ecf1; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div class="form-row">
+                    <div class="form-group" style="flex: 1;">
+                        <label>📍 Ubicación / Almacén</label>
+                        <input type="text" id="ingresoUbicacion" class="form-control"
+                            placeholder="Ej: Almacén Principal">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>👤 Responsable Conteo</label>
+                        <input type="text" id="ingresoResponsableConteo" class="form-control" placeholder="Nombre">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Separador -->
+            <hr style="margin: 20px 0; border-color: #e9ecef;">
+
+            <!-- Filtro de Productos por Categoría/Subcategoría -->
+            <div class="filtros-productos">
+                <h4 style="margin-bottom:10px;"><i class="fas fa-filter"></i> Filtrar Productos</h4>
+                <div class="form-row" style="margin-bottom:15px;">
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="ingresoFiltroCat" onchange="filtrarProductosIngreso()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Subcategoría</label>
+                        <select id="ingresoFiltroSubcat" onchange="filtrarProductosIngreso()">
+                            <option value="">Todas las subcategorías</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Líneas -->
+            <h4><i class="fas fa-list"></i> Líneas de Ingreso</h4>
+            <div class="tabla-ingreso-container">
+                <table class="tabla-lineas" id="tablaLineasIngreso">
+                    <thead id="theadIngreso">
+                        <!-- Se genera dinámicamente según tipo de ingreso -->
+                    </thead>
+                    <tbody id="ingresoLineasBody"></tbody>
+                </table>
+            </div>
+
+            <button class="btn btn-primary" onclick="agregarLineaIngreso()" style="margin-top:10px;">
+                <i class="fas fa-plus"></i> Agregar Línea
+            </button>
+
+            <!-- Totales -->
+            <div class="totales-box" style="margin-top: 20px;">
+                <div class="totales-grid">
+                    <div class="total-item">
+                        <span class="total-label">Total Neto:</span>
+                        <span class="total-value" id="ingresoTotalNeto">Bs. 0.00</span>
+                    </div>
+                    <div class="total-item" id="rowIVA" style="display:none;">
+                        <span class="total-label">IVA 13%:</span>
+                        <span class="total-value iva" id="ingresoIVA">Bs. 0.00</span>
+                    </div>
+                    <div class="total-item total-final">
+                        <span class="total-label">TOTAL DOCUMENTO:</span>
+                        <span class="total-value" id="ingresoTotal">Bs. 0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Observaciones</label>
+                <textarea id="ingresoObservaciones" placeholder="Notas adicionales sobre este ingreso..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="cerrarModal('modalIngreso')">Cancelar</button>
+            <button class="btn btn-success" onclick="guardarIngreso()"><i class="fas fa-check"></i> Registrar
+                Ingreso</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Salida -->
+<div class="modal" id="modalSalida">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3><i class="fas fa-arrow-up"></i> Salida de Accesorios</h3>
+            <button class="modal-close" onclick="cerrarModal('modalSalida')"
+                style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Fila 1: Documento y Fecha -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Documento Nº</label>
+                    <input type="text" id="salidaDocumento" readonly style="background:#e9ecef; font-weight:bold;">
+                </div>
+                <div class="form-group">
+                    <label>Fecha</label>
+                    <input type="date" id="salidaFecha">
+                </div>
+            </div>
+
+            <!-- Fila 2: Tipo de Salida y Referencia -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Tipo de Salida</label>
+                    <select id="salidaTipo" onchange="actualizarNumeroSalida()">
+                        <option value="" selected disabled>Seleccione tipo de salida</option>
+                        <option value="PRODUCCION">📦 Producción</option>
+                        <option value="VENTA">💰 Venta</option>
+                        <option value="MUESTRAS">🎁 Muestras</option>
+                        <option value="AJUSTE">⚙️ Ajuste de Inventario</option>
+                        <option value="DEVOLUCION">↩️ Devolución a Proveedor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Referencia</label>
+                    <input type="text" id="salidaReferencia" placeholder="Ej: OP-2024-001, Cliente XYZ">
+                </div>
+            </div>
+
+            <!-- Separador -->
+            <hr style="margin: 20px 0; border-color: #e9ecef;">
+
+            <!-- Filtro de Productos por Categoría/Subcategoría -->
+            <div class="filtros-productos">
+                <h4 style="margin-bottom:10px;"><i class="fas fa-filter"></i> Filtrar Productos</h4>
+                <div class="form-row" style="margin-bottom:15px;">
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select id="salidaFiltroCat" onchange="filtrarProductosSalida()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Subcategoría</label>
+                        <select id="salidaFiltroSubcat" onchange="filtrarProductosSalida()">
+                            <option value="">Todas las subcategorías</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Líneas -->
+            <h4><i class="fas fa-list"></i> Líneas de Salida</h4>
+            <div class="tabla-ingreso-container">
+                <table class="tabla-lineas" id="tablaLineasSalida">
+                    <thead>
+                        <tr>
+                            <th style="min-width:250px;">PRODUCTO</th>
+                            <th style="width:120px; text-align:center;">STOCK DISPONIBLE</th>
+                            <th style="width:60px; text-align:center;">UNID.</th>
+                            <th style="width:100px; background:#fff3cd; text-align:center;">CANTIDAD</th>
+                            <th style="width:130px; text-align:center;">CPP</th>
+                            <th style="width:120px; text-align:center;">SUBTOTAL</th>
+                            <th style="width:50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="salidaLineasBody"></tbody>
+                </table>
+            </div>
+
+            <button class="btn btn-primary" onclick="agregarLineaSalida()" style="margin-top:10px;">
+                <i class="fas fa-plus"></i> Agregar Línea
+            </button>
+
+            <!-- Totales -->
+            <div class="totales-box" style="margin-top: 20px;">
+                <div class="totales-grid">
+                    <div class="total-item total-final">
+                        <span class="total-label">TOTAL SALIDA:</span>
+                        <span class="total-value" id="salidaTotal">Bs. 0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Observaciones -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Observaciones / Motivo <span id="motivoObligatorio"
+                        style="color:#dc3545; display:none;">*</span></label>
+                <textarea id="salidaObservaciones" placeholder="Notas adicionales sobre esta salida..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="cerrarModal('modalSalida')">Cancelar</button>
+            <button class="btn btn-danger" onclick="guardarSalida()"><i class="fas fa-check"></i> Registrar
+                Salida</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Historial -->
+<div class="modal" id="modalHistorial">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3><i class="fas fa-history"></i> Historial de Movimientos</h3>
+            <button class="modal-close" onclick="cerrarModal('modalHistorial')"
+                style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Filtros -->
+            <div
+                style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                <div class="form-group" style="flex:1; min-width: 150px;">
+                    <label style="font-size:0.85rem; font-weight:600;">Desde</label>
+                    <input type="date" id="historialDesde"
+                        style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                </div>
+                <div class="form-group" style="flex:1; min-width: 150px;">
+                    <label style="font-size:0.85rem; font-weight:600;">Hasta</label>
+                    <input type="date" id="historialHasta"
+                        style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                </div>
+                <div class="form-group" style="flex:1; min-width: 150px;">
+                    <label style="font-size:0.85rem; font-weight:600;">Tipo</label>
+                    <select id="historialTipo"
+                        style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                        <option value="">📋 Todos los movimientos</option>
+
+                        <optgroup label="➕ INGRESOS">
+                            <option value="INGRESO">📥 Todos los ingresos</option>
+                            <option value="COMPRA">🛒 Compras</option>
+                            <option value="DEVOLUCION_PRODUCCION">↩️ Devolución Producción</option>
+                            <option value="AJUSTE_POSITIVO">⚙️ Ajuste Positivo</option>
+                            <option value="INGRESO_INICIAL">📦 Ingreso Inicial</option>
+                        </optgroup>
+
+                        <optgroup label="➖ SALIDAS">
+                            <option value="SALIDA">📤 Todas las salidas</option>
+                            <option value="PRODUCCION">🏭 Producción</option>
+                            <option value="VENTA">💰 Venta</option>
+                            <option value="DEVOLUCION">↩️ Devolución</option>
+                            <option value="MUESTRAS">🎁 Muestras</option>
+                            <option value="AJUSTE">⚙️ Ajuste</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1; min-width: 150px;">
+                    <label style="font-size:0.85rem; font-weight:600;">Estado</label>
+                    <select id="historialEstado"
+                        style="padding:8px; border:1px solid #dee2e6; border-radius:6px; width:100%;">
+                        <option value="todos">Todos</option>
+                        <option value="CONFIRMADO">Confirmados</option>
+                        <option value="ANULADO">Anulados</option>
+                    </select>
+                </div>
+                <div class="form-group" style="align-self: flex-end;">
+                    <button class="btn btn-primary" onclick="buscarHistorial()" style="padding:9px 20px;">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabla -->
+            <div style="overflow-x: auto;">
+                <table class="productos-table">
+                    <thead>
+                        <tr>
+                            <th style="width:90px;">Fecha</th>
+                            <th style="width:150px;">Documento</th>
+                            <th style="width:110px;">Movimiento</th>
+                            <th style="width:140px;">Tipo</th>
+                            <th style="width:110px; text-align:right;">Total</th>
+                            <th style="width:110px; text-align:center;">Estado</th>
+                            <th>Observaciones</th>
+                            <th style="width:90px; text-align:center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historialBody">
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding:30px; color:#6c757d;">
+                                <i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i><br>
+                                Cargando...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="cerrarModal('modalHistorial')">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Detalle de Documento -->
+
 <div class="modal" id="modalDetalle">
     <div class="modal-content">
         <div class="modal-header">
@@ -2100,6 +2508,9 @@ require_once '../../includes/header.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/accesorios.js"></script>
-<script src="js/accesorios_dinamico.js"></script>
+<script src="js/accesorios.js?v=<?php echo time(); ?>"></script>
+<script src="js/accesorios_dinamico.js?v=<?php echo time(); ?>"></script>
+<script src="js/devolucion_proveedor_acc.js?v=<?php echo time(); ?>"></script>
+<script src="js/kardex_acc.js?v=<?php echo time(); ?>"></script>
+
 <?php require_once '../../includes/footer.php'; ?>

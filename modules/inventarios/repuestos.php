@@ -1254,8 +1254,9 @@ require_once '../../includes/header.php';
             <div class="mp-title">
                 <div class="mp-title-icon"><i class="fas <?php echo $tipoIcono; ?>"></i></div>
                 <div>
-                    <h1>Materias Primas</h1>
-                    <p>Gestión de inventario de materias primas</p>
+                    <h1>Repuestos y Máquinas</h1>
+                    <p>Gestión de inventario de repuestos y mantenimiento</p>
+
                 </div>
             </div>
         </div>
@@ -1356,7 +1357,67 @@ require_once '../../includes/header.php';
             <form id="formItem">
                 <input type="hidden" id="itemId">
                 <div class="form-row">
-                    <div class="form-group"><label>Código *</label><input type="text" id="itemCodigo" required></div>
+                    <div class="form-group">
+                        <label>Código *</label>
+
+                        <!-- VISTA AUTOMÁTICA -->
+                        <div id="codigoAutomaticoView" style="display:block;">
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="itemCodigo" readonly
+                                    style="background:#e9ecef; color:#495057; font-weight:bold; flex:1;"
+                                    placeholder="Se generará automáticamente">
+                                <button type="button" class="btn btn-secondary" onclick="toggleModoManual()"
+                                    style="white-space:nowrap; padding:5px 10px; font-size:0.8rem;">
+                                    <i class="fas fa-edit"></i> Manual
+                                </button>
+                            </div>
+                            <small class="text-muted" id="formatoSugerido"
+                                style="display:block; margin-top:5px; font-size:0.75rem;">
+                                Formato: TIPO-CAT-SUBCAT-XXX
+                            </small>
+                        </div>
+
+                        <!-- VISTA MANUAL -->
+                        <div id="codigoManualView" style="display:none;">
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="itemCodigoManual"
+                                    style="font-weight:bold; text-transform:uppercase; flex:1;"
+                                    placeholder="Ingrese código manual">
+                                <button type="button" class="btn btn-outline-secondary" onclick="toggleModoManual()"
+                                    style="white-space:nowrap; padding:5px 10px; font-size:0.8rem;">
+                                    <i class="fas fa-magic"></i> Auto
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PREVIEW DESGLOSADO -->
+                        <div id="codigoPreviewSection"
+                            style="margin-top:10px; background:#f8f9fa; padding:8px; border-radius:6px; display:none; border:1px dashed #ced4da;">
+                            <div
+                                style="display:flex; gap:5px; align-items:center; justify-content:center; flex-wrap:wrap;">
+                                <span class="badge badge-secondary" id="labelTipo">REP</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-info" id="labelCat">CAT</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-info" id="labelSubcat">SUB</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-warning" id="labelNum">000</span>
+                            </div>
+                            <div style="text-align:center; margin-top:5px; font-size:0.75rem; color:#6c757d;">
+                                <span id="previewPrefijo"></span><span id="previewSufijo"></span>
+                            </div>
+                        </div>
+
+                        <!-- SUFIJO PERSONALIZADO (Opcional) -->
+                        <div id="sufijoPersonalizadoRow"
+                            style="display:none; margin-top:5px; align-items:center; gap:5px;">
+                            <label style="font-size:0.75rem; margin:0;">Correlativo:</label>
+                            <input type="number" id="itemSufijo" style="padding:2px 5px; width:60px; font-size:0.8rem;"
+                                oninput="actualizarCodigoFinal()">
+                            <small style="font-size:0.7rem; color:#6c757d;">(Editable)</small>
+                        </div>
+
+                    </div>
                     <div class="form-group"><label>Nombre *</label><input type="text" id="itemNombre" required></div>
                 </div>
                 <div class="form-row">
@@ -1367,8 +1428,7 @@ require_once '../../includes/header.php';
                         </select></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Stock Actual</label><input type="number" id="itemStockActual"
-                            step="0.01" value="0"></div>
+                    <input type="hidden" id="itemStockActual" value="0">
                     <div class="form-group"><label>Stock Mínimo</label><input type="number" id="itemStockMinimo"
                             step="0.01" value="0"></div>
                 </div>
@@ -1390,27 +1450,30 @@ require_once '../../includes/header.php';
 <!-- Modal Ingreso -->
 <div class="modal" id="modalIngreso">
     <div class="modal-content xlarge">
-        <div class="modal-header">
-            <h3><i class="fas fa-arrow-down"></i> Ingreso de Materias Primas</h3>
+        <div class="modal-header" style="background: linear-gradient(135deg, #2e7d32, #66bb6a);">
+            <h3><i class="fas fa-arrow-down"></i> Ingreso de Repuestos</h3>
             <button class="modal-close" onclick="cerrarModal('modalIngreso')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+
         </div>
         <div class="modal-body">
 
+
             <!-- ⭐ SELECTOR DE TIPO DE INGRESO -->
             <div class="form-row"
-                style="background: linear-gradient(135deg, #1a237e, #4fc3f7); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(26, 35, 126, 0.3);">
+                style="background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e9ecef;">
                 <div class="form-group" style="flex: 1; margin: 0;">
-                    <label style="color: white; font-weight: 600; font-size: 0.95rem;">
+                    <label style="font-weight: 600; font-size: 0.95rem; color: #495057;">
                         <i class="fas fa-clipboard-list"></i> Tipo de Ingreso
-                        <span style="color: #ffe066;">*</span>
+                        <span style="color: #dc3545;">*</span>
                     </label>
                     <select id="ingresoTipoIngreso" required class="form-control" onchange="cambiarTipoIngreso()"
-                        style="font-size: 1.05rem; font-weight: 500; padding: 12px;">
+                        style="font-size: 1.05rem; font-weight: 500; padding: 12px; background: white;">
                         <option value="">Seleccione tipo de ingreso...</option>
                     </select>
                 </div>
             </div>
+
 
             <!-- Fila 1: Documento y Fecha -->
             <div class="form-row">
@@ -1596,8 +1659,8 @@ require_once '../../includes/header.php';
 <!-- Modal Salida - ACTUALIZADO -->
 <div class="modal" id="modalSalida">
     <div class="modal-content large">
-        <div class="modal-header">
-            <h3><i class="fas fa-arrow-up"></i> Salida de Materias Primas</h3>
+        <div class="modal-header" style="background: linear-gradient(135deg, #c62828, #ef5350);">
+            <h3><i class="fas fa-arrow-up"></i> Salida de Repuestos</h3>
             <button class="modal-close" onclick="cerrarModal('modalSalida')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
@@ -2045,9 +2108,9 @@ require_once '../../includes/header.php';
 </div>
 
 <!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="js/repuestos.js"></script>
 <script src="js/repuestos_dinamico.js"></script>
 <script src="js/devolucion_proveedor.js"></script>
-<script src="js/historial_movimientos.js"></script>
 <script src="js/kardex_rep.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

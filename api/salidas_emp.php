@@ -265,19 +265,18 @@ try {
                         // Insertar documento
                         $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
-                                tipo_documento, tipo_salida, id_tipo_salida,
+                                tipo_documento, tipo_salida,
                                 numero_documento, fecha_documento,
                                 id_tipo_inventario, referencia_externa,
                                 moneda, subtotal, total,
                                 observaciones, estado, creado_por
                             ) VALUES (
-                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
+                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
                             )
                         ");
 
                         $stmt->execute([
                             $tipoSalida,
-                            $idTipoSalida,
                             $numeroDoc,
                             $fecha,
                             $TIPO_INVENTARIO_EMP,

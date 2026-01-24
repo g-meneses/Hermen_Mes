@@ -1256,8 +1256,8 @@ require_once '../../includes/header.php';
                 <div class="mp-title-icon" data-tipo-id="<?php echo $tipoId; ?>"><i
                         class="fas <?php echo $tipoIcono; ?>"></i></div>
                 <div>
-                    <h1>Materias Primas</h1>
-                    <p>Gestión de inventario de materias primas</p>
+                    <h1>Material de Empaque</h1>
+                    <p>Gestión de inventario de material de empaque</p>
                 </div>
             </div>
         </div>
@@ -1447,8 +1447,8 @@ require_once '../../includes/header.php';
 <!-- Modal Ingreso -->
 <div class="modal" id="modalIngreso">
     <div class="modal-content xlarge">
-        <div class="modal-header">
-            <h3><i class="fas fa-arrow-down"></i> Ingreso de Materias Primas</h3>
+        <div class="modal-header" style="background: linear-gradient(135deg, #2e7d32, #66bb6a); color: white;">
+            <h3><i class="fas fa-arrow-down"></i> Ingreso de Material de Empaque</h3>
             <button class="modal-close" onclick="cerrarModal('modalIngreso')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
@@ -1456,11 +1456,11 @@ require_once '../../includes/header.php';
 
             <!-- ⭐ SELECTOR DE TIPO DE INGRESO -->
             <div class="form-row"
-                style="background: linear-gradient(135deg, #1a237e, #4fc3f7); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(26, 35, 126, 0.3);">
+                style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e9ecef;">
                 <div class="form-group" style="flex: 1; margin: 0;">
-                    <label style="color: white; font-weight: 600; font-size: 0.95rem;">
+                    <label style="color: #495057; font-weight: 600; font-size: 0.95rem;">
                         <i class="fas fa-clipboard-list"></i> Tipo de Ingreso
-                        <span style="color: #ffe066;">*</span>
+                        <span class="text-danger">*</span>
                     </label>
                     <select id="ingresoTipoIngreso" required class="form-control" onchange="cambiarTipoIngreso()"
                         style="font-size: 1.05rem; font-weight: 500; padding: 12px;">
@@ -1653,8 +1653,8 @@ require_once '../../includes/header.php';
 <!-- Modal Salida - ACTUALIZADO -->
 <div class="modal" id="modalSalida">
     <div class="modal-content large">
-        <div class="modal-header">
-            <h3><i class="fas fa-arrow-up"></i> Salida de Materias Primas</h3>
+        <div class="modal-header" style="background: linear-gradient(135deg, #c62828, #ef5350); color: white;">
+            <h3><i class="fas fa-arrow-up"></i> Salida de Material de Empaque</h3>
             <button class="modal-close" onclick="cerrarModal('modalSalida')"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
@@ -2082,6 +2082,63 @@ require_once '../../includes/header.php';
         </div>
     </div>
 </div>
+<!-- Modal Historial -->
+<div class="modal" id="modalHistorial">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h3><i class="fas fa-history"></i> Historial de Movimientos</h3>
+            <button class="modal-close" onclick="cerrarModal('modalHistorial')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="filtros-historial"
+                style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; background:#f8f9fa; padding:15px; border-radius:8px;">
+                <div style="flex:1; min-width:150px;">
+                    <label>Desde:</label>
+                    <input type="date" id="historialFechaDesde" class="form-control">
+                </div>
+                <div style="flex:1; min-width:150px;">
+                    <label>Hasta:</label>
+                    <input type="date" id="historialFechaHasta" class="form-control">
+                </div>
+                <div style="flex:1; min-width:150px;">
+                    <label>Tipo:</label>
+                    <select id="historialTipoMov" class="form-control">
+                        <option value="">Todos</option>
+                        <option value="ENTRADA">Entradas</option>
+                        <option value="SALIDA">Salidas</option>
+                        <option value="DEVOLUCION">Devoluciones</option>
+                    </select>
+                </div>
+                <div style="flex:2; min-width:200px;">
+                    <label>Buscar (Doc/Obs):</label>
+                    <div style="display:flex; gap:5px;">
+                        <input type="text" id="historialBuscar" class="form-control" placeholder="Nº Documento...">
+                        <button class="btn btn-primary" onclick="cargarHistorial()"><i
+                                class="fas fa-search"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="overflow-x:auto;">
+                <table class="table-custom">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Documento</th>
+                            <th>Usuario</th>
+                            <th>Items</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historialBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
 <!-- Modal Detalle de Documento -->
 <div class="modal" id="modalDetalle">
     <div class="modal-content">
@@ -2105,6 +2162,5 @@ require_once '../../includes/header.php';
 <script src="js/empaque.js?v=<?php echo time(); ?>"></script>
 <script src="js/empaque_dinamico.js"></script>
 <script src="js/devolucion_proveedor.js"></script>
-<script src="js/historial_movimientos.js"></script>
 <script src="js/kardex_emp.js"></script>
 <?php require_once '../../includes/footer.php'; ?>

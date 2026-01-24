@@ -1768,18 +1768,18 @@ async function guardarSalida() {
     const tipo = document.getElementById('salidaTipo').value;
 
     if (lineasSalida.length === 0) {
-        alert('⚠️ Agregue al menos una línea');
+        Swal.fire('Atención', 'Agregue al menos una línea', 'warning');
         return;
     }
 
     // Validar que todas las líneas tengan producto y cantidad
     for (let i = 0; i < lineasSalida.length; i++) {
         if (!lineasSalida[i].id_inventario) {
-            alert(`⚠️ Seleccione un producto en la línea ${i + 1}`);
+            Swal.fire('Atención', `Seleccione un producto en la línea ${i + 1}`, 'warning');
             return;
         }
         if (lineasSalida[i].cantidad <= 0) {
-            alert(`⚠️ Ingrese cantidad en la línea ${i + 1}`);
+            Swal.fire('Atención', `Ingrese cantidad mayor a 0 en la línea ${i + 1}`, 'warning');
             return;
         }
 
@@ -1787,14 +1787,20 @@ async function guardarSalida() {
         const prod = productosCompletos.find(p => p.id_inventario == lineasSalida[i].id_inventario);
         const stockDisp = prod ? toNum(prod.stock_actual) : 0;
         if (lineasSalida[i].cantidad > stockDisp) {
-            alert(`⚠️ Stock insuficiente para ${prod.nombre}. Disponible: ${formatNum(stockDisp)}`);
+            Swal.fire({
+                icon: 'error',
+                title: 'Stock Insuficiente',
+                html: `Producto: <strong>${prod.codigo} - ${prod.nombre}</strong><br>` +
+                    `Solicitado: <strong>${formatNum(lineasSalida[i].cantidad)}</strong><br>` +
+                    `Disponible: <strong style="color:red">${formatNum(stockDisp)}</strong>`
+            });
             return;
         }
     }
 
     // Validar motivo para ajustes
     if (tipo === 'AJUSTE' && !document.getElementById('salidaObservaciones').value.trim()) {
-        alert('⚠️ El motivo es obligatorio para ajustes de inventario');
+        Swal.fire('Atención', 'El motivo es obligatorio para ajustes de inventario', 'warning');
         return;
     }
 
@@ -1823,15 +1829,21 @@ async function guardarSalida() {
         console.log('Respuesta:', d);
 
         if (d.success) {
-            alert('✅ ' + d.message);
+            await Swal.fire({
+                icon: 'success',
+                title: '¡Salida Registrada!',
+                text: d.message,
+                timer: 2000,
+                showConfirmButton: false
+            });
             cerrarModal('modalSalida');
             cargarDatos();
         } else {
-            alert('❌ ' + d.message);
+            Swal.fire('Error', d.message, 'error');
         }
     } catch (e) {
         console.error('Error:', e);
-        alert('Error al guardar la salida');
+        Swal.fire('Error', 'Error al guardar la salida', 'error');
     }
 }
 
@@ -1919,6 +1931,144 @@ function renderHistorial(docs) {
             </tr>
         `;
     }).join('');
+}
+
+// ========== DETALLE DE DOCUMENTO ==========
+async function verDetalleDocumento(docNumero) {
+    try {
+        const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=documento_detalle&documento=${encodeURIComponent(docNumero)}`);
+        const d = await r.json();
+
+        if (d.success) {
+            mostrarDetalleDocumento(d.cabecera, d.lineas);
+        } else {
+            Swal.fire('Error', d.message || 'No se pudo cargar el detalle', 'error');
+        }
+    } catch (e) {
+        console.error('Error cargando detalle:', e);
+        Swal.fire('Error', 'Error de conexión al cargar detalle', 'error');
+    }
+}
+
+function mostrarDetalleDocumento(doc, detalle) {
+    const contenedor = document.getElementById('detalleContenido');
+
+    // Color según tipo
+    let color = '#6c757d';
+    if (doc.tipo_movimiento.includes('ENTRADA')) color = '#28a745';
+    else if (doc.tipo_movimiento.includes('SALIDA')) color = '#dc3545';
+    else if (doc.tipo_movimiento.includes('DEVOLUCION')) color = '#ffc107';
+
+    let html = `
+        <div style="background:#f8f9fa; padding:15px; border-radius:8px; margin-bottom:20px; border-left:5px solid ${color}">
+            <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:10px;">
+                <div>
+                    <strong>Documento:</strong> <span style="font-size:1.1em; color:${color}">${doc.documento_numero}</span><br>
+                    <strong>Tipo:</strong> ${doc.documento_tipo} (${doc.tipo_movimiento})<br>
+                    <strong>Fecha:</strong> ${doc.fecha}
+                </div>
+                <div style="text-align:right;">
+                    <strong>Total:</strong> <span style="font-size:1.2em; font-weight:bold;">Bs. ${formatNum(doc.total_documento)}</span><br>
+                    <strong>Estado:</strong> ${doc.estado === 'ANULADO' ? '<span style="color:red;font-weight:bold">ANULADO</span>' : '<span style="color:green;font-weight:bold">ACTIVO</span>'}<br>
+                    <strong>Usuario:</strong> ${doc.usuario || '-'}
+                </div>
+            </div>
+            ${doc.observaciones ? `<div style="margin-top:10px; border-top:1px solid #ddd; padding-top:5px;"><strong>Obs:</strong> ${doc.observaciones}</div>` : ''}
+        </div>
+
+        <h5><i class="fas fa-list"></i> Detalle de Items</h5>
+        <div style="overflow-x:auto">
+            <table class="table-custom" style="font-size:0.9rem;">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Producto</th>
+                        <th style="text-align:right">Cant.</th>
+                        <th style="text-align:right">Costo U.</th>
+                        <th style="text-align:right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    html += detalle.map(item => `
+        <tr>
+            <td>${item.producto_codigo}</td>
+            <td>${item.producto_nombre}</td>
+            <td style="text-align:right">${formatNum(item.cantidad)} ${item.unidad || ''}</td>
+            <td style="text-align:right">Bs. ${formatNum(item.costo_unitario)}</td>
+            <td style="text-align:right; font-weight:bold;">Bs. ${formatNum(item.costo_total)}</td>
+        </tr>
+    `).join('');
+
+    html += `
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="4" style="text-align:right; font-weight:bold;">TOTAL</td>
+                        <td style="text-align:right; font-weight:bold; font-size:1.1em;">Bs. ${formatNum(doc.total_documento)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    `;
+
+    contenedor.innerHTML = html;
+
+    // Configurar botón de anular en el modal
+    const btnAnular = document.getElementById('btnAnularDetalle');
+    if (doc.estado === 'ACTIVO' || doc.estado === 'CONFIRMADO') {
+        btnAnular.style.display = 'inline-block';
+        btnAnular.onclick = () => anularDocumento(doc.documento_numero);
+    } else {
+        btnAnular.style.display = 'none';
+    }
+
+    document.getElementById('modalDetalle').classList.add('show');
+}
+
+async function anularDocumento(docNumero) {
+    const { value: motivo } = await Swal.fire({
+        title: '¿Anular Documento?',
+        text: "Esta acción revertirá los movimientos de inventario. Ingrese el motivo:",
+        input: 'text',
+        inputPlaceholder: 'Motivo de anulación...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, anular',
+        inputValidator: (value) => {
+            if (!value) return 'El motivo es obligatorio';
+        }
+    });
+
+    if (motivo) {
+        try {
+            const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'anular_documento',
+                    documento: docNumero,
+                    motivo: motivo
+                })
+            });
+            const d = await r.json();
+
+            if (d.success) {
+                Swal.fire('¡Anulado!', d.message, 'success');
+                cerrarModal('modalDetalle');
+                cargarHistorial(); // Refrescar lista
+                cargarDatos(); // Refrescar KPIs
+            } else {
+                Swal.fire('Error', d.message, 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Error al procesar la anulación', 'error');
+        }
+    }
 }
 
 function verKardex(id) {

@@ -1180,6 +1180,28 @@ require_once '../../includes/header.php';
         }
     }
 
+    /* ========================================
+       ESTILOS PARA BANNER DE ESTADO DE CÓDIGO
+       (Blindaje de Unicidad)
+       ======================================== */
+    .codigo-status-ok {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        color: #155724;
+        border: 1px solid #28a745;
+    }
+
+    .codigo-status-error {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+        color: #721c24;
+        border: 1px solid #dc3545;
+    }
+
+    .codigo-status-loading {
+        background: #e7f3ff;
+        color: #004085;
+        border: 1px solid #007bff;
+    }
+
     .kardex-tabs {
         display: flex;
         gap: 5px;
@@ -1375,6 +1397,12 @@ require_once '../../includes/header.php';
                                 style="display:block; margin-top:5px; font-size:0.75rem;">
                                 Formato: TIPO-CAT-SUBCAT-XXX
                             </small>
+                            <!-- BANNER DE ESTADO DE CÓDIGO (Blindaje de Unicidad) -->
+                            <div id="codigoStatusBanner"
+                                style="display:none; margin-top:8px; padding:10px 15px; border-radius:8px; font-size:0.85rem; font-weight:600; align-items:center; gap:8px;">
+                                <i id="codigoStatusIcon" class="fas"></i>
+                                <span id="codigoStatusMessage"></span>
+                            </div>
                         </div>
 
                         <!-- VISTA MANUAL -->

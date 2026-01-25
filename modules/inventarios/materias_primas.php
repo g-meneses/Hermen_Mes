@@ -1180,6 +1180,61 @@ require_once '../../includes/header.php';
         }
     }
 
+    /* ========================================
+       ESTILOS PARA GENERADOR DE CÓDIGOS Y BLINDAJE DE UNICIDAD
+       ======================================== */
+    .codigo-status-ok {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        color: #155724;
+        border: 1px solid #28a745;
+    }
+
+    .codigo-status-error {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+        color: #721c24;
+        border: 1px solid #dc3545;
+    }
+
+    .codigo-status-loading {
+        background: #e7f3ff;
+        color: #004085;
+        border: 1px solid #007bff;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .badge-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .badge-info {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .badge-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .btn-outline-secondary {
+        background: transparent;
+        border: 1px solid #6c757d;
+        color: #6c757d;
+    }
+
+    .btn-outline-secondary:hover {
+        background: #6c757d;
+        color: white;
+    }
+
     .kardex-tabs {
         display: flex;
         gap: 5px;
@@ -1344,31 +1399,96 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
-<!-- MODALES -->
 <!-- Modal Nuevo/Editar Item -->
 <div class="modal" id="modalItem">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><i class="fas fa-box"></i> <span id="modalItemTitulo">Nuevo Item</span></h3>
+            <h3><i class="fas fa-box"></i> <span id="modalItemTitulo">Nuevo Item de Materia Prima</span></h3>
             <button class="modal-close" onclick="cerrarModal('modalItem')">&times;</button>
         </div>
         <div class="modal-body">
             <form id="formItem">
                 <input type="hidden" id="itemId">
                 <div class="form-row">
-                    <div class="form-group"><label>Código *</label><input type="text" id="itemCodigo" required></div>
+                    <div class="form-group">
+                        <label>Código *</label>
+
+                        <!-- VISTA AUTOMÁTICA -->
+                        <div id="codigoAutomaticoView" style="display:block;">
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="itemCodigo" readonly
+                                    style="background:#e9ecef; color:#495057; font-weight:bold; flex:1;"
+                                    placeholder="Se generará automáticamente">
+                                <button type="button" class="btn btn-secondary" onclick="toggleModoManual()"
+                                    style="white-space:nowrap; padding:5px 10px; font-size:0.8rem;">
+                                    <i class="fas fa-edit"></i> Manual
+                                </button>
+                            </div>
+                            <small class="text-muted" id="formatoSugerido"
+                                style="display:block; margin-top:5px; font-size:0.75rem;">
+                                Formato: MP-CAT-SUBCAT-XXX
+                            </small>
+                            <!-- BANNER DE ESTADO DE CÓDIGO (Blindaje de Unicidad) -->
+                            <div id="codigoStatusBanner"
+                                style="display:none; margin-top:8px; padding:10px 15px; border-radius:8px; font-size:0.85rem; font-weight:600; align-items:center; gap:8px;">
+                                <i id="codigoStatusIcon" class="fas"></i>
+                                <span id="codigoStatusMessage"></span>
+                            </div>
+                        </div>
+
+                        <!-- VISTA MANUAL -->
+                        <div id="codigoManualView" style="display:none;">
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="itemCodigoManual"
+                                    style="font-weight:bold; text-transform:uppercase; flex:1;"
+                                    placeholder="Ingrese código manual">
+                                <button type="button" class="btn btn-outline-secondary" onclick="toggleModoManual()"
+                                    style="white-space:nowrap; padding:5px 10px; font-size:0.8rem;">
+                                    <i class="fas fa-magic"></i> Auto
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PREVIEW DESGLOSADO -->
+                        <div id="codigoPreviewSection"
+                            style="margin-top:10px; background:#f8f9fa; padding:8px; border-radius:6px; display:none; border:1px dashed #ced4da;">
+                            <div
+                                style="display:flex; gap:5px; align-items:center; justify-content:center; flex-wrap:wrap;">
+                                <span class="badge badge-secondary" id="labelTipo">MP</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-info" id="labelCat">CAT</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-info" id="labelSubcat">SUB</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-warning" id="labelNum">000</span>
+                            </div>
+                            <div style="text-align:center; margin-top:5px; font-size:0.75rem; color:#6c757d;">
+                                <span id="previewPrefijo"></span><span id="previewSufijo"></span>
+                            </div>
+                        </div>
+
+                        <!-- SUFIJO PERSONALIZADO (Correlativo) -->
+                        <div id="sufijoPersonalizadoRow"
+                            style="display:none; margin-top:5px; align-items:center; gap:5px;">
+                            <label style="font-size:0.75rem; margin:0;">Correlativo:</label>
+                            <input type="number" id="itemSufijo" style="padding:2px 5px; width:60px; font-size:0.8rem;"
+                                oninput="actualizarCodigoFinal()">
+                            <small style="font-size:0.7rem; color:#6c757d;">(Editable)</small>
+                        </div>
+
+                    </div>
                     <div class="form-group"><label>Nombre *</label><input type="text" id="itemNombre" required></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group"><label>Categoría *</label><select id="itemCategoria" required
                             onchange="cargarSubcategoriasItem()"></select></div>
-                    <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria">
+                    <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria"
+                            onchange="actualizarCodigoSugerido()">
                             <option value="">Sin subcategoría</option>
                         </select></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>Stock Actual</label><input type="number" id="itemStockActual"
-                            step="0.01" value="0"></div>
+                    <input type="hidden" id="itemStockActual" value="0">
                     <div class="form-group"><label>Stock Mínimo</label><input type="number" id="itemStockMinimo"
                             step="0.01" value="0"></div>
                 </div>
@@ -2057,51 +2177,51 @@ require_once '../../includes/header.php';
 </script>
 <!-- Control de Fechas - INLINE para evitar problemas de caché -->
 <script>
-(function() {
-    'use strict';
-    
-    const FECHA_SERVIDOR = window.FECHA_SERVIDOR || '<?php echo date("Y-m-d"); ?>';
-    console.log('🚀 Control de fechas iniciado con fecha:', FECHA_SERVIDOR);
-    
-    function configurarInputFecha(input) {
-        if (!input.value || input.value === '' || input.value > FECHA_SERVIDOR) {
-            input.value = FECHA_SERVIDOR;
-        }
-        input.setAttribute('max', FECHA_SERVIDOR);
-        input.setAttribute('readonly', 'readonly');
-        input.style.backgroundColor = '#e9ecef';
-        input.style.cursor = 'not-allowed';
-        input.setAttribute('title', 'Fecha automática del servidor: ' + FECHA_SERVIDOR);
-        console.log('✅ Campo configurado:', input.id || input.name, '=', FECHA_SERVIDOR);
-    }
-    
-    function configurarTodos() {
-        const inputs = document.querySelectorAll('input[type="date"]');
-        console.log('🔍 Encontrados', inputs.length, 'campos de fecha');
-        inputs.forEach(configurarInputFecha);
-    }
-    
-    // Observador para campos dinámicos
-    const observer = new MutationObserver(() => {
-        document.querySelectorAll('input[type="date"]').forEach(input => {
-            if (!input.hasAttribute('data-fecha-configurada')) {
-                input.setAttribute('data-fecha-configurada', 'true');
-                configurarInputFecha(input);
+    (function () {
+        'use strict';
+
+        const FECHA_SERVIDOR = window.FECHA_SERVIDOR || '<?php echo date("Y-m-d"); ?>';
+        console.log('🚀 Control de fechas iniciado con fecha:', FECHA_SERVIDOR);
+
+        function configurarInputFecha(input) {
+            if (!input.value || input.value === '' || input.value > FECHA_SERVIDOR) {
+                input.value = FECHA_SERVIDOR;
             }
+            input.setAttribute('max', FECHA_SERVIDOR);
+            input.setAttribute('readonly', 'readonly');
+            input.style.backgroundColor = '#e9ecef';
+            input.style.cursor = 'not-allowed';
+            input.setAttribute('title', 'Fecha automática del servidor: ' + FECHA_SERVIDOR);
+            console.log('✅ Campo configurado:', input.id || input.name, '=', FECHA_SERVIDOR);
+        }
+
+        function configurarTodos() {
+            const inputs = document.querySelectorAll('input[type="date"]');
+            console.log('🔍 Encontrados', inputs.length, 'campos de fecha');
+            inputs.forEach(configurarInputFecha);
+        }
+
+        // Observador para campos dinámicos
+        const observer = new MutationObserver(() => {
+            document.querySelectorAll('input[type="date"]').forEach(input => {
+                if (!input.hasAttribute('data-fecha-configurada')) {
+                    input.setAttribute('data-fecha-configurada', 'true');
+                    configurarInputFecha(input);
+                }
+            });
         });
-    });
-    
-    function init() {
-        configurarTodos();
-        observer.observe(document.body, { childList: true, subtree: true });
-        setInterval(configurarTodos, 3000);
-    }
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-})();
+
+        function init() {
+            configurarTodos();
+            observer.observe(document.body, { childList: true, subtree: true });
+            setInterval(configurarTodos, 3000);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
 </script>
 <?php require_once '../../includes/footer.php'; ?>

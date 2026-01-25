@@ -19,6 +19,97 @@ let productosFiltrados = [];
 let modoConFactura = false;
 let contadorDocIngreso = 0;
 
+// ========== BLINDAJE DE UNICIDAD - Variables ==========
+let codigoValidado = true; // Estado de validación del código
+// modoManual se declara más abajo en el archivo original
+
+// ========== BLINDAJE DE UNICIDAD - Funciones ==========
+/**
+ * Verificar si un código ya existe en la base de datos
+ */
+async function verificarCodigoDuplicado(codigo, excludeId = null) {
+    if (!codigo || codigo.trim() === '') {
+        actualizarBannerCodigo('loading', 'Seleccione categoría y subcategoría...');
+        codigoValidado = false;
+        actualizarEstadoBotonGuardar();
+        return false;
+    }
+
+    actualizarBannerCodigo('loading', 'Verificando disponibilidad...');
+
+    try {
+        let url = `${baseUrl}/api/centro_inventarios.php?action=verificar_codigo&codigo=${encodeURIComponent(codigo)}`;
+        if (excludeId && excludeId !== '') {
+            url += `&exclude_id=${excludeId}`;
+        }
+
+        const r = await fetch(url);
+        const d = await r.json();
+
+        if (d.existe) {
+            actualizarBannerCodigo('error', `❌ ERROR: Código duplicado detectado. Ya existe en: "${d.producto_existente}". Por favor, ajuste el sufijo.`);
+            codigoValidado = false;
+            actualizarEstadoBotonGuardar();
+            return false;
+        } else {
+            actualizarBannerCodigo('ok', '✅ Código disponible');
+            codigoValidado = true;
+            actualizarEstadoBotonGuardar();
+            return true;
+        }
+    } catch (e) {
+        console.error('Error verificando código:', e);
+        actualizarBannerCodigo('error', '⚠️ Error al verificar código');
+        codigoValidado = false;
+        actualizarEstadoBotonGuardar();
+        return false;
+    }
+}
+
+function actualizarBannerCodigo(tipo, mensaje) {
+    const banner = document.getElementById('codigoStatusBanner');
+    const icon = document.getElementById('codigoStatusIcon');
+    const msg = document.getElementById('codigoStatusMessage');
+
+    if (!banner) return;
+
+    banner.style.display = 'flex';
+    banner.className = '';
+
+    switch (tipo) {
+        case 'ok':
+            banner.classList.add('codigo-status-ok');
+            icon.className = 'fas fa-check-circle';
+            break;
+        case 'error':
+            banner.classList.add('codigo-status-error');
+            icon.className = 'fas fa-exclamation-circle';
+            break;
+        case 'loading':
+            banner.classList.add('codigo-status-loading');
+            icon.className = 'fas fa-spinner fa-spin';
+            break;
+    }
+
+    msg.textContent = ' ' + mensaje;
+}
+
+function actualizarEstadoBotonGuardar() {
+    const btnGuardar = document.querySelector('#modalItem .btn-success');
+    if (btnGuardar) {
+        btnGuardar.disabled = !codigoValidado;
+        btnGuardar.style.opacity = codigoValidado ? '1' : '0.5';
+        btnGuardar.style.cursor = codigoValidado ? 'pointer' : 'not-allowed';
+    }
+}
+
+function ocultarBannerCodigo() {
+    const banner = document.getElementById('codigoStatusBanner');
+    if (banner) {
+        banner.style.display = 'none';
+    }
+}
+
 // Cache global para números de documento (accesible desde HTML onchange)
 window.numerosSalidaCache = {};
 window.numerosIngresoCache = {};
@@ -396,6 +487,19 @@ function abrirModalNuevoItem() {
     document.getElementById('codigoManualView').style.display = 'none';
     document.getElementById('btnToggleTexto').textContent = 'Editar manualmente';
 
+    // ========== BLINDAJE: Resetear estado de validación ==========
+    codigoValidado = false;
+    ocultarBannerCodigo();
+    actualizarEstadoBotonGuardar();
+
+    // Listener para código manual
+    const codigoManual = document.getElementById('itemCodigoManual');
+    if (codigoManual) {
+        codigoManual.addEventListener('blur', function () {
+            verificarCodigoDuplicado(this.value.trim().toUpperCase(), document.getElementById('itemId').value);
+        });
+    }
+
     document.getElementById('modalItem').classList.add('show');
 }
 
@@ -411,13 +515,12 @@ async function editarItem(id) {
     await cargarSubcategoriasItem();
     document.getElementById('itemSubcategoria_modal').value = item.id_subcategoria || '';
     document.getElementById('itemUnidad').value = item.id_unidad || '';
-    // document.getElementById('itemStockActual').value = item.stock_actual || 0; // Eliminado por centralización
     document.getElementById('itemStockMinimo').value = item.stock_minimo || 0;
     document.getElementById('itemCosto').value = item.costo_unitario || item.costo_promedio || 0;
     document.getElementById('itemDescripcion').value = item.descripcion || '';
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;
 
-    // En edición, mostrar en modo manual para que vean el código actual tranquilamente
+    // En edición, mostrar en modo manual
     modoManual = true;
     document.getElementById('codigoPreviewSection').style.display = 'block';
     document.getElementById('codigoAutomaticoView').style.display = 'none';
@@ -425,6 +528,11 @@ async function editarItem(id) {
     document.getElementById('itemCodigoManual').value = item.codigo || '';
     document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
     document.getElementById('btnToggleTexto').textContent = 'Usar automático';
+
+    // ========== BLINDAJE: En edición, código ya existe - permitir guardar ==========
+    codigoValidado = true;
+    actualizarBannerCodigo('ok', '✅ Editando item existente: ' + item.codigo);
+    actualizarEstadoBotonGuardar();
 
     document.getElementById('modalItem').classList.add('show');
 }
@@ -510,6 +618,13 @@ function poblarSelects() {
 
 async function guardarItem() {
     const id = document.getElementById('itemId').value;
+
+    // ========== BLINDAJE: Verificar validación de código ==========
+    if (!codigoValidado && !id) {
+        Swal.fire('Error', '❌ El código no ha sido validado o está duplicado. Verifique antes de guardar.', 'error');
+        return;
+    }
+
     const data = {
         action: id ? 'update' : 'create',
         id_inventario: id || null,
@@ -519,7 +634,7 @@ async function guardarItem() {
         id_categoria: document.getElementById('itemCategoria_modal').value,
         id_subcategoria: document.getElementById('itemSubcategoria_modal').value || null,
         id_unidad: document.getElementById('itemUnidad').value,
-        stock_actual: 0, // Siempre 0 al crear/editar desde aquí. El stock se maneja por Ingresos/Salidas
+        stock_actual: 0,
         stock_minimo: document.getElementById('itemStockMinimo').value || 0,
         costo_unitario: document.getElementById('itemCosto').value || 0,
         descripcion: document.getElementById('itemDescripcion').value

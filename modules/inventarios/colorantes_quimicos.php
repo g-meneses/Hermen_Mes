@@ -1188,6 +1188,28 @@ require_once '../../includes/header.php';
         }
     }
 
+    /* ========================================
+       ESTILOS PARA BANNER DE ESTADO DE CÓDIGO
+       (Blindaje de Unicidad)
+       ======================================== */
+    .codigo-status-ok {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        color: #155724;
+        border: 1px solid #28a745;
+    }
+
+    .codigo-status-error {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+        color: #721c24;
+        border: 1px solid #dc3545;
+    }
+
+    .codigo-status-loading {
+        background: #e7f3ff;
+        color: #004085;
+        border: 1px solid #007bff;
+    }
+
     .kardex-tabs {
         display: flex;
         gap: 5px;
@@ -1408,6 +1430,12 @@ require_once '../../includes/header.php';
                             style="font-family: monospace; font-size: 1.1rem; font-weight: 600; width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                         <div style="font-size: 0.75rem; color: #666; margin-top: 5px;">
                             💡 Formato sugerido: <code id="formatoSugerido">CAQ-COL-AC-XXX</code>
+                        </div>
+                        <!-- BANNER DE ESTADO DE CÓDIGO (Blindaje de Unicidad) -->
+                        <div id="codigoStatusBanner"
+                            style="display:none; margin-top:8px; padding:10px 15px; border-radius:8px; font-size:0.85rem; font-weight:600; align-items:center; gap:8px;">
+                            <i id="codigoStatusIcon" class="fas"></i>
+                            <span id="codigoStatusMessage"></span>
                         </div>
                     </div>
                 </div>
@@ -2123,51 +2151,51 @@ require_once '../../includes/header.php';
 </script>
 <!-- Control de Fechas - INLINE para evitar problemas de caché -->
 <script>
-(function() {
-    'use strict';
-    
-    const FECHA_SERVIDOR = window.FECHA_SERVIDOR || '<?php echo date("Y-m-d"); ?>';
-    console.log('🚀 Control de fechas iniciado con fecha:', FECHA_SERVIDOR);
-    
-    function configurarInputFecha(input) {
-        if (!input.value || input.value === '' || input.value > FECHA_SERVIDOR) {
-            input.value = FECHA_SERVIDOR;
-        }
-        input.setAttribute('max', FECHA_SERVIDOR);
-        input.setAttribute('readonly', 'readonly');
-        input.style.backgroundColor = '#e9ecef';
-        input.style.cursor = 'not-allowed';
-        input.setAttribute('title', 'Fecha automática del servidor: ' + FECHA_SERVIDOR);
-        console.log('✅ Campo configurado:', input.id || input.name, '=', FECHA_SERVIDOR);
-    }
-    
-    function configurarTodos() {
-        const inputs = document.querySelectorAll('input[type="date"]');
-        console.log('🔍 Encontrados', inputs.length, 'campos de fecha');
-        inputs.forEach(configurarInputFecha);
-    }
-    
-    // Observador para campos dinámicos
-    const observer = new MutationObserver(() => {
-        document.querySelectorAll('input[type="date"]').forEach(input => {
-            if (!input.hasAttribute('data-fecha-configurada')) {
-                input.setAttribute('data-fecha-configurada', 'true');
-                configurarInputFecha(input);
+    (function () {
+        'use strict';
+
+        const FECHA_SERVIDOR = window.FECHA_SERVIDOR || '<?php echo date("Y-m-d"); ?>';
+        console.log('🚀 Control de fechas iniciado con fecha:', FECHA_SERVIDOR);
+
+        function configurarInputFecha(input) {
+            if (!input.value || input.value === '' || input.value > FECHA_SERVIDOR) {
+                input.value = FECHA_SERVIDOR;
             }
+            input.setAttribute('max', FECHA_SERVIDOR);
+            input.setAttribute('readonly', 'readonly');
+            input.style.backgroundColor = '#e9ecef';
+            input.style.cursor = 'not-allowed';
+            input.setAttribute('title', 'Fecha automática del servidor: ' + FECHA_SERVIDOR);
+            console.log('✅ Campo configurado:', input.id || input.name, '=', FECHA_SERVIDOR);
+        }
+
+        function configurarTodos() {
+            const inputs = document.querySelectorAll('input[type="date"]');
+            console.log('🔍 Encontrados', inputs.length, 'campos de fecha');
+            inputs.forEach(configurarInputFecha);
+        }
+
+        // Observador para campos dinámicos
+        const observer = new MutationObserver(() => {
+            document.querySelectorAll('input[type="date"]').forEach(input => {
+                if (!input.hasAttribute('data-fecha-configurada')) {
+                    input.setAttribute('data-fecha-configurada', 'true');
+                    configurarInputFecha(input);
+                }
+            });
         });
-    });
-    
-    function init() {
-        configurarTodos();
-        observer.observe(document.body, { childList: true, subtree: true });
-        setInterval(configurarTodos, 3000);
-    }
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-})();
+
+        function init() {
+            configurarTodos();
+            observer.observe(document.body, { childList: true, subtree: true });
+            setInterval(configurarTodos, 3000);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
 </script>
 <?php require_once '../../includes/footer.php'; ?>

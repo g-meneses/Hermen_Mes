@@ -1181,6 +1181,28 @@ require_once '../../includes/header.php';
         }
     }
 
+    /* ========================================
+       ESTILOS PARA BANNER DE ESTADO DE CÓDIGO
+       (Blindaje de Unicidad)
+       ======================================== */
+    .codigo-status-ok {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        color: #155724;
+        border: 1px solid #28a745;
+    }
+
+    .codigo-status-error {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+        color: #721c24;
+        border: 1px solid #dc3545;
+    }
+
+    .codigo-status-loading {
+        background: #e7f3ff;
+        color: #004085;
+        border: 1px solid #007bff;
+    }
+
     .kardex-tabs {
         display: flex;
         gap: 5px;
@@ -1402,6 +1424,12 @@ require_once '../../includes/header.php';
                             style="font-family: monospace; font-size: 1.1rem; font-weight: 600; width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
                         <div style="font-size: 0.75rem; color: #666; margin-top: 5px;">
                             💡 Formato sugerido: <code id="formatoSugerido">EMP-ETQ-TR-XXX</code>
+                        </div>
+                        <!-- BANNER DE ESTADO DE CÓDIGO (Blindaje de Unicidad) -->
+                        <div id="codigoStatusBanner"
+                            style="display:none; margin-top:8px; padding:10px 15px; border-radius:8px; font-size:0.85rem; font-weight:600; align-items:center; gap:8px;">
+                            <i id="codigoStatusIcon" class="fas"></i>
+                            <span id="codigoStatusMessage"></span>
                         </div>
                     </div>
                 </div>

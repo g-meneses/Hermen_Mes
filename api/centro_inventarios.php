@@ -223,6 +223,37 @@ try {
                     ]);
                     break;
 
+                case 'verificar_codigo':
+                    // Verificar si un código ya existe en inventarios
+                    $codigo = trim($_GET['codigo'] ?? '');
+                    $exclude_id = intval($_GET['exclude_id'] ?? 0);
+
+                    if (empty($codigo)) {
+                        ob_clean();
+                        echo json_encode(['success' => false, 'message' => 'Código requerido']);
+                        exit();
+                    }
+
+                    $sql = "SELECT id_inventario, nombre FROM inventarios WHERE codigo = ? AND activo = 1";
+                    $params = [$codigo];
+
+                    if ($exclude_id > 0) {
+                        $sql .= " AND id_inventario != ?";
+                        $params[] = $exclude_id;
+                    }
+
+                    $stmt = $db->prepare($sql);
+                    $stmt->execute($params);
+                    $existente = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'existe' => $existente ? true : false,
+                        'producto_existente' => $existente ? $existente['nombre'] : null
+                    ]);
+                    break;
+
                 case 'subcategorias_resumen':
                     // Subcategorías con totales (items, valor, alertas)
                     $categoriaId = $_GET['categoria_id'] ?? null;
@@ -1445,6 +1476,22 @@ try {
                     $db->beginTransaction();
 
                     try {
+                        // ========== BLINDAJE: Verificar código duplicado antes de crear ==========
+                        $stmtCheck = $db->prepare("SELECT id_inventario FROM inventarios WHERE codigo = ? AND activo = 1");
+                        $stmtCheck->execute([$codigo]);
+                        if ($stmtCheck->fetch()) {
+                            $db->rollBack();
+                            ob_clean();
+                            http_response_code(409); // Conflict
+                            echo json_encode([
+                                'success' => false,
+                                'status' => 'error',
+                                'message' => 'Integridad Violada: El código "' . $codigo . '" ya pertenece a otro producto registrado.'
+                            ]);
+                            exit();
+                        }
+                        // ========== FIN BLINDAJE ==========
+
                         $stmt = $db->prepare("
                             INSERT INTO inventarios (
                                 codigo, nombre, descripcion,

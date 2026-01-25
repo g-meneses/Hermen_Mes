@@ -28,6 +28,95 @@ let contadorDocIngreso = 0;
 let modoManual = false; // Para controlar modo de edición de código
 const codigoTipo = 'EMP'; // Prefijo fijo para Material de Empaque
 
+// ========== BLINDAJE DE UNICIDAD - Variables y Funciones ==========
+let codigoValidado = true; // Estado de validación del código
+
+/**
+ * Verificar si un código ya existe en la base de datos (API async)
+ */
+async function verificarCodigoDuplicado(codigo, excludeId = null) {
+    if (!codigo || codigo.trim() === '') {
+        actualizarBannerCodigo('loading', 'Seleccione categoría y subcategoría...');
+        codigoValidado = false;
+        actualizarEstadoBotonGuardar();
+        return false;
+    }
+
+    actualizarBannerCodigo('loading', 'Verificando disponibilidad...');
+
+    try {
+        let url = `${baseUrl}/api/centro_inventarios.php?action=verificar_codigo&codigo=${encodeURIComponent(codigo)}`;
+        if (excludeId && excludeId !== '') {
+            url += `&exclude_id=${excludeId}`;
+        }
+
+        const r = await fetch(url);
+        const d = await r.json();
+
+        if (d.existe) {
+            actualizarBannerCodigo('error', `❌ ERROR: Código duplicado. Ya pertenece a: "${d.producto_existente}". Ajuste el sufijo.`);
+            codigoValidado = false;
+            actualizarEstadoBotonGuardar();
+            return false;
+        } else {
+            actualizarBannerCodigo('ok', '✅ Código disponible');
+            codigoValidado = true;
+            actualizarEstadoBotonGuardar();
+            return true;
+        }
+    } catch (e) {
+        console.error('Error verificando código:', e);
+        actualizarBannerCodigo('error', '⚠️ Error al verificar código');
+        codigoValidado = false;
+        actualizarEstadoBotonGuardar();
+        return false;
+    }
+}
+
+function actualizarBannerCodigo(tipo, mensaje) {
+    const banner = document.getElementById('codigoStatusBanner');
+    const icon = document.getElementById('codigoStatusIcon');
+    const msg = document.getElementById('codigoStatusMessage');
+
+    if (!banner) return;
+
+    banner.style.display = 'flex';
+    banner.className = '';
+
+    switch (tipo) {
+        case 'ok':
+            banner.classList.add('codigo-status-ok');
+            icon.className = 'fas fa-check-circle';
+            break;
+        case 'error':
+            banner.classList.add('codigo-status-error');
+            icon.className = 'fas fa-exclamation-circle';
+            break;
+        case 'loading':
+            banner.classList.add('codigo-status-loading');
+            icon.className = 'fas fa-spinner fa-spin';
+            break;
+    }
+
+    msg.textContent = ' ' + mensaje;
+}
+
+function actualizarEstadoBotonGuardar() {
+    const btnGuardar = document.querySelector('#modalItem .btn-success');
+    if (btnGuardar) {
+        btnGuardar.disabled = !codigoValidado;
+        btnGuardar.style.opacity = codigoValidado ? '1' : '0.5';
+        btnGuardar.style.cursor = codigoValidado ? 'pointer' : 'not-allowed';
+    }
+}
+
+function ocultarBannerCodigo() {
+    const banner = document.getElementById('codigoStatusBanner');
+    if (banner) {
+        banner.style.display = 'none';
+    }
+}
+
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', cargarDatos);
 
@@ -416,6 +505,19 @@ function abrirModalNuevoItem() {
     document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
     document.getElementById('itemCodigo').value = '';
 
+    // ========== BLINDAJE: Resetear estado de validación ==========
+    codigoValidado = false;
+    ocultarBannerCodigo();
+    actualizarEstadoBotonGuardar();
+
+    // Listener para código manual
+    const codigoManual = document.getElementById('itemCodigoManual');
+    if (codigoManual) {
+        codigoManual.addEventListener('blur', function () {
+            verificarCodigoDuplicado(this.value.trim().toUpperCase(), document.getElementById('itemId').value);
+        });
+    }
+
     poblarSelects();
     document.getElementById('modalItem').classList.add('show');
 }
@@ -457,6 +559,11 @@ async function editarItem(id) {
     document.getElementById('btnToggleTexto').textContent = 'Usar automático';
     document.getElementById('itemCodigoManual').value = item.codigo || '';
     document.getElementById('itemCodigo').value = item.codigo || '';
+
+    // ========== BLINDAJE: En edición, código ya existe - permitir guardar ==========
+    codigoValidado = true;
+    actualizarBannerCodigo('ok', '✅ Editando item existente: ' + item.codigo);
+    actualizarEstadoBotonGuardar();
 
     // Actualizar título del modal
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;

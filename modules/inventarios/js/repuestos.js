@@ -28,6 +28,99 @@ let productosFiltrados = [];
 let modoConFactura = false;
 let contadorDocIngreso = 0;
 
+// ========== BLINDAJE DE UNICIDAD - Variables ==========
+let codigoValidado = true; // Estado de validación del código (true por defecto para edición)
+
+// ========== BLINDAJE DE UNICIDAD - Funciones ==========
+/**
+ * Verificar si un código ya existe en la base de datos
+ * @param {string} codigo - Código a verificar
+ * @param {string|null} excludeId - ID a excluir (para edición)
+ * @returns {Promise<boolean>} - true si el código está disponible
+ */
+async function verificarCodigoDuplicado(codigo, excludeId = null) {
+    if (!codigo || codigo.trim() === '') {
+        actualizarBannerCodigo('loading', 'Seleccione categoría y subcategoría...');
+        codigoValidado = false;
+        actualizarEstadoBotonGuardar();
+        return false;
+    }
+
+    actualizarBannerCodigo('loading', 'Verificando disponibilidad...');
+
+    try {
+        let url = `${baseUrl}/api/centro_inventarios.php?action=verificar_codigo&codigo=${encodeURIComponent(codigo)}`;
+        if (excludeId && excludeId !== '') {
+            url += `&exclude_id=${excludeId}`;
+        }
+
+        const r = await fetch(url);
+        const d = await r.json();
+
+        if (d.existe) {
+            actualizarBannerCodigo('error', `❌ ERROR: Código duplicado detectado. Ya existe en: "${d.producto_existente}". Por favor, ajuste el sufijo.`);
+            codigoValidado = false;
+            actualizarEstadoBotonGuardar();
+            return false;
+        } else {
+            actualizarBannerCodigo('ok', '✅ Código disponible');
+            codigoValidado = true;
+            actualizarEstadoBotonGuardar();
+            return true;
+        }
+    } catch (e) {
+        console.error('Error verificando código:', e);
+        actualizarBannerCodigo('error', '⚠️ Error al verificar código. Intente nuevamente.');
+        codigoValidado = false;
+        actualizarEstadoBotonGuardar();
+        return false;
+    }
+}
+
+function actualizarBannerCodigo(tipo, mensaje) {
+    const banner = document.getElementById('codigoStatusBanner');
+    const icon = document.getElementById('codigoStatusIcon');
+    const msg = document.getElementById('codigoStatusMessage');
+
+    if (!banner) return;
+
+    banner.style.display = 'flex';
+    banner.className = '';
+
+    switch (tipo) {
+        case 'ok':
+            banner.classList.add('codigo-status-ok');
+            icon.className = 'fas fa-check-circle';
+            break;
+        case 'error':
+            banner.classList.add('codigo-status-error');
+            icon.className = 'fas fa-exclamation-circle';
+            break;
+        case 'loading':
+            banner.classList.add('codigo-status-loading');
+            icon.className = 'fas fa-spinner fa-spin';
+            break;
+    }
+
+    msg.textContent = ' ' + mensaje;
+}
+
+function actualizarEstadoBotonGuardar() {
+    const btnGuardar = document.querySelector('#modalItem .btn-success');
+    if (btnGuardar) {
+        btnGuardar.disabled = !codigoValidado;
+        btnGuardar.style.opacity = codigoValidado ? '1' : '0.5';
+        btnGuardar.style.cursor = codigoValidado ? 'pointer' : 'not-allowed';
+    }
+}
+
+function ocultarBannerCodigo() {
+    const banner = document.getElementById('codigoStatusBanner');
+    if (banner) {
+        banner.style.display = 'none';
+    }
+}
+
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', cargarDatos);
 
@@ -441,6 +534,7 @@ function renderProductos() {
             <td>
                 <button class="btn-icon kardex" onclick="abrirKardexSafe(${p.id_inventario})" title="Kardex"><i class="fas fa-book"></i></button>
                 <button class="btn-icon editar" onclick="editarItem(${p.id_inventario})" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon eliminar" onclick="eliminarItem(${p.id_inventario})" title="Eliminar" style="color:#dc3545;"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
     }).join('');
@@ -539,8 +633,21 @@ function abrirModalNuevoItem() {
     document.getElementById('sufijoPersonalizadoRow').style.display = 'flex';
     document.getElementById('itemSufijo').value = '';
 
+    // ========== BLINDAJE: Resetear estado de validación ==========
+    codigoValidado = false;
+    ocultarBannerCodigo();
+    actualizarEstadoBotonGuardar();
+
     // Listeners
     document.getElementById('itemSubcategoria').onchange = actualizarCodigoSugerido;
+
+    // ========== BLINDAJE: Listener para código manual ==========
+    const codigoManual = document.getElementById('itemCodigoManual');
+    if (codigoManual) {
+        codigoManual.addEventListener('blur', function () {
+            verificarCodigoDuplicado(this.value.trim().toUpperCase(), document.getElementById('itemId').value);
+        });
+    }
 
     document.getElementById('modalItem').classList.add('show');
     actualizarCodigoSugerido();
@@ -564,6 +671,12 @@ async function editarItem(id) {
     document.getElementById('itemCosto').value = item.costo_unitario || item.costo_promedio || 0;
     document.getElementById('itemDescripcion').value = item.descripcion || '';
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;
+
+    // ========== BLINDAJE: En edición, código ya existe - permitir guardar ==========
+    codigoValidado = true;
+    actualizarBannerCodigo('ok', '✅ Editando item existente: ' + item.codigo);
+    actualizarEstadoBotonGuardar();
+
     document.getElementById('modalItem').classList.add('show');
 }
 
@@ -622,6 +735,12 @@ function poblarSelects() {
 
 async function guardarItem() {
     const id = document.getElementById('itemId').value;
+
+    // ========== BLINDAJE: Verificar validación de código ==========
+    if (!codigoValidado && !id) {
+        Swal.fire('Error', '❌ El código no ha sido validado o está duplicado. Verifique antes de guardar.', 'error');
+        return;
+    }
 
     // Validaciones Locales
     const nombre = document.getElementById('itemNombre').value.trim();
@@ -2221,6 +2340,9 @@ function actualizarCodigoFinal() {
     document.getElementById('itemCodigo').value = codigoFinal.toUpperCase();
     document.getElementById('previewSufijo').textContent = sufijo;
     document.getElementById('labelNum').textContent = sufijo;
+
+    // ========== BLINDAJE: Verificar unicidad del código generado ==========
+    verificarCodigoDuplicado(codigoFinal.toUpperCase(), document.getElementById('itemId').value);
 }
 
 function toggleModoManual() {
@@ -2248,6 +2370,47 @@ function toggleModoManual() {
 // Expose functions to global scope to ensure HTML access
 window.toggleModoManual = toggleModoManual;
 window.actualizarCodigoFinal = actualizarCodigoFinal;
+window.eliminarItem = eliminarItem;
 
-console.log('✅ Módulo Repuestos v2.1 Generación Automática Activa');
+async function eliminarItem(id) {
+    const result = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción no se puede deshacer si el producto no tiene historial. Si tiene historial, se desactivará.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', id_inventario: id })
+            });
+            const d = await r.json();
+            if (d.success) {
+                Swal.fire('¡Eliminado!', d.message, 'success');
+                // Recargar dependiendo del contexto
+                if (subcategoriaSeleccionada && subcategoriaSeleccionada.id_subcategoria) {
+                    seleccionarSubcategoria(subcategoriaSeleccionada.id_subcategoria);
+                } else if (categoriaSeleccionada) {
+                    seleccionarCategoria(categoriaSeleccionada.id_categoria);
+                } else {
+                    cargarDatos();
+                }
+            } else {
+                Swal.fire('Error', d.message, 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'Error de conexión', 'error');
+        }
+    }
+}
+
+console.log('✅ Módulo Repuestos v2.2 con Eliminación de Items');
 

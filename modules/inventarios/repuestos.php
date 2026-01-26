@@ -1106,6 +1106,50 @@ require_once '../../includes/header.php';
         background: #138496;
     }
 
+    /* Estilos para banner de estado de código */
+    .codigo-status-ok {
+        background: linear-gradient(135deg, #d4edda, #c3e6cb);
+        color: #155724;
+        border: 1px solid #28a745;
+    }
+
+    .codigo-status-error {
+        background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+        color: #721c24;
+        border: 1px solid #dc3545;
+    }
+
+    .codigo-status-loading {
+        background: #e7f3ff;
+        color: #004085;
+        border: 1px solid #007bff;
+    }
+
+    /* Badge styles for code preview */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .badge-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .badge-info {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .badge-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
     .btn-icon.anular {
         background: #dc3545;
         color: white;
@@ -1372,7 +1416,7 @@ require_once '../../includes/header.php';
 <div class="modal" id="modalItem">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><i class="fas fa-box"></i> <span id="modalItemTitulo">Nuevo Item</span></h3>
+            <h3><i class="fas fa-box"></i> <span id="modalItemTitulo">Nuevo Item de Repuesto</span></h3>
             <button class="modal-close" onclick="cerrarModal('modalItem')">&times;</button>
         </div>
         <div class="modal-body">
@@ -1395,7 +1439,7 @@ require_once '../../includes/header.php';
                             </div>
                             <small class="text-muted" id="formatoSugerido"
                                 style="display:block; margin-top:5px; font-size:0.75rem;">
-                                Formato: TIPO-CAT-SUBCAT-XXX
+                                Formato: REP-CAT-SUBCAT-XXX
                             </small>
                             <!-- BANNER DE ESTADO DE CÓDIGO (Blindaje de Unicidad) -->
                             <div id="codigoStatusBanner"

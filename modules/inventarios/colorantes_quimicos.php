@@ -1210,6 +1210,31 @@ require_once '../../includes/header.php';
         border: 1px solid #007bff;
     }
 
+    /* Badge styles for code preview */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .badge-secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .badge-info {
+        background: #17a2b8;
+        color: white;
+    }
+
+    .badge-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
     .kardex-tabs {
         display: flex;
         gap: 5px;
@@ -1379,90 +1404,92 @@ require_once '../../includes/header.php';
 <div class="modal" id="modalItem">
     <div class="modal-content">
         <div class="modal-header">
-            <h3><i class="fas fa-box"></i> <span id="modalItemTitulo">Nuevo Item</span></h3>
+            <h3><i class="fas fa-box"></i> <span id="modalItemTitulo">Nuevo Item de Colorante/Químico</span></h3>
             <button class="modal-close" onclick="cerrarModal('modalItem')">&times;</button>
         </div>
         <div class="modal-body">
             <form id="formItem">
                 <input type="hidden" id="itemId">
                 <div class="form-row">
+                    <div class="form-group">
+                        <label>Código *</label>
+
+                        <!-- VISTA AUTOMÁTICA -->
+                        <div id="codigoAutomaticoView" style="display:block;">
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="itemCodigo" readonly
+                                    style="background:#e9ecef; color:#495057; font-weight:bold; flex:1;"
+                                    placeholder="Se generará automáticamente">
+                                <button type="button" class="btn btn-secondary" onclick="toggleModoManual()"
+                                    style="white-space:nowrap; padding:5px 10px; font-size:0.8rem;">
+                                    <i class="fas fa-edit"></i> Manual
+                                </button>
+                            </div>
+                            <small class="text-muted" id="formatoSugerido"
+                                style="display:block; margin-top:5px; font-size:0.75rem;">
+                                Formato: CAQ-CAT-SUBCAT-XXX
+                            </small>
+                            <!-- BANNER DE ESTADO DE CÓDIGO (Blindaje de Unicidad) -->
+                            <div id="codigoStatusBanner"
+                                style="display:none; margin-top:8px; padding:10px 15px; border-radius:8px; font-size:0.85rem; font-weight:600; align-items:center; gap:8px;">
+                                <i id="codigoStatusIcon" class="fas"></i>
+                                <span id="codigoStatusMessage"></span>
+                            </div>
+                        </div>
+
+                        <!-- VISTA MANUAL -->
+                        <div id="codigoManualView" style="display:none;">
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" id="itemCodigoManual"
+                                    style="font-weight:bold; text-transform:uppercase; flex:1;"
+                                    placeholder="Ingrese código manual">
+                                <button type="button" class="btn btn-outline-secondary" onclick="toggleModoManual()"
+                                    style="white-space:nowrap; padding:5px 10px; font-size:0.8rem;">
+                                    <i class="fas fa-magic"></i> Auto
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- PREVIEW DESGLOSADO -->
+                        <div id="codigoPreviewSection"
+                            style="margin-top:10px; background:#f8f9fa; padding:8px; border-radius:6px; display:none; border:1px dashed #ced4da;">
+                            <div
+                                style="display:flex; gap:5px; align-items:center; justify-content:center; flex-wrap:wrap;">
+                                <span class="badge badge-secondary" id="labelTipo">CAQ</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-info" id="labelCat">CAT</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-info" id="labelSubcat">SUB</span>
+                                <i class="fas fa-minus" style="font-size:0.6rem; color:#adb5bd;"></i>
+                                <span class="badge badge-warning" id="labelNum">000</span>
+                            </div>
+                            <div style="text-align:center; margin-top:5px; font-size:0.75rem; color:#6c757d;">
+                                <span id="previewPrefijo"></span><span id="previewSufijo"></span>
+                            </div>
+                        </div>
+
+                        <!-- SUFIJO PERSONALIZADO (Correlativo) -->
+                        <div id="sufijoPersonalizadoRow"
+                            style="display:none; margin-top:5px; align-items:center; gap:5px;">
+                            <label style="font-size:0.75rem; margin:0;">Correlativo:</label>
+                            <input type="number" id="itemSufijo" style="padding:2px 5px; width:60px; font-size:0.8rem;"
+                                oninput="actualizarCodigoFinal()">
+                            <small style="font-size:0.7rem; color:#6c757d;">(Editable)</small>
+                        </div>
+
+                    </div>
+                    <div class="form-group"><label>Nombre *</label><input type="text" id="itemNombre" required></div>
+                </div>
+                <div class="form-row">
                     <div class="form-group"><label>Categoría *</label><select id="itemCategoria_modal" required
-                            onchange="actualizarCodigoSugerido()"></select></div>
+                            onchange="cargarSubcategoriasItem()"></select></div>
                     <div class="form-group"><label>Subcategoría</label><select id="itemSubcategoria_modal"
                             onchange="actualizarCodigoSugerido()">
                             <option value="0">Sin subcategoría</option>
                         </select></div>
                 </div>
-
-                <!-- NUEVA SECCIÓN: Preview del código -->
-                <div class="codigo-preview-section" id="codigoPreviewSection"
-                    style="display:none; margin-bottom: 20px; padding: 15px; background: #e8f4fd; border-left: 4px solid #2196F3; border-radius: 8px;">
-                    <div
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 0.85rem; color: #1976D2; font-weight: 600;">
-                            <i class="fas fa-lightbulb"></i> Código sugerido:
-                        </span>
-                        <button type="button" class="btn-link" onclick="toggleModoManual()"
-                            style="font-size: 0.75rem; color: #1976D2; border: none; background: none; cursor: pointer; text-decoration: underline;">
-                            <span id="btnToggleTexto">Editar manualmente</span>
-                        </button>
-                    </div>
-
-                    <div id="codigoAutomaticoView">
-                        <div
-                            style="font-size: 1.3rem; font-weight: 700; color: #0D47A1; letter-spacing: 1px; margin-bottom: 8px;">
-                            <span id="previewPrefijo">CAQ-COL-AC-</span><span id="previewSufijo"
-                                style="color: #2196F3;">001</span>
-                        </div>
-                        <div style="font-size: 0.7rem; color: #666; display: flex; gap: 10px;">
-                            <span>Tipo: <strong id="labelTipo">CAQ</strong></span>
-                            <span>•</span>
-                            <span>Cat: <strong id="labelCat">COL</strong></span>
-                            <span>•</span>
-                            <span>Subcat: <strong id="labelSubcat">AC</strong></span>
-                            <span>•</span>
-                            <span>Nº: <strong id="labelNum">001</strong></span>
-                        </div>
-                    </div>
-
-                    <div id="codigoManualView" style="display:none;">
-                        <input type="text" id="itemCodigoManual" class="form-control" placeholder="CAQ-COL-AC-001"
-                            style="font-family: monospace; font-size: 1.1rem; font-weight: 600; width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        <div style="font-size: 0.75rem; color: #666; margin-top: 5px;">
-                            💡 Formato sugerido: <code id="formatoSugerido">CAQ-COL-AC-XXX</code>
-                        </div>
-                        <!-- BANNER DE ESTADO DE CÓDIGO (Blindaje de Unicidad) -->
-                        <div id="codigoStatusBanner"
-                            style="display:none; margin-top:8px; padding:10px 15px; border-radius:8px; font-size:0.85rem; font-weight:600; align-items:center; gap:8px;">
-                            <i id="codigoStatusIcon" class="fas"></i>
-                            <span id="codigoStatusMessage"></span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Campo de sufijo personalizado -->
-                <div class="form-row" id="sufijoPersonalizadoRow" style="display:none;">
-                    <div class="form-group">
-                        <label>
-                            Sufijo del código
-                            <small style="color: #666;">(opcional - déjalo como está o personaliza)</small>
-                        </label>
-                        <input type="text" id="itemSufijo" placeholder="001" maxlength="20"
-                            oninput="actualizarCodigoFinal()">
-                        <small style="display: block; margin-top: 5px; color: #666;">
-                            Ejemplos: <code>001</code>, <code>AZ-001</code>, <code>AZUL-001</code>
-                        </small>
-                    </div>
-                </div>
-
-                <!-- Campo oculto para el código final -->
-                <input type="hidden" id="itemCodigo">
-
                 <div class="form-row">
-                    <div class="form-group"><label>Nombre *</label><input type="text" id="itemNombre" required></div>
-                </div>
-                <div class="form-row">
-                    <!-- Stock Actual ELIMINADO para centralizar ingreso por módulo de Ingresos -->
+                    <input type="hidden" id="itemStockActual" value="0">
                     <div class="form-group"><label>Stock Mínimo</label><input type="number" id="itemStockMinimo"
                             step="0.01" value="0"></div>
                 </div>

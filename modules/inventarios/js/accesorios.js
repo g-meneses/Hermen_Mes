@@ -28,6 +28,208 @@ let contadorDocIngreso = 0;
 let modoManual = false; // Para controlar modo de edición de código
 const codigoTipo = 'ACC'; // Prefijo fijo para Accesorios
 
+// ========== BLINDAJE DE UNICIDAD - Variables y Funciones ==========
+let codigoValidado = true; // Estado de validación del código
+
+async function verificarCodigoDuplicado(codigo, excludeId = null) {
+    if (!codigo || codigo.length < 3) {
+        codigoValidado = false;
+        actualizarEstadoBotonGuardar();
+        return false;
+    }
+
+    actualizarBannerCodigo('loading', '🔍 Verificando disponibilidad...');
+
+    try {
+        let url = `${baseUrl}/api/centro_inventarios.php?action=verificar_codigo&codigo=${encodeURIComponent(codigo)}`;
+        if (excludeId) url += `&exclude_id=${excludeId}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.existe) {
+            codigoValidado = false;
+            actualizarBannerCodigo('error', `❌ Código duplicado: ya existe en "${data.nombre}"`);
+        } else {
+            codigoValidado = true;
+            actualizarBannerCodigo('ok', '✅ Código disponible');
+        }
+    } catch (error) {
+        console.error('Error verificando código:', error);
+        codigoValidado = true;
+        actualizarBannerCodigo('ok', '✅ Código verificado');
+    }
+
+    actualizarEstadoBotonGuardar();
+    return codigoValidado;
+}
+
+function actualizarBannerCodigo(tipo, mensaje) {
+    const banner = document.getElementById('codigoStatusBanner');
+    const icon = document.getElementById('codigoStatusIcon');
+    const msg = document.getElementById('codigoStatusMessage');
+
+    if (!banner) return;
+
+    banner.style.display = 'flex';
+    banner.className = '';
+
+    switch (tipo) {
+        case 'ok':
+            banner.classList.add('codigo-status-ok');
+            icon.className = 'fas fa-check-circle';
+            break;
+        case 'error':
+            banner.classList.add('codigo-status-error');
+            icon.className = 'fas fa-exclamation-circle';
+            break;
+        case 'loading':
+            banner.classList.add('codigo-status-loading');
+            icon.className = 'fas fa-spinner fa-spin';
+            break;
+    }
+
+    msg.textContent = ' ' + mensaje;
+}
+
+function actualizarEstadoBotonGuardar() {
+    const btnGuardar = document.querySelector('#modalItem .btn-success');
+    if (btnGuardar) {
+        btnGuardar.disabled = !codigoValidado;
+        btnGuardar.style.opacity = codigoValidado ? '1' : '0.5';
+        btnGuardar.style.cursor = codigoValidado ? 'pointer' : 'not-allowed';
+    }
+}
+
+function ocultarBannerCodigo() {
+    const banner = document.getElementById('codigoStatusBanner');
+    if (banner) banner.style.display = 'none';
+}
+
+// ========== FUNCIONES DE GENERADOR DE CÓDIGOS ==========
+function toggleModoManual() {
+    modoManual = !modoManual;
+
+    const autoView = document.getElementById('codigoAutomaticoView');
+    const manualView = document.getElementById('codigoManualView');
+    const previewSection = document.getElementById('codigoPreviewSection');
+    const sufijoRow = document.getElementById('sufijoPersonalizadoRow');
+
+    if (modoManual) {
+        autoView.style.display = 'none';
+        manualView.style.display = 'block';
+        previewSection.style.display = 'none';
+        sufijoRow.style.display = 'none';
+
+        const codigoActual = document.getElementById('itemCodigo').value;
+        document.getElementById('itemCodigoManual').value = codigoActual;
+    } else {
+        autoView.style.display = 'block';
+        manualView.style.display = 'none';
+        previewSection.style.display = 'block';
+        sufijoRow.style.display = 'flex';
+
+        actualizarCodigoSugerido();
+    }
+}
+
+async function actualizarCodigoSugerido() {
+    const catSelect = document.getElementById('itemCategoria');
+    const subcatSelect = document.getElementById('itemSubcategoria');
+
+    if (!catSelect || !catSelect.value) {
+        document.getElementById('codigoPreviewSection').style.display = 'none';
+        document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+        document.getElementById('itemCodigo').value = '';
+        actualizarBannerCodigo('loading', 'Seleccione categoría...');
+        codigoValidado = false;
+        actualizarEstadoBotonGuardar();
+        return;
+    }
+
+    document.getElementById('codigoPreviewSection').style.display = 'block';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'flex';
+
+    const catId = catSelect.value;
+    const subcatId = subcatSelect ? subcatSelect.value : '';
+
+    const cat = categorias.find(c => c.id_categoria == catId);
+
+    // Generar código de categoría
+    let catCodigo = cat?.codigo || '';
+    if (!catCodigo && cat?.nombre) {
+        catCodigo = cat.nombre.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'CAT';
+    }
+    if (!catCodigo) catCodigo = 'CAT';
+
+    let subcatCodigo = 'GEN';
+    if (subcatId && subcatId !== '0' && subcatId !== '') {
+        try {
+            const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
+            const d = await r.json();
+            if (d.success && d.subcategorias) {
+                const subcat = d.subcategorias.find(s => s.id_subcategoria == subcatId);
+                if (subcat) {
+                    subcatCodigo = subcat.codigo || '';
+                    if (!subcatCodigo && subcat.nombre) {
+                        subcatCodigo = subcat.nombre.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase() || 'SUB';
+                    }
+                    if (!subcatCodigo) subcatCodigo = 'SUB';
+                }
+            }
+        } catch (e) { console.error('Error:', e); }
+    }
+
+    // Actualizar badges
+    document.getElementById('labelTipo').textContent = codigoTipo;
+    document.getElementById('labelCat').textContent = catCodigo;
+    document.getElementById('labelSubcat').textContent = subcatCodigo;
+
+    // Obtener siguiente correlativo
+    const prefijo = `${codigoTipo}-${catCodigo}-${subcatCodigo}-`;
+    try {
+        const url = `${baseUrl}/api/centro_inventarios.php?action=siguiente_codigo&tipo_id=${TIPO_ID}&prefijo=${encodeURIComponent(prefijo)}`;
+        const r = await fetch(url);
+        const d = await r.json();
+
+        if (d.success && d.siguiente) {
+            document.getElementById('itemSufijo').value = d.siguiente;
+            document.getElementById('labelNum').textContent = String(d.siguiente).padStart(3, '0');
+        } else {
+            document.getElementById('itemSufijo').value = '001';
+            document.getElementById('labelNum').textContent = '001';
+        }
+    } catch (e) {
+        console.error('Error obteniendo correlativo:', e);
+        document.getElementById('itemSufijo').value = '001';
+        document.getElementById('labelNum').textContent = '001';
+    }
+
+    actualizarCodigoFinal();
+}
+
+async function actualizarCodigoFinal() {
+    const tipo = document.getElementById('labelTipo').textContent || codigoTipo;
+    const cat = document.getElementById('labelCat').textContent || 'CAT';
+    const subcat = document.getElementById('labelSubcat').textContent || 'GEN';
+    const sufijo = document.getElementById('itemSufijo').value || '001';
+
+    const sufijoFormateado = String(sufijo).padStart(3, '0');
+    const codigoFinal = `${tipo}-${cat}-${subcat}-${sufijoFormateado}`;
+
+    document.getElementById('itemCodigo').value = codigoFinal;
+    document.getElementById('previewPrefijo').textContent = `${tipo}-${cat}-${subcat}-`;
+    document.getElementById('previewSufijo').textContent = sufijoFormateado;
+    document.getElementById('labelNum').textContent = sufijoFormateado;
+
+    const formatoEl = document.getElementById('formatoSugerido');
+    if (formatoEl) formatoEl.textContent = `Formato: ${tipo}-${cat}-${subcat}-XXX`;
+
+    // Verificar disponibilidad
+    const itemId = document.getElementById('itemId').value;
+    await verificarCodigoDuplicado(codigoFinal, itemId);
+}
+
 // ========== INICIALIZACIÓN ==========
 document.addEventListener('DOMContentLoaded', cargarDatos);
 
@@ -386,9 +588,7 @@ async function cargarTodosProductos() {
 }
 
 // ========== MODAL NUEVO/EDITAR ITEM ==========
-// ========== MODAL NUEVO/EDITAR ITEM ==========
 function abrirModalNuevoItem() {
-    // Variable global para controlar recarga de subcategorías
     lastLoadedCategoryId = null;
     document.getElementById('formItem').reset();
     document.getElementById('itemId').value = '';
@@ -398,7 +598,22 @@ function abrirModalNuevoItem() {
     modoManual = false;
     document.getElementById('codigoPreviewSection').style.display = 'none';
     document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+    document.getElementById('codigoAutomaticoView').style.display = 'block';
+    document.getElementById('codigoManualView').style.display = 'none';
     document.getElementById('itemCodigo').value = '';
+
+    // Blindaje: Resetear estado de validación
+    codigoValidado = false;
+    ocultarBannerCodigo();
+    actualizarEstadoBotonGuardar();
+
+    // Listener para código manual
+    const codigoManual = document.getElementById('itemCodigoManual');
+    if (codigoManual) {
+        codigoManual.addEventListener('blur', function () {
+            verificarCodigoDuplicado(this.value.trim().toUpperCase(), document.getElementById('itemId').value);
+        });
+    }
 
     poblarSelects();
     document.getElementById('modalItem').classList.add('show');
@@ -433,15 +648,19 @@ async function editarItem(id) {
     document.getElementById('itemCosto').value = item.costo_unitario || item.costo_promedio || 0;
     document.getElementById('itemDescripcion').value = item.descripcion || '';
 
-    // Manejar el código en modo manual
+    // Manejar el código en modo manual con código existente
     modoManual = true;
-    document.getElementById('codigoPreviewSection').style.display = 'block';
+    document.getElementById('codigoPreviewSection').style.display = 'none';
     document.getElementById('codigoAutomaticoView').style.display = 'none';
     document.getElementById('codigoManualView').style.display = 'block';
     document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
-    document.getElementById('btnToggleTexto').textContent = 'Usar automático';
     document.getElementById('itemCodigoManual').value = item.codigo || '';
     document.getElementById('itemCodigo').value = item.codigo || '';
+
+    // Blindaje: código existente = validado
+    codigoValidado = true;
+    actualizarBannerCodigo('ok', '✅ Editando item existente: ' + item.codigo);
+    actualizarEstadoBotonGuardar();
 
     // Actualizar título del modal
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;
@@ -484,6 +703,11 @@ async function cargarSubcategoriasItem(selectedSubcatId = null) {
             }
         }
     } catch (e) { console.error('Error cargando subcategorías:', e); }
+
+    // Actualizar código sugerido cuando cambia categoría
+    if (!modoManual) {
+        actualizarCodigoSugerido();
+    }
 }
 
 function poblarSelects() {

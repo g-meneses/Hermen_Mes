@@ -630,7 +630,8 @@ function abrirModalNuevoItem() {
     modoManual = false;
     document.getElementById('codigoAutomaticoView').style.display = 'block';
     document.getElementById('codigoManualView').style.display = 'none';
-    document.getElementById('sufijoPersonalizadoRow').style.display = 'flex';
+    document.getElementById('codigoPreviewSection').style.display = 'none';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
     document.getElementById('itemSufijo').value = '';
 
     // ========== BLINDAJE: Resetear estado de validación ==========
@@ -650,7 +651,6 @@ function abrirModalNuevoItem() {
     }
 
     document.getElementById('modalItem').classList.add('show');
-    actualizarCodigoSugerido();
 }
 
 
@@ -670,6 +670,15 @@ async function editarItem(id) {
     document.getElementById('itemStockMinimo').value = item.stock_minimo || 0;
     document.getElementById('itemCosto').value = item.costo_unitario || item.costo_promedio || 0;
     document.getElementById('itemDescripcion').value = item.descripcion || '';
+
+    // Configurar modo manual para edición
+    modoManual = true;
+    document.getElementById('codigoPreviewSection').style.display = 'none';
+    document.getElementById('codigoAutomaticoView').style.display = 'none';
+    document.getElementById('codigoManualView').style.display = 'block';
+    document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
+    document.getElementById('itemCodigoManual').value = item.codigo || '';
+
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;
 
     // ========== BLINDAJE: En edición, código ya existe - permitir guardar ==========
@@ -2349,12 +2358,14 @@ function toggleModoManual() {
     modoManual = !modoManual;
     const autoView = document.getElementById('codigoAutomaticoView');
     const manualView = document.getElementById('codigoManualView');
+    const previewSection = document.getElementById('codigoPreviewSection');
     const sufijoRow = document.getElementById('sufijoPersonalizadoRow');
     const inputManual = document.getElementById('itemCodigoManual');
 
     if (modoManual) {
         autoView.style.display = 'none';
         manualView.style.display = 'block';
+        previewSection.style.display = 'none';
         sufijoRow.style.display = 'none';
 
         inputManual.value = document.getElementById('itemCodigo').value;
@@ -2362,6 +2373,7 @@ function toggleModoManual() {
     } else {
         autoView.style.display = 'block';
         manualView.style.display = 'none';
+        previewSection.style.display = 'block';
         sufijoRow.style.display = 'flex';
         actualizarCodigoFinal();
     }

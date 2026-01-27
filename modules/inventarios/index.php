@@ -1218,6 +1218,12 @@ require_once '../../includes/header.php';
                             <input type="color" id="tipoColor" value="#007bff">
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Orden de Visualización</label>
+                            <input type="number" id="tipoOrden" value="1" min="1" placeholder="Orden numérico">
+                        </div>
+                    </div>
                     <div class="form-config-actions">
                         <button class="btn btn-secondary" onclick="cancelarFormTipo()">Cancelar</button>
                         <button class="btn btn-primary" onclick="guardarTipo()">
@@ -3223,6 +3229,7 @@ require_once '../../includes/header.php';
             document.getElementById('tipoNombre').value = tipo.nombre;
             document.getElementById('tipoIcono').value = tipo.icono || '';
             document.getElementById('tipoColor').value = tipo.color || '#007bff';
+            document.getElementById('tipoOrden').value = tipo.orden || 1;
         } else {
             document.getElementById('formTipoTitulo').innerHTML = '<i class="fas fa-plus"></i> Nuevo Tipo';
             document.getElementById('tipoId').value = '';
@@ -3230,6 +3237,7 @@ require_once '../../includes/header.php';
             document.getElementById('tipoNombre').value = '';
             document.getElementById('tipoIcono').value = 'fa-box';
             document.getElementById('tipoColor').value = '#007bff';
+            document.getElementById('tipoOrden').value = 1;
         }
     }
 
@@ -3251,7 +3259,8 @@ require_once '../../includes/header.php';
             codigo: document.getElementById('tipoCodigo').value.trim(),
             nombre: document.getElementById('tipoNombre').value.trim(),
             icono: document.getElementById('tipoIcono').value.trim(),
-            color: document.getElementById('tipoColor').value
+            color: document.getElementById('tipoColor').value,
+            orden: parseInt(document.getElementById('tipoOrden').value) || 1
         };
 
         if (!payload.codigo || !payload.nombre) {

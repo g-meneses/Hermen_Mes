@@ -81,7 +81,7 @@ try {
                 case 'tipos':
                     // Lista de tipos de inventario
                     $stmt = $db->query("
-                        SELECT id_tipo_inventario, codigo, nombre, icono, color 
+                        SELECT id_tipo_inventario, codigo, nombre, icono, color, orden 
                         FROM tipos_inventario 
                         WHERE activo = 1 
                         ORDER BY orden
@@ -702,6 +702,7 @@ try {
                 $nombre = trim($data['nombre'] ?? '');
                 $icono = trim($data['icono'] ?? 'fa-box');
                 $color = trim($data['color'] ?? '#007bff');
+                $orden = intval($data['orden'] ?? 0);
 
                 if (empty($codigo) || empty($nombre)) {
                     ob_clean();
@@ -714,15 +715,17 @@ try {
                         // Actualizar
                         $stmt = $db->prepare("
                             UPDATE tipos_inventario 
-                            SET codigo = ?, nombre = ?, icono = ?, color = ?
+                            SET codigo = ?, nombre = ?, icono = ?, color = ?, orden = ?
                             WHERE id_tipo_inventario = ?
                         ");
-                        $stmt->execute([$codigo, $nombre, $icono, $color, $idTipo]);
+                        $stmt->execute([$codigo, $nombre, $icono, $color, $orden, $idTipo]);
                         $mensaje = 'Tipo de inventario actualizado';
                     } else {
-                        // Obtener el siguiente orden
-                        $stmt = $db->query("SELECT COALESCE(MAX(orden), 0) + 1 AS siguiente FROM tipos_inventario");
-                        $orden = $stmt->fetch()['siguiente'];
+                        // Si no se especifica orden, calcular el siguiente
+                        if ($orden <= 0) {
+                            $stmt = $db->query("SELECT COALESCE(MAX(orden), 0) + 1 AS siguiente FROM tipos_inventario");
+                            $orden = $stmt->fetch()['siguiente'];
+                        }
 
                         // Crear nuevo
                         $stmt = $db->prepare("

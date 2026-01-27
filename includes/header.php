@@ -395,23 +395,27 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                         class="menu-link <?php echo $currentPage === 'materias_primas' ? 'active' : ''; ?>"><i
                                             class="fas fa-cubes"></i><span class="menu-text">Materia Prima</span></a>
                                 </li>
-                                <li><a href="#" class="menu-link"><i class="fas fa-palette"></i><span
-                                            class="menu-text">Colorantes</span><span
-                                            class="menu-badge badge-soon">Pronto</span></a></li>
-                                <li><a href="#" class="menu-link"><i class="fas fa-box"></i><span
-                                            class="menu-text">Empaque</span><span
-                                            class="menu-badge badge-soon">Pronto</span></a></li>
-                                <li><a href="#" class="menu-link"><i class="fas fa-shirt"></i><span
-                                            class="menu-text">Accesorios</span><span
-                                            class="menu-badge badge-soon">Pronto</span></a></li>
+                                <li><a href="<?php echo SITE_URL; ?>/modules/inventarios/colorantes_quimicos.php"
+                                        class="menu-link <?php echo $currentPage === 'colorantes_quimicos' ? 'active' : ''; ?>"><i
+                                            class="fas fa-palette"></i><span class="menu-text">Colorantes</span></a>
+                                </li>
+                                <li><a href="<?php echo SITE_URL; ?>/modules/inventarios/empaque.php"
+                                        class="menu-link <?php echo $currentPage === 'empaque' ? 'active' : ''; ?>"><i
+                                            class="fas fa-box"></i><span class="menu-text">Empaque</span></a>
+                                </li>
+                                <li><a href="<?php echo SITE_URL; ?>/modules/inventarios/accesorios.php"
+                                        class="menu-link <?php echo $currentPage === 'accesorios' ? 'active' : ''; ?>"><i
+                                            class="fas fa-shirt"></i><span class="menu-text">Accesorios</span></a>
+                                </li>
+                                <li><a href="<?php echo SITE_URL; ?>/modules/inventarios/repuestos.php"
+                                        class="menu-link <?php echo $currentPage === 'repuestos' ? 'active' : ''; ?>"><i
+                                            class="fas fa-wrench"></i><span class="menu-text">Repuestos</span></a>
+                                </li>
                                 <li><a href="#" class="menu-link"><i class="fas fa-sync-alt"></i><span
                                             class="menu-text">WIP</span><span
                                             class="menu-badge badge-soon">Pronto</span></a></li>
                                 <li><a href="#" class="menu-link"><i class="fas fa-check-circle"></i><span
                                             class="menu-text">Prod. Terminados</span><span
-                                            class="menu-badge badge-soon">Pronto</span></a></li>
-                                <li><a href="#" class="menu-link"><i class="fas fa-wrench"></i><span
-                                            class="menu-text">Repuestos</span><span
                                             class="menu-badge badge-soon">Pronto</span></a></li>
                             </ul>
                         </li>

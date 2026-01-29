@@ -59,7 +59,8 @@ class Database
             $this->connection->exec("SET SESSION sql_mode = ''");
 
         } catch (PDOException $e) {
-            die("Error de conexión: " . $e->getMessage());
+            // Re-throw exception so the caller can handle it (e.g. return JSON)
+            throw new Exception("Error de conexión: " . $e->getMessage());
         }
     }
 

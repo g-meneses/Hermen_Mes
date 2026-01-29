@@ -32,7 +32,6 @@ if (typeof window.reporteActual === 'undefined') {
         filtros: {}
     };
 }
-var reporteActual = window.reporteActual;
 
 console.log('📊 reportes_mp.js cargado correctamente');
 
@@ -40,7 +39,7 @@ console.log('📊 reportes_mp.js cargado correctamente');
  * Abre el modal de reporte con la configuración inicial
  */
 window.abrirReporte = function (tipo) {
-    reporteActual.tipo = tipo;
+    window.reporteActual.tipo = tipo;
     const titulos = {
         'consolidado': 'Reporte Consolidado de Inventarios',
         'stock_valorizado': 'Reporte de Stock Valorizado',

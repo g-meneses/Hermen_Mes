@@ -1018,13 +1018,16 @@ require_once '../../includes/header.php';
                 <div class="kpi-value success" id="kpiValorTotal">--</div>
             </div>
         </div>
-        <div class="kpi-card">
+        <div class="kpi-card" onclick="abrirModalAlertas()" style="cursor: pointer;">
             <div class="kpi-icon alertas">
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
             <div class="kpi-info">
                 <div class="kpi-label">Alertas de Stock</div>
                 <div class="kpi-value" id="kpiAlertas">--</div>
+                <div style="font-size: 0.8rem; color: #dc3545; font-weight: 600; margin-top: 5px;">
+                    <i class="fas fa-eye"></i> Ver
+                </div>
             </div>
         </div>
         <div class="kpi-card">
@@ -1034,6 +1037,176 @@ require_once '../../includes/header.php';
             <div class="kpi-info">
                 <div class="kpi-label">Tipos de Inventario</div>
                 <div class="kpi-value" id="kpiTipos">--</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Search -->
+    <style>
+        .global-search-section {
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .search-container {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            background: white;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            padding: 5px 25px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .search-input-wrapper:focus-within {
+            border-color: #007bff;
+            box-shadow: 0 8px 25px rgba(0, 123, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .search-input-wrapper i {
+            font-size: 1.2rem;
+            color: #6c757d;
+            margin-right: 15px;
+        }
+
+        .global-search-input {
+            border: none;
+            background: transparent;
+            width: 100%;
+            padding: 15px 0;
+            font-size: 1.1rem;
+            color: #1a1a2e;
+            outline: none;
+        }
+
+        .search-results-container {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 16px;
+            margin-top: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: 500px;
+            overflow-y: auto;
+            display: none;
+            border: 1px solid #e9ecef;
+        }
+
+        .search-results-container.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .search-result-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f1f3f5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-item:hover {
+            background: #f8f9fa;
+        }
+
+        .result-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .result-type-badge {
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: white;
+            background: #6c757d;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        .result-details h4 {
+            margin: 0;
+            font-size: 0.95rem;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-details .result-code {
+            font-family: 'Consolas', monospace;
+            color: #007bff;
+            background: #e3f2fd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .result-details p {
+            margin: 5px 0 0 0;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .result-stock {
+            font-weight: 600;
+            color: #28a745;
+        }
+
+        .result-actions .btn-kardex {
+            padding: 8px 15px;
+            background: #fff3e0;
+            color: #f57c00;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .result-actions .btn-kardex:hover {
+            background: #ffe0b2;
+            transform: scale(1.05);
+        }
+    </style>
+
+    <div class="global-search-section">
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="fas fa-search"></i>
+                <input type="text" class="global-search-input" id="globalSearchInput"
+                    placeholder="Buscar producto en todo el inventario (Código o Nombre)..."
+                    onkeyup="filtrarGlobalDebounce(this.value)">
+                <div id="searchSpinner" style="display: none; color: #007bff;">
+                    <i class="fas fa-spinner fa-spin"></i>
+                </div>
+            </div>
+
+            <div class="search-results-container" id="globalSearchResults">
+                <!-- Results populated by JS -->
             </div>
         </div>
     </div>
@@ -1048,6 +1221,143 @@ require_once '../../includes/header.php';
             <div class="loading-spinner">
                 <i class="fas fa-spinner"></i>
                 <span>Cargando tipos...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Latest Movements Widget -->
+    <style>
+        .ultimos-movimientos-section {
+            margin-bottom: 30px;
+            margin-top: 30px;
+        }
+
+        .widget-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+
+        .widget-header {
+            padding: 15px 25px;
+            border-bottom: 1px solid #f0f0f0;
+            background: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .widget-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .widget-body {
+            background: #fff;
+        }
+
+        .movimiento-item {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr 1fr 50px;
+            align-items: center;
+            padding: 15px 25px;
+            border-bottom: 1px solid #f4f6f9;
+            transition: background 0.2s;
+            gap: 15px;
+        }
+
+        .movimiento-item:last-child {
+            border-bottom: none;
+        }
+
+        .movimiento-item:hover {
+            background: #f8f9fa;
+        }
+
+        .mov-main {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .mov-icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .mov-desc h5 {
+            margin: 0 0 2px 0;
+            font-size: 0.95rem;
+            color: #1a1a2e;
+        }
+
+        .mov-desc span {
+            font-size: 0.8rem;
+            color: #6c757d;
+            font-family: 'Consolas', monospace;
+        }
+
+        .mov-monto {
+            font-weight: 700;
+            color: #1a1a2e;
+            font-size: 0.95rem;
+        }
+
+        .mov-fecha {
+            color: #6c757d;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mov-tipo {
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: #e9ecef;
+            color: #495057;
+            display: inline-block;
+            text-align: center;
+        }
+
+        @media (max-width: 900px) {
+            .movimiento-item {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .mov-tipo {
+                display: inline-block;
+                width: auto;
+            }
+        }
+    </style>
+
+    <div class="ultimos-movimientos-section">
+        <div class="widget-card">
+            <div class="widget-header">
+                <h3><i class="fas fa-clipboard-list"></i> Últimos 10 Movimientos</h3>
+            </div>
+            <div class="widget-body">
+                <div id="listaUltimosMovimientos">
+                    <div class="loading-spinner">
+                        <i class="fas fa-spinner"></i>
+                        <span>Cargando movimientos...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1346,6 +1656,50 @@ require_once '../../includes/header.php';
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeModalConfig()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Alertas Stock -->
+<div class="modal-inventario" id="modalAlertas">
+    <div class="modal-content" style="max-width: 900px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white;">
+            <h3><i class="fas fa-exclamation-triangle"></i> Productos Bajo Stock Mínimo</h3>
+            <button class="modal-close" onclick="closeModalAlertas()"
+                style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="loading-spinner" id="loadingAlertas">
+                <i class="fas fa-spinner"></i>
+                <span>Cargando alertas...</span>
+            </div>
+            <div id="contentAlertas" style="display:none; max-height: 60vh; overflow-y: auto;">
+                <table class="productos-tabla">
+                    <thead>
+                        <tr style="position: sticky; top: 0; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th style="text-align: right;">Stock Act</th>
+                            <th style="text-align: right;">Stock Mín</th>
+                            <th style="text-align: right;">Faltante</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaAlertasBody">
+                        <!-- Filled by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content: flex-end; gap: 10px;">
+            <button class="btn" style="background: #28a745; color: white; display: flex; align-items: center; gap: 8px;"
+                onclick="exportarAlertasExcel()">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button class="btn" style="background: #17a2b8; color: white; display: flex; align-items: center; gap: 8px;"
+                onclick="imprimirAlertas()">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+            <button class="btn btn-secondary" onclick="closeModalAlertas()">Cerrar</button>
         </div>
     </div>
 </div>
@@ -2286,6 +2640,7 @@ require_once '../../includes/header.php';
     // ========== INICIALIZACIÓN ==========
     document.addEventListener('DOMContentLoaded', function () {
         cargarDashboard();
+        cargarUltimosMovimientos();
         cargarCatalogos();
     });
 
@@ -2306,6 +2661,14 @@ require_once '../../includes/header.php';
                 // Guardar tipos y renderizar
                 tiposInventario = data.resumen;
                 renderTiposInventario(tiposInventario);
+            } else {
+                console.error('Error backend:', data.message);
+                // Si hay un error de conexión SQL, mostrarlo
+                if (data.error) console.error('Detalle error:', data.error);
+
+                // Mostrar estado de error en los KPIs
+                document.getElementById('kpiTipos').innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i>';
+                alert('No se pudo cargar el dashboard: ' + (data.message || 'Error desconocido'));
             }
         } catch (error) {
             console.error('Error cargando dashboard:', error);
@@ -4390,6 +4753,455 @@ require_once '../../includes/header.php';
     console.log('✅ Funciones de modales v1.6.5 cargadas correctamente');
 
 
+
+    // ========== MODAL ALERTAS DE STOCK ==========
+    let alertasData = [];
+
+    function abrirModalAlertas() {
+        document.getElementById('modalAlertas').classList.add('show');
+        cargarAlertas();
+    }
+
+    function closeModalAlertas() {
+        document.getElementById('modalAlertas').classList.remove('show');
+    }
+
+    async function cargarAlertas() {
+        document.getElementById('loadingAlertas').style.display = 'flex';
+        document.getElementById('contentAlertas').style.display = 'none';
+
+        try {
+            // Obtener todos los inventarios (action=list por defecto trae todos si no se filtran)
+            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list`);
+            const data = await response.json();
+
+            if (data.success) {
+                // Filtrar localmente por stock <= stock minimo
+                alertasData = data.inventarios.filter(item => {
+                    const stock = parseFloat(item.stock_actual) || 0;
+                    const min = parseFloat(item.stock_minimo) || 0;
+                    return stock <= min && min > 0; // Considerar solo items con stock minimo definido
+                });
+                renderAlertas();
+            } else {
+                alert('Error al cargar datos: ' + data.message);
+                closeModalAlertas();
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error de conexión al cargar alertas');
+            closeModalAlertas();
+        } finally {
+            document.getElementById('loadingAlertas').style.display = 'none';
+            document.getElementById('contentAlertas').style.display = 'block';
+        }
+    }
+
+    function renderAlertas() {
+        const tbody = document.getElementById('tablaAlertasBody');
+        if (alertasData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">🎉 No hay productos con stock bajo</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = alertasData.map(item => {
+            const stock = parseFloat(item.stock_actual) || 0;
+            const min = parseFloat(item.stock_minimo) || 0;
+            const faltante = min - stock;
+
+            return `
+            <tr>
+                <td class="codigo">${item.codigo}</td>
+                <td class="nombre">${item.nombre}</td>
+                <td class="stock ${stock <= 0 ? 'critico' : 'bajo'}" style="text-align: right;">${stock.toFixed(2)}</td>
+                <td style="text-align: right;">${min.toFixed(2)}</td>
+                <td style="text-align: right; color: #dc3545; font-weight: bold;">${faltante > 0 ? faltante.toFixed(2) : '0.00'}</td>
+            </tr>
+        `;
+        }).join('');
+    }
+
+    function exportarAlertasExcel() {
+        if (alertasData.length === 0) {
+            alert('No hay datos para exportar');
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Código,Producto,Stock Actual,Stock Mínimo,Faltante\r\n";
+
+        alertasData.forEach(item => {
+            const stock = parseFloat(item.stock_actual) || 0;
+            const min = parseFloat(item.stock_minimo) || 0;
+            const faltante = min - stock;
+            const row = [
+                item.codigo,
+                `"${item.nombre.replace(/"/g, '""')}"`, // Escapar comillas
+                stock.toFixed(2),
+                min.toFixed(2),
+                faltante.toFixed(2)
+            ].join(",");
+            csvContent += row + "\r\n";
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "reporte_bajo_stock.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function imprimirAlertas() {
+        if (alertasData.length === 0) {
+            alert('No hay datos para imprimir');
+            return;
+        }
+
+        const logoImg = document.querySelector('.sidebar-header img');
+        const logoSrc = logoImg ? logoImg.src : '';
+        const fechaHoy = new Date().toLocaleDateString('es-BO');
+
+        const filas = alertasData.map(item => {
+            const stock = parseFloat(item.stock_actual) || 0;
+            const min = parseFloat(item.stock_minimo) || 0;
+            const faltante = min - stock;
+            return `
+            <tr>
+                <td>${item.codigo}</td>
+                <td>${item.nombre}</td>
+                <td style="text-align: right;">${stock.toFixed(2)}</td>
+                <td style="text-align: right;">${min.toFixed(2)}</td>
+                <td style="text-align: right; font-weight: bold;">${faltante.toFixed(2)}</td>
+            </tr>
+            `;
+        }).join('');
+
+        const ventana = window.open('', '_blank');
+        ventana.document.write(`
+        <html>
+        <head>
+            <title>Reporte de Bajo Stock</title>
+            <style>
+                body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; }
+                .print-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #dc3545; padding-bottom: 20px; margin-bottom: 30px; }
+                .company-info img { max-width: 150px; height: auto; }
+                .report-title { text-align: right; }
+                .report-title h2 { margin: 0; color: #dc3545; font-size: 1.5rem; }
+                .report-title p { margin: 5px 0 0 0; color: #666; font-weight: 600; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                th { background: #f8f9fa; color: #dc3545; font-weight: bold; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+            </style>
+        </head>
+        <body>
+            <div class="print-header">
+                <div class="company-info">
+                    ${logoSrc ? `<img src="${logoSrc}" alt="Logo">` : '<h1>HERMEN LTDA.</h1>'}
+                </div>
+                <div class="report-title">
+                    <h2>⚠️ PRODUCTOS BAJO STOCK MÍNIMO</h2>
+                    <p>Fecha: ${fechaHoy}</p>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Producto</th>
+                        <th style="text-align: right;">Stock Actual</th>
+                        <th style="text-align: right;">Stock Mínimo</th>
+                        <th style="text-align: right;">Faltante</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filas}
+                </tbody>
+            </table>
+
+            <script>
+                window.onload = function() {
+                    setTimeout(() => {
+                        window.print();
+                    }, 500);
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+        ventana.document.close();
+    }
+
+    // ========== BÚSQUEDA GLOBAL ==========
+    let searchTimeout;
+
+    function filtrarGlobalDebounce(query) {
+        clearTimeout(searchTimeout);
+        if (query.length < 3) {
+            document.getElementById('globalSearchResults').classList.remove('active');
+            return;
+        }
+
+        document.getElementById('searchSpinner').style.display = 'block';
+        searchTimeout = setTimeout(() => {
+            buscarGlobal(query);
+        }, 500);
+    }
+
+    async function buscarGlobal(query) {
+        try {
+            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list&buscar=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            if (data.success) {
+                renderResultadosGlobal(data.inventarios || []);
+            } else {
+                renderResultadosGlobal([]);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error al buscar');
+        } finally {
+            document.getElementById('searchSpinner').style.display = 'none';
+        }
+    }
+
+    function renderResultadosGlobal(resultados) {
+        const container = document.getElementById('globalSearchResults');
+        container.classList.add('active');
+
+        if (resultados.length === 0) {
+            container.innerHTML = `<div style="padding: 20px; text-align: center; color: #6c757d;">No se encontraron resultados</div>`;
+            return;
+        }
+
+        container.innerHTML = resultados.map(item => {
+            const tipoCodigo = item.tipo_codigo || '???';
+            const tipoColor = item.tipo_color || '#6c757d';
+
+            return `
+            <div class="search-result-item">
+                <div class="result-info">
+                    <div class="result-type-badge" style="background: ${tipoColor}">${tipoCodigo}</div>
+                    <div class="result-details">
+                        <h4>
+                            <span class="result-code">${item.codigo}</span> 
+                            ${item.nombre}
+                        </h4>
+                        <p>Stock: <span class="result-stock">${parseFloat(item.stock_actual).toFixed(2)} ${item.unidad || ''}</span></p>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="btn-kardex" onclick="verKardexGlobal(${item.id_inventario})">
+                        <i class="fas fa-book-open"></i> Kardex
+                    </button>
+                </div>
+            </div>
+            `;
+        }).join('');
+
+        // Cierra al hacer click fuera
+        document.addEventListener('click', function (e) {
+            if (!container.contains(e.target) && e.target.id !== 'globalSearchInput') {
+                container.classList.remove('active');
+            }
+        }, { once: true });
+    }
+
+    async function verKardexGlobal(id) {
+        document.getElementById('modalKardex').classList.add('show');
+        document.getElementById('kardexContent').innerHTML = `
+            <div class="loading-spinner">
+                <i class="fas fa-spinner"></i>
+                <span>Cargando historial de movimientos...</span>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=kardex&id=${id}`);
+            const data = await response.json();
+
+            if (data.success) {
+                const p = data.producto;
+                const movs = data.movimientos;
+
+                let html = `
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="margin: 0 0 10px 0; color: #007bff;">${p.nombre}</h4>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; font-size: 0.9rem;">
+                        <div><strong>Código:</strong> ${p.codigo}</div>
+                        <div><strong>Stock Actual:</strong> <span style="font-weight: bold; color: #28a745;">${parseFloat(p.stock_actual).toFixed(2)} ${p.unidad}</span></div>
+                        <div><strong>Costo Unitario:</strong> Bs. ${parseFloat(p.costo_unitario).toFixed(2)}</div>
+                        <div><strong>Ubicación:</strong> ${p.ubicacion || 'N/A'}</div>
+                    </div>
+                </div>
+                
+                <h5 style="margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 10px;">
+                    <i class="fas fa-history"></i> Historial de Movimientos
+                </h5>
+                
+                <table class="tabla-lineas" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #343a40; color: white;">
+                            <th style="padding: 10px;">Fecha</th>
+                            <th style="padding: 10px;">Documento</th>
+                            <th style="padding: 10px;">Detalle</th>
+                            <th style="padding: 10px; text-align: right;">Entrada</th>
+                            <th style="padding: 10px; text-align: right;">Salida</th>
+                            <th style="padding: 10px; text-align: right;">Saldo</th>
+                            <th style="padding: 10px;">Usuario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                `;
+
+                if (movs.length === 0) {
+                    html += `<tr><td colspan="7" style="text-align: center; padding: 20px;">No hay movimientos registrados</td></tr>`;
+                } else {
+                    movs.forEach(m => {
+                        const esEntrada = m.tipo_movimiento.includes('ENTRADA') || m.tipo_movimiento.includes('DEVOLUCION_CLIENTE') || m.tipo_movimiento.includes('INICIAL');
+                        const entrada = esEntrada ? m.cantidad : 0;
+                        const salida = !esEntrada ? m.cantidad : 0;
+
+                        html += `
+                        <tr style="border-bottom: 1px solid #dee2e6;">
+                            <td style="padding: 10px;">${new Date(m.fecha_movimiento).toLocaleString()}</td>
+                            <td style="padding: 10px;">
+                                <strong>${m.documento_numero}</strong><br>
+                                <small>${m.documento_tipo}</small>
+                            </td>
+                            <td style="padding: 10px;">
+                                <div style="font-size: 0.85rem; color: #666;">${m.tipo_movimiento}</div>
+                                <div style="font-size: 0.8rem; color: #888; font-style: italic;">${m.observaciones || ''}</div>
+                            </td>
+                            <td style="padding: 10px; text-align: right; color: #28a745; background: #e8f5e9;">
+                                ${entrada > 0 ? parseFloat(entrada).toFixed(2) : '-'}
+                            </td>
+                            <td style="padding: 10px; text-align: right; color: #dc3545; background: #ffebee;">
+                                ${salida > 0 ? parseFloat(salida).toFixed(2) : '-'}
+                            </td>
+                            <td style="padding: 10px; text-align: right; font-weight: bold;">
+                                ${parseFloat(m.stock_nuevo).toFixed(2)}
+                            </td>
+                            <td style="padding: 10px; font-size: 0.85rem;">${m.usuario || 'Sistema'}</td>
+                        </tr>
+                        `;
+                    });
+                }
+
+                html += `</tbody></table>`;
+
+                document.getElementById('kardexContent').innerHTML = html;
+                document.getElementById('kardexTitulo').textContent = `Kardex: ${p.codigo}`;
+
+            } else {
+                document.getElementById('kardexContent').innerHTML = `<div style="text-align: center; color: red; padding: 20px;">${data.message}</div>`;
+            }
+        } catch (error) {
+            console.error(error);
+            document.getElementById('kardexContent').innerHTML = '<div style="text-align: center; color: red; padding: 20px;">Error de conexión</div>';
+        }
+    }
+
+    function closeModalKardex() {
+        document.getElementById('modalKardex').classList.remove('show');
+    }
+
+    async function cargarUltimosMovimientos() {
+        const container = document.getElementById('listaUltimosMovimientos');
+
+        try {
+            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=ultimos_movimientos`);
+            const data = await response.json();
+
+            if (data.success && data.movimientos.length > 0) {
+                const hoy = new Date().setHours(0, 0, 0, 0);
+                const ayer = new Date(hoy - 86400000).setHours(0, 0, 0, 0);
+
+                container.innerHTML = data.movimientos.map(m => {
+                    const esEntrada = m.categoria === 'ENTRADA' || m.categoria === 'DEVOLUCION';
+                    // Nota: DEVOLUCION DE CLIENTE es entrada, DEVOLUCION A PROVEEDOR es salida. 
+                    // El API devuelve 'DEVOLUCION' genérico, asumiremos salida si es proveedor? 
+                    // Revisando API: 
+                    // WHEN m.tipo_movimiento LIKE 'ENTRADA%' THEN 'ENTRADA'
+                    // WHEN m.tipo_movimiento LIKE 'DEVOLUCION%' THEN 'DEVOLUCION'
+                    // Pero visualmente queremos verde/rojo. 
+                    // Si es devolución a proveedor (salida de stock) debería ser rojo.
+                    // Si es devolución de producción (entrada a stock) debería ser verde.
+
+                    let colorClass = 'salida';
+                    let iconClass = 'fa-arrow-up';
+                    let label = 'Salida';
+
+                    if (m.tipo_movimiento.includes('ENTRADA') || m.tipo_movimiento.includes('INICIAL') || m.tipo_movimiento.includes('DEVOLUCION_PRODUCCION')) {
+                        colorClass = 'entrada'; // verde
+                        iconClass = 'fa-arrow-down';
+                        label = 'Ingreso';
+                    } else if (m.tipo_movimiento.includes('SALIDA') || m.tipo_movimiento.includes('CONSUMO') || m.tipo_movimiento.includes('MERMA')) {
+                        colorClass = 'salida'; // rojo
+                        iconClass = 'fa-arrow-up';
+                        label = 'Salida';
+                    } else if (m.tipo_movimiento.includes('DEVOLUCION_PROVEEDOR')) {
+                        colorClass = 'salida';
+                        iconClass = 'fa-undo';
+                        label = 'Devolución';
+                    }
+
+                    // Ajuste visual
+                    const colorBg = colorClass === 'entrada' ? '#e8f5e9' : '#ffebee';
+                    const colorFg = colorClass === 'entrada' ? '#2e7d32' : '#c62828';
+
+                    const fechaMov = new Date(m.fecha + 'T00:00:00'); // Asegurar parsing correcto de fecha YYYY-MM-DD
+                    const fechaMovTime = fechaMov.setHours(0, 0, 0, 0);
+
+                    let fechaTexto = '';
+                    if (fechaMovTime === hoy) fechaTexto = 'Hoy';
+                    else if (fechaMovTime === ayer) fechaTexto = 'Ayer';
+                    else fechaTexto = new Date(m.fecha).toLocaleDateString('es-BO');
+
+                    return `
+                    <div class="movimiento-item">
+                        <div class="mov-main">
+                            <div class="mov-icon-circle" style="background: ${colorBg}; color: ${colorFg};">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <div class="mov-desc">
+                                <h5>${label}</h5>
+                                <span>${m.documento_numero}</span>
+                            </div>
+                        </div>
+                        <div class="mov-monto">
+                            Bs. ${parseFloat(m.total_documento || 0).toFixed(2)}
+                        </div>
+                        <div class="mov-fecha">
+                            <i class="far fa-clock"></i> ${fechaTexto}
+                        </div>
+                        <div style="text-align: center;">
+                            <span class="mov-tipo" style="color: white; background: ${m.tipo_inventario_color || '#6c757d'};">
+                                ${m.tipo_inventario_nombre || 'Inventario'}
+                            </span>
+                        </div>
+                        <div style="text-align: right;">
+                            <button onclick="verDetalleDocumento('${m.documento_numero}')" 
+                                    style="border: none; background: transparent; color: #007bff; cursor: pointer; font-size: 1.1rem;"
+                                    title="Ver detalle del documento">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = '<div style="padding: 30px; text-align: center; color: #6c757d;">No hay movimientos recientes</div>';
+            }
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<div style="padding: 30px; text-align: center; color: red;">Error al cargar movimientos</div>';
+        }
+    }
 
 </script>
 

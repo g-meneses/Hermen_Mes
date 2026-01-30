@@ -444,6 +444,10 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                         class="menu-link"><i class="fas fa-sitemap"></i><span class="menu-text">Tipos y
                                             Categorías</span></a>
                                 </li>
+                                <li><a href="<?php echo SITE_URL; ?>/modules/inventarios/reporte_rotacion.php"
+                                        class="menu-link"><i class="fas fa-sync-alt"></i><span
+                                            class="menu-text">Rotación de Inventario</span></a>
+                                </li>
                             </ul>
                         </li>
                         <li class="menu-item">

@@ -45,7 +45,8 @@ window.abrirReporte = function (tipo) {
         'stock_valorizado': 'Reporte de Stock Valorizado',
         'movimientos': 'Reporte de Movimientos de Inventario',
         'analisis': 'Análisis Estadístico de Inventario',
-        'tipos_categorias': 'Reporte de Tipos y Categorías'
+        'tipos_categorias': 'Reporte de Tipos y Categorías',
+        'rotacion': 'Reporte de Rotación de Inventario'
     };
 
     document.getElementById('reporteTitulo').innerHTML = `<i class="fas fa-chart-bar"></i> ${titulos[tipo] || 'Reporte'}`;
@@ -125,6 +126,35 @@ function renderFiltrosReporte(tipo) {
         html = `<p style="margin:0; color:#666;"><i class="fas fa-info-circle"></i> Resumen ejecutivo del estado actual del inventario.</p>`;
     } else if (tipo === 'tipos_categorias') {
         html = `<p style="margin:0; color:#666;"><i class="fas fa-info-circle"></i> Tipos de inventario con sus categorías y valores.</p>`;
+    } else if (tipo === 'rotacion') {
+        html = `
+            <div class="form-group">
+                <label>Desde</label>
+                <input type="date" id="repDesde" value="${primeroMes}">
+            </div>
+            <div class="form-group">
+                <label>Hasta</label>
+                <input type="date" id="repHasta" value="${hoy}">
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Tipo Inventario</label>
+                <select id="repFiltroTipo" onchange="actualizarCategoriasReporte()">
+                    <option value="">Todos los tipos</option>
+                </select>
+            </div>
+            <div class="form-group" style="flex:1; min-width:150px;">
+                <label>Categoría</label>
+                <select id="repFiltroCat">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+            <div class="form-group" style="display:flex; align-items:flex-end;">
+                <button class="btn btn-primary" onclick="cargarReporte('rotacion')"><i class="fas fa-search"></i> Generar</button>
+            </div>
+        `;
+
+        // Cargar tipos de inventario
+        setTimeout(cargarTiposParaReporte, 100);
     }
 
     container.innerHTML = html;
@@ -152,6 +182,14 @@ async function cargarReporte(tipo) {
             const hasta = document.getElementById('repHasta').value;
             const tipoMov = document.getElementById('repTipoMov').value;
             url += `&desde=${desde}&hasta=${hasta}&tipo=${tipoMov}`;
+        } else if (tipo === 'rotacion') {
+            const desde = document.getElementById('repDesde').value;
+            const hasta = document.getElementById('repHasta').value;
+            const tipoId = document.getElementById('repFiltroTipo')?.value;
+            const catId = document.getElementById('repFiltroCat')?.value;
+            url += `&desde=${desde}&hasta=${hasta}`;
+            if (tipoId) url += `&id_tipo=${tipoId}`;
+            if (catId) url += `&id_categoria=${catId}`;
         }
 
         const response = await fetch(url);
@@ -348,6 +386,81 @@ function renderDataReporte(tipo, data) {
                         <td style="padding:14px;">TOTAL GENERAL</td>
                         <td style="padding:14px; text-align:right;">${formatNum(data.total_general.items, 0)}</td>
                         <td style="padding:14px; text-align:right;">Bs. ${formatNum(data.total_general.valor, 2)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+    } else if (tipo === 'rotacion') {
+        // Helper para obtener color según clasificación
+        const getColorClasificacion = (clasificacion) => {
+            switch (clasificacion) {
+                case 'ALTA': return '#4caf50';
+                case 'MEDIA': return '#ff9800';
+                case 'BAJA': return '#f44336';
+                case 'SIN_MOVIMIENTO': return '#9e9e9e';
+                default: return '#666';
+            }
+        };
+
+        const getBadgeClasificacion = (clasificacion) => {
+            const color = getColorClasificacion(clasificacion);
+            const texto = clasificacion.replace('_', ' ');
+            return `<span style="background:${color}; color:white; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">${texto}</span>`;
+        };
+
+        html = `
+            <div style="background:#e3f2fd; padding:12px; border-radius:8px; margin-bottom:15px;">
+                <p style="margin:0; color:#1565c0; font-weight:600;">
+                    <i class="fas fa-calendar-alt"></i> Período: ${new Date(data.periodo.desde).toLocaleDateString('es-BO')} - ${new Date(data.periodo.hasta).toLocaleDateString('es-BO')} (${data.periodo.dias} días)
+                </p>
+            </div>
+            <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#1a237e;">
+                        <th style="padding:10px; text-align:left; color:white;">Producto</th>
+                        <th style="padding:10px; text-align:right; color:white;">Inv. Promedio</th>
+                        <th style="padding:10px; text-align:right; color:white;">Consumo</th>
+                        <th style="padding:10px; text-align:right; color:white;">Rotación</th>
+                        <th style="padding:10px; text-align:center; color:white;">Días Stock</th>
+                        <th style="padding:10px; text-align:center; color:white;">Clasificación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.data.map(row => {
+            const alertaDias = row.dias_stock > 180 ? ' ⚠️' : '';
+            const alertaRotacion = row.rotacion < 0.1 && row.salidas > 0 ? ' 🔴' : '';
+
+            return `
+                            <tr style="border-bottom:1px solid #eee;">
+                                <td style="padding:8px;">
+                                    <div style="font-weight:600;">${row.nombre}</div>
+                                    <div style="font-size:0.8rem; color:#666;">${row.codigo} | ${row.categoria}</div>
+                                </td>
+                                <td style="padding:8px; text-align:right; font-weight:600;">
+                                    ${formatNum(row.inventario_promedio, 2)} ${row.unidad}
+                                </td>
+                                <td style="padding:8px; text-align:right; ${row.salidas > 0 ? 'color:#2e7d32; font-weight:600;' : 'color:#999;'}">
+                                    ${formatNum(row.salidas, 2)} ${row.unidad}
+                                </td>
+                                <td style="padding:8px; text-align:right; font-weight:700; color:${getColorClasificacion(row.clasificacion)};">
+                                    ${formatNum(row.rotacion, 2)}${alertaRotacion}
+                                </td>
+                                <td style="padding:8px; text-align:center; font-weight:600; ${row.dias_stock > 180 ? 'background:#fff3e0; color:#e65100;' : ''}">
+                                    ${row.dias_stock >= 999 ? '∞' : row.dias_stock + ' días'}${alertaDias}
+                                </td>
+                                <td style="padding:8px; text-align:center;">
+                                    ${getBadgeClasificacion(row.clasificacion)}
+                                </td>
+                            </tr>
+                        `;
+        }).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f5f5f5; font-weight:700;">
+                        <td colspan="6" style="padding:12px; text-align:center; color:#666;">
+                            <i class="fas fa-info-circle"></i> 
+                            Rotación Alta: ≥2 | Media: 0.5-2 | Baja: <0.5 | Sin Movimiento: 0
+                        </td>
                     </tr>
                 </tfoot>
             </table>

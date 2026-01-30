@@ -253,6 +253,150 @@ try {
             ]);
             break;
 
+        case 'rotacion':
+            // Reporte de Rotación de Inventario
+            $desde = $_GET['desde'] ?? date('Y-m-01');
+            $hasta = $_GET['hasta'] ?? date('Y-m-d');
+            $tipoId = $_GET['id_tipo'] ?? null;
+            $catId = $_GET['id_categoria'] ?? null;
+
+            // Calcular días del período
+            $fechaDesde = new DateTime($desde);
+            $fechaHasta = new DateTime($hasta);
+            $diasPeriodo = $fechaHasta->diff($fechaDesde)->days + 1;
+
+            $sql = "
+                SELECT 
+                    i.id_inventario,
+                    i.codigo,
+                    i.nombre,
+                    um.abreviatura as unidad,
+                    c.nombre as categoria,
+                    i.stock_actual,
+                    i.costo_promedio,
+                    
+                    -- Stock inicial (al inicio del período)
+                    COALESCE((
+                        SELECT stock_posterior 
+                        FROM movimientos_inventario 
+                        WHERE id_inventario = i.id_inventario 
+                        AND fecha_movimiento < :desde
+                        ORDER BY fecha_movimiento DESC, id_movimiento DESC
+                        LIMIT 1
+                    ), 0) as stock_inicial,
+                    
+                    -- Total de entradas en el período
+                    COALESCE((
+                        SELECT SUM(cantidad)
+                        FROM movimientos_inventario
+                        WHERE id_inventario = i.id_inventario
+                        AND DATE(fecha_movimiento) BETWEEN :desde2 AND :hasta
+                        AND tipo_movimiento LIKE 'ENTRADA%'
+                    ), 0) as total_entradas,
+                    
+                    -- Total de salidas en el período (consumo)
+                    COALESCE((
+                        SELECT SUM(cantidad)
+                        FROM movimientos_inventario
+                        WHERE id_inventario = i.id_inventario
+                        AND DATE(fecha_movimiento) BETWEEN :desde3 AND :hasta2
+                        AND tipo_movimiento LIKE 'SALIDA%'
+                    ), 0) as total_salidas,
+                    
+                    -- Valor total del inventario actual
+                    (i.stock_actual * i.costo_promedio) as valor_actual
+                    
+                FROM inventarios i
+                JOIN categorias_inventario c ON i.id_categoria = c.id_categoria
+                JOIN unidades_medida um ON i.id_unidad = um.id_unidad
+                WHERE i.activo = 1
+            ";
+
+            if ($tipoId) {
+                $sql .= " AND i.id_tipo_inventario = :tipoId";
+            }
+            if ($catId) {
+                $sql .= " AND i.id_categoria = :catId";
+            }
+
+            $sql .= " ORDER BY c.nombre, i.nombre";
+
+            $stmt = $db->prepare($sql);
+            $stmt->bindValue(':desde', $desde);
+            $stmt->bindValue(':desde2', $desde);
+            $stmt->bindValue(':desde3', $desde);
+            $stmt->bindValue(':hasta', $hasta);
+            $stmt->bindValue(':hasta2', $hasta);
+            
+            if ($tipoId) {
+                $stmt->bindValue(':tipoId', $tipoId);
+            }
+            if ($catId) {
+                $stmt->bindValue(':catId', $catId);
+            }
+
+            $stmt->execute();
+            $productos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Calcular métricas de rotación para cada producto
+            $datos = [];
+            foreach ($productos as $prod) {
+                $stockInicial = floatval($prod['stock_inicial']);
+                $stockFinal = floatval($prod['stock_actual']);
+                $entradas = floatval($prod['total_entradas']);
+                $salidas = floatval($prod['total_salidas']);
+                
+                // Inventario Promedio = (Stock Inicial + Stock Final) / 2
+                $inventarioPromedio = ($stockInicial + $stockFinal) / 2;
+                
+                // Índice de Rotación = Consumo / Inventario Promedio
+                $rotacion = $inventarioPromedio > 0 ? $salidas / $inventarioPromedio : 0;
+                
+                // Días de Stock = Días del Período / Rotación
+                $diasStock = $rotacion > 0 ? $diasPeriodo / $rotacion : 999;
+                
+                // Clasificación de rotación
+                $clasificacion = '';
+                if ($rotacion >= 2) {
+                    $clasificacion = 'ALTA';
+                } elseif ($rotacion >= 0.5) {
+                    $clasificacion = 'MEDIA';
+                } elseif ($rotacion > 0) {
+                    $clasificacion = 'BAJA';
+                } else {
+                    $clasificacion = 'SIN_MOVIMIENTO';
+                }
+                
+                $datos[] = [
+                    'id_inventario' => $prod['id_inventario'],
+                    'codigo' => $prod['codigo'],
+                    'nombre' => $prod['nombre'],
+                    'unidad' => $prod['unidad'],
+                    'categoria' => $prod['categoria'],
+                    'stock_inicial' => $stockInicial,
+                    'stock_final' => $stockFinal,
+                    'inventario_promedio' => round($inventarioPromedio, 2),
+                    'entradas' => $entradas,
+                    'salidas' => $salidas,
+                    'rotacion' => round($rotacion, 2),
+                    'dias_stock' => round($diasStock, 0),
+                    'clasificacion' => $clasificacion,
+                    'valor_actual' => floatval($prod['valor_actual']),
+                    'costo_promedio' => floatval($prod['costo_promedio'])
+                ];
+            }
+
+            echo json_encode([
+                'success' => true,
+                'data' => $datos,
+                'periodo' => [
+                    'desde' => $desde,
+                    'hasta' => $hasta,
+                    'dias' => $diasPeriodo
+                ]
+            ]);
+            break;
+
         default:
             echo json_encode(['success' => false, 'message' => 'Acción no reconocida']);
     }

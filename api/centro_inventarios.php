@@ -630,6 +630,51 @@ SUM(CASE WHEN i.stock_actual <= 0 THEN 1 ELSE 0 END) AS sin_stock, SUM(CASE WHEN
                     ]);
                     break;
 
+                case 'tendencia_valor':
+                    // Obtener valor histórico aproximado de los últimos 6 meses
+                    $meses = [];
+                    for ($i = 5; $i >= 0; $i--) {
+                        $meses[] = date('Y-m-t', strtotime("-$i months"));
+                    }
+
+                    $tendencia = [];
+                    foreach ($meses as $fechaFin) {
+                        $nombreMes = date('M Y', strtotime($fechaFin));
+
+                        // Cálculo: Stock Actual - Movimientos posteriores a la fecha
+                        // Esto nos da el stock que había exactamente en esa fecha.
+                        $sql = "
+                            SELECT 
+                                SUM((i.stock_actual - COALESCE(movs.cambio, 0)) * i.costo_unitario) as valor_total
+                            FROM inventarios i
+                            JOIN tipos_inventario ti ON i.id_tipo_inventario = ti.id_tipo_inventario
+                            LEFT JOIN (
+                                SELECT id_inventario, 
+                                       SUM(CASE WHEN tipo_movimiento LIKE 'ENTRADA%' OR tipo_movimiento LIKE 'DEVOLUCION_CLIENTE%' OR tipo_movimiento LIKE 'INICIAL%' THEN cantidad ELSE -cantidad END) as cambio
+                                FROM movimientos_inventario
+                                WHERE fecha_movimiento > ?
+                                GROUP BY id_inventario
+                            ) movs ON i.id_inventario = movs.id_inventario
+                            WHERE i.activo = 1 AND ti.activo = 1
+                        ";
+
+                        $stmt = $db->prepare($sql);
+                        $stmt->execute([$fechaFin . ' 23:59:59']);
+                        $valor = $stmt->fetchColumn();
+
+                        $tendencia[] = [
+                            'mes' => $nombreMes,
+                            'valor' => floatval($valor ?? 0)
+                        ];
+                    }
+
+                    ob_clean();
+                    echo json_encode([
+                        'success' => true,
+                        'tendencia' => $tendencia
+                    ]);
+                    break;
+
                 default:
                     // Listar inventarios con filtros
                     $tipoId = $_GET['tipo_id'] ?? null;

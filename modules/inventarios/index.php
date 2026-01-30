@@ -24,6 +24,8 @@ require_once '../../includes/header.php';
 
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
 <style>
     /* ========== VARIABLES CSS ========== */
@@ -1420,7 +1422,57 @@ require_once '../../includes/header.php';
             align-items: center;
             gap: 8px;
         }
+
+        /* ========== ESTILOS GRÁFICO TENDENCIA ========== */
+        .trend-section {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .trend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .trend-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            color: #1a1a2e;
+            font-weight: 600;
+        }
+
+        .trend-title i {
+            color: #667eea;
+        }
+
+        .trend-chart-container {
+            height: 300px;
+            position: relative;
+        }
     </style>
+
+    <!-- Gráfico de Tendencia -->
+    <div class="trend-section">
+        <div class="trend-header">
+            <div class="trend-title">
+                <i class="fas fa-chart-line"></i>
+                Tendencia del Valor de Inventario (Últimos 6 Meses)
+            </div>
+            <div id="valorActualTrend" style="font-weight: 700; color: #28a745; font-size: 1.1rem;">
+                Bs. 0.00
+            </div>
+        </div>
+        <div class="trend-chart-container">
+            <canvas id="chartTendenciaValor"></canvas>
+        </div>
+    </div>
 
     <div class="global-search-section">
         <div class="search-container">
@@ -1491,9 +1543,39 @@ require_once '../../includes/header.php';
             background: #fff;
         }
 
+
+        #listaUltimosMovimientos {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 5px;
+            /* Prevent content overlap with scrollbar */
+
+            /* Firefox */
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f8f9fa;
+        }
+
+        /* Webkit (Chrome, Safari, Edge) */
+        #listaUltimosMovimientos::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #listaUltimosMovimientos::-webkit-scrollbar-track {
+            background: #f8f9fa;
+        }
+
+        #listaUltimosMovimientos::-webkit-scrollbar-thumb {
+            background-color: #cbd5e0;
+            border-radius: 3px;
+        }
+
+        #listaUltimosMovimientos::-webkit-scrollbar-thumb:hover {
+            background-color: #a0aec0;
+        }
+
         .movimiento-item {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 1fr 1fr 50px;
+            grid-template-columns: auto 1fr auto auto;
             align-items: center;
             padding: 15px 25px;
             border-bottom: 1px solid #f4f6f9;
@@ -2955,6 +3037,7 @@ require_once '../../includes/header.php';
         cargarDashboard();
         cargarUltimosMovimientos();
         cargarCatalogos();
+        cargarTendencia();
     });
 
     // ========== CARGA DE DATOS ==========
@@ -5653,6 +5736,99 @@ require_once '../../includes/header.php';
             console.error(e);
             container.innerHTML = '<div style="padding: 30px; text-align: center; color: red;">Error al cargar movimientos</div>';
         }
+    }
+
+    // ========== GRÁFICO DE TENDENCIA ==========
+    let chartTendencia = null;
+
+    async function cargarTendencia() {
+        try {
+            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=tendencia_valor`);
+            const data = await response.json();
+
+            if (data.success && data.tendencia) {
+                initChartTendencia(data.tendencia);
+
+                // Actualizar el valor actual en el trend header (último dato)
+                const ultimoDato = data.tendencia[data.tendencia.length - 1];
+                if (ultimoDato) {
+                    document.getElementById('valorActualTrend').textContent = 'Bs. ' + ultimoDato.valor.toLocaleString('es-BO', { minimumFractionDigits: 2 });
+                }
+            }
+        } catch (error) {
+            console.error('Error al cargar tendencia:', error);
+        }
+    }
+
+    function initChartTendencia(datos) {
+        const ctx = document.getElementById('chartTendenciaValor').getContext('2d');
+
+        if (chartTendencia) chartTendencia.destroy();
+
+        const labels = datos.map(d => d.mes);
+        const valores = datos.map(d => d.valor);
+
+        chartTendencia = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Valor Total (Bs.)',
+                    data: valores,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#667eea',
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function (context) {
+                                let val = context.parsed.y;
+                                return 'Valor: Bs. ' + val.toLocaleString('es-BO', { minimumFractionDigits: 2 });
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: {
+                            drawBorder: false,
+                            color: 'rgba(0, 0, 0, 0.05)'
+                        },
+                        ticks: {
+                            callback: function (value) {
+                                if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                                if (value >= 1000) return (value / 1000).toFixed(0) + 'K';
+                                return value;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                }
+            }
+        });
     }
 
 </script>

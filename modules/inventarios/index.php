@@ -22,6 +22,9 @@ $currentPage = 'centro_inventarios';
 require_once '../../includes/header.php';
 ?>
 
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
     /* ========== VARIABLES CSS ========== */
     :root {
@@ -1191,6 +1194,232 @@ require_once '../../includes/header.php';
             background: #ffe0b2;
             transform: scale(1.05);
         }
+
+        /* ========== NUEVOS ESTILOS ALERTAS DE STOCK ========== */
+        .modal-alertas-header {
+            background: linear-gradient(135deg, #eb3349, #f45c43);
+            color: white;
+        }
+
+        .modal-alertas-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .tab-alert {
+            padding: 8px 16px;
+            border: 2px solid #e9ecef;
+            background: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-alert:hover {
+            border-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .tab-alert.active {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .tab-alert .count {
+            background: rgba(0, 0, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+        }
+
+        .tab-alert.active .count {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .resumen-alertas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .resumen-card-alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .resumen-card-alert.critico {
+            background: linear-gradient(135deg, #fff5f5, #ffe0e0);
+            border-left: 4px solid #dc3545;
+        }
+
+        .resumen-card-alert.bajo {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border-left: 4px solid #f59e0b;
+        }
+
+        .resumen-card-alert.sin-stock {
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+            border-left: 4px solid #6b7280;
+        }
+
+        .resumen-card-alert i {
+            font-size: 1.5rem;
+        }
+
+        .resumen-card-alert.critico i {
+            color: #dc3545;
+        }
+
+        .resumen-card-alert.bajo i {
+            color: #f59e0b;
+        }
+
+        .resumen-card-alert.sin-stock i {
+            color: #6b7280;
+        }
+
+        .resumen-info-alert .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .resumen-info-alert .label {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .filtros-alertas {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .filtro-alert-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .filtro-alert-group label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .filtro-alert-group select,
+        .filtro-alert-group input {
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .stock-visual-alert {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stock-bar-alert {
+            flex: 1;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            min-width: 80px;
+        }
+
+        .stock-bar-fill-alert {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .stock-bar-fill-alert.critico {
+            background: #dc3545;
+        }
+
+        .stock-bar-fill-alert.bajo {
+            background: #f59e0b;
+        }
+
+        .stock-bar-fill-alert.sin-stock {
+            background: #6b7280;
+        }
+
+        .stock-percent-alert {
+            font-size: 0.75rem;
+            color: #6c757d;
+            min-width: 35px;
+        }
+
+        .badge-tipo-alert {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+
+        .btn-accion-alert {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            margin: 0 2px;
+        }
+
+        .btn-accion-alert.comprar {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .btn-accion-alert.kardex {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .btn-accion-alert:hover {
+            transform: scale(1.1);
+        }
+
+        .footer-alert-info {
+            font-size: 0.85rem;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 
     <div class="global-search-section">
@@ -1661,27 +1890,102 @@ require_once '../../includes/header.php';
 </div>
 
 <!-- Modal Alertas Stock -->
+<!-- Modal Alertas Stock Rediseñado -->
 <div class="modal-inventario" id="modalAlertas">
-    <div class="modal-content" style="max-width: 900px;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); color: white;">
-            <h3><i class="fas fa-exclamation-triangle"></i> Productos Bajo Stock Mínimo</h3>
+    <div class="modal-content" style="max-width: 1100px;">
+        <div class="modal-header modal-alertas-header">
+            <h3>
+                <i class="fas fa-exclamation-triangle"></i>
+                Alertas de Stock
+                <span class="badge" id="totalAlertasBadge"
+                    style="background: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; margin-left: 10px;">0
+                    productos</span>
+            </h3>
             <button class="modal-close" onclick="closeModalAlertas()"
                 style="background: rgba(255,255,255,0.2); color: white;">&times;</button>
         </div>
+
         <div class="modal-body">
-            <div class="loading-spinner" id="loadingAlertas">
+            <!-- Tabs por Tipo de Inventario -->
+            <div class="modal-alertas-tabs" id="tabsAlertas">
+                <button class="tab-alert active" onclick="filtrarAlertasPorTipo('todos', this)">
+                    <i class="fas fa-boxes"></i> Todos
+                    <span class="count" id="countAlertTodos">0</span>
+                </button>
+                <!-- Otros tabs se cargarán dinámicamente -->
+            </div>
+
+            <!-- Resumen por Severidad -->
+            <div class="resumen-alertas">
+                <div class="resumen-card-alert sin-stock">
+                    <i class="fas fa-times-circle"></i>
+                    <div class="resumen-info-alert">
+                        <span class="value" id="countSinStock">0</span>
+                        <span class="label">Sin Stock (0%)</span>
+                    </div>
+                </div>
+                <div class="resumen-card-alert critico">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <div class="resumen-info-alert">
+                        <span class="value" id="countCritico">0</span>
+                        <span class="label">Crítico (1-25%)</span>
+                    </div>
+                </div>
+                <div class="resumen-card-alert bajo">
+                    <i class="fas fa-info-circle"></i>
+                    <div class="resumen-info-alert">
+                        <span class="value" id="countBajo">0</span>
+                        <span class="label">Bajo (26-50%)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="filtros-alertas">
+                <div class="filtro-alert-group">
+                    <label>Categoría</label>
+                    <select id="filtroAlertCategoria" onchange="aplicarFiltrosAlertas()">
+                        <option value="">Todas las categorías</option>
+                    </select>
+                </div>
+                <div class="filtro-alert-group">
+                    <label>Severidad</label>
+                    <select id="filtroAlertSeveridad" onchange="aplicarFiltrosAlertas()">
+                        <option value="">Todas</option>
+                        <option value="SIN_STOCK">🔴 Sin Stock</option>
+                        <option value="CRITICO">🟠 Crítico</option>
+                        <option value="BAJO">🟡 Bajo</option>
+                    </select>
+                </div>
+                <div class="filtro-alert-group">
+                    <label>Buscar</label>
+                    <input type="text" id="filtroAlertBusqueda" placeholder="Código o nombre..."
+                        onkeyup="aplicarFiltrosAlertas()">
+                </div>
+                <button class="btn btn-primary" style="margin-top: 18px;" onclick="aplicarFiltrosAlertas()">
+                    <i class="fas fa-search"></i> Filtrar
+                </button>
+            </div>
+
+            <!-- Tabla de Alertas -->
+            <div id="loadingAlertas" class="loading-spinner">
                 <i class="fas fa-spinner"></i>
                 <span>Cargando alertas...</span>
             </div>
-            <div id="contentAlertas" style="display:none; max-height: 60vh; overflow-y: auto;">
+
+            <div id="contentAlertas" style="display:none; overflow-x: auto;">
                 <table class="productos-tabla">
                     <thead>
-                        <tr style="position: sticky; top: 0; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                        <tr style="position: sticky; top: 0; background: white; z-index: 10;">
+                            <th>Tipo</th>
                             <th>Código</th>
                             <th>Producto</th>
-                            <th style="text-align: right;">Stock Act</th>
-                            <th style="text-align: right;">Stock Mín</th>
+                            <th style="width: 150px;">Nivel Stock</th>
+                            <th style="text-align: right;">Stock</th>
+                            <th style="text-align: right;">Mínimo</th>
                             <th style="text-align: right;">Faltante</th>
+                            <th>Estado</th>
+                            <th style="text-align: center;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaAlertasBody">
@@ -1690,16 +1994,25 @@ require_once '../../includes/header.php';
                 </table>
             </div>
         </div>
-        <div class="modal-footer" style="justify-content: flex-end; gap: 10px;">
-            <button class="btn" style="background: #28a745; color: white; display: flex; align-items: center; gap: 8px;"
-                onclick="exportarAlertasExcel()">
-                <i class="fas fa-file-excel"></i> Exportar Excel
-            </button>
-            <button class="btn" style="background: #17a2b8; color: white; display: flex; align-items: center; gap: 8px;"
-                onclick="imprimirAlertas()">
-                <i class="fas fa-print"></i> Imprimir
-            </button>
-            <button class="btn btn-secondary" onclick="closeModalAlertas()">Cerrar</button>
+
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="footer-alert-info">
+                <i class="fas fa-info-circle"></i>
+                <span id="footerAlertStats">Mostrando 0 de 0 alertas</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn"
+                    style="background: #28a745; color: white; display: flex; align-items: center; gap: 8px;"
+                    onclick="exportarAlertasExcel()">
+                    <i class="fas fa-file-excel"></i> Exportar Excel
+                </button>
+                <button class="btn"
+                    style="background: #17a2b8; color: white; display: flex; align-items: center; gap: 8px;"
+                    onclick="imprimirAlertas()">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+                <button class="btn btn-secondary" onclick="closeModalAlertas()">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -4754,12 +5067,70 @@ require_once '../../includes/header.php';
 
 
 
-    // ========== MODAL ALERTAS DE STOCK ==========
+    // ========== MODAL ALERTAS DE STOCK REDISEÑADO ==========
     let alertasData = [];
+    let inventoryTypes = [];
+    let tipoAlertaActual = 'todos';
+    let categoriasAlertas = [];
 
-    function abrirModalAlertas() {
+    async function abrirModalAlertas() {
         document.getElementById('modalAlertas').classList.add('show');
+
+        // Cargar tipos de inventario para los tabs si no están cargados
+        if (inventoryTypes.length === 0) {
+            await cargarFiltrosInicialesAlertas();
+        }
+
         cargarAlertas();
+    }
+
+    async function cargarFiltrosInicialesAlertas() {
+        try {
+            // Cargar tipos
+            const respTipos = await fetch(`${baseUrl}/api/centro_inventarios.php?action=tipos`);
+            const dataTipos = await respTipos.json();
+            if (dataTipos.success) inventoryTypes = dataTipos.tipos;
+
+            // Cargar todas las categorías para el filtro
+            const respCats = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias`);
+            const dataCats = await respCats.json();
+            if (dataCats.success) {
+                categoriasAlertas = dataCats.categorias;
+
+                const select = document.getElementById('filtroAlertCategoria');
+                if (select) {
+                    select.innerHTML = '<option value="">Todas las categorías</option>' +
+                        categoriasAlertas.map(c => `<option value="${c.id_categoria}">${c.nombre} (${c.tipo_nombre})</option>`).join('');
+                }
+            }
+
+            renderTabsAlertas();
+        } catch (e) {
+            console.error('Error al cargar filtros de alertas:', e);
+        }
+    }
+
+    function renderTabsAlertas() {
+        const container = document.getElementById('tabsAlertas');
+        if (!container) return;
+
+        let html = `
+            <button class="tab-alert ${tipoAlertaActual === 'todos' ? 'active' : ''}" onclick="filtrarAlertasPorTipo('todos', this)">
+                <i class="fas fa-boxes"></i> Todos
+                <span class="count" id="countAlertTodos">0</span>
+            </button>
+        `;
+
+        inventoryTypes.forEach(t => {
+            html += `
+                <button class="tab-alert ${tipoAlertaActual == t.id_tipo_inventario ? 'active' : ''}" onclick="filtrarAlertasPorTipo(${t.id_tipo_inventario}, this)">
+                    <i class="fas ${t.icono || 'fa-box'}"></i> ${t.nombre}
+                    <span class="count" id="countAlert${t.id_tipo_inventario}">0</span>
+                </button>
+            `;
+        });
+
+        container.innerHTML = html;
     }
 
     function closeModalAlertas() {
@@ -4767,79 +5138,180 @@ require_once '../../includes/header.php';
     }
 
     async function cargarAlertas() {
-        document.getElementById('loadingAlertas').style.display = 'flex';
-        document.getElementById('contentAlertas').style.display = 'none';
+        if (document.getElementById('loadingAlertas')) document.getElementById('loadingAlertas').style.display = 'flex';
+        if (document.getElementById('contentAlertas')) document.getElementById('contentAlertas').style.display = 'none';
 
         try {
-            // Obtener todos los inventarios (action=list por defecto trae todos si no se filtran)
             const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list`);
             const data = await response.json();
 
             if (data.success) {
-                // Filtrar localmente por stock <= stock minimo
+                // Filtrar solo los que tienen alerta (stock <= minimo)
                 alertasData = data.inventarios.filter(item => {
                     const stock = parseFloat(item.stock_actual) || 0;
                     const min = parseFloat(item.stock_minimo) || 0;
-                    return stock <= min && min > 0; // Considerar solo items con stock minimo definido
-                });
-                renderAlertas();
+                    return stock <= min && min > 0;
+                }).map(item => {
+                    const stock = parseFloat(item.stock_actual) || 0;
+                    const min = parseFloat(item.stock_minimo) || 0;
+                    const pct = (stock / min) * 100;
+
+                    let sev = 'OK';
+                    if (stock <= 0) sev = 'SIN_STOCK';
+                    else if (pct <= 25) sev = 'CRITICO';
+                    else if (pct <= 50) sev = 'BAJO';
+
+                    return { ...item, severidad: sev, porcentaje: pct };
+                }).filter(item => item.severidad !== 'OK');
+
+                aplicarFiltrosAlertas();
+                actualizarContadoresAlertas();
             } else {
-                alert('Error al cargar datos: ' + data.message);
-                closeModalAlertas();
+                console.error('Error al cargar alertas:', data.message);
             }
         } catch (e) {
-            console.error(e);
-            alert('Error de conexión al cargar alertas');
-            closeModalAlertas();
+            console.error('Error de conexión al cargar alertas:', e);
         } finally {
-            document.getElementById('loadingAlertas').style.display = 'none';
-            document.getElementById('contentAlertas').style.display = 'block';
+            if (document.getElementById('loadingAlertas')) document.getElementById('loadingAlertas').style.display = 'none';
+            if (document.getElementById('contentAlertas')) document.getElementById('contentAlertas').style.display = 'block';
         }
     }
 
-    function renderAlertas() {
+    function actualizarContadoresAlertas() {
+        // Contador total badge
+        const badgeEle = document.getElementById('totalAlertasBadge');
+        if (badgeEle) badgeEle.textContent = `${alertasData.length} productos`;
+
+        const countTodosEle = document.getElementById('countAlertTodos');
+        if (countTodosEle) countTodosEle.textContent = alertasData.length;
+
+        // Contadores por tipo
+        inventoryTypes.forEach(t => {
+            const count = alertasData.filter(a => a.id_tipo_inventario == t.id_tipo_inventario).length;
+            const el = document.getElementById(`countAlert${t.id_tipo_inventario}`);
+            if (el) el.textContent = count;
+        });
+
+        // Contadores por severidad (del tab activo)
+        const d = tipoAlertaActual === 'todos' ? alertasData : alertasData.filter(a => a.id_tipo_inventario == tipoAlertaActual);
+
+        const countSinStockEle = document.getElementById('countSinStock');
+        if (countSinStockEle) countSinStockEle.textContent = d.filter(a => a.severidad === 'SIN_STOCK').length;
+
+        const countCriticoEle = document.getElementById('countCritico');
+        if (countCriticoEle) countCriticoEle.textContent = d.filter(a => a.severidad === 'CRITICO').length;
+
+        const countBajoEle = document.getElementById('countBajo');
+        if (countBajoEle) countBajoEle.textContent = d.filter(a => a.severidad === 'BAJO').length;
+    }
+
+    function filtrarAlertasPorTipo(tipo, btn) {
+        tipoAlertaActual = tipo;
+
+        // UI tabs
+        document.querySelectorAll('.tab-alert').forEach(t => t.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+
+        aplicarFiltrosAlertas();
+        actualizarContadoresAlertas();
+    }
+
+    function aplicarFiltrosAlertas() {
+        const catId = document.getElementById('filtroAlertCategoria') ? document.getElementById('filtroAlertCategoria').value : '';
+        const sevId = document.getElementById('filtroAlertSeveridad') ? document.getElementById('filtroAlertSeveridad').value : '';
+        const buscar = document.getElementById('filtroAlertBusqueda') ? document.getElementById('filtroAlertBusqueda').value.toLowerCase() : '';
+
+        let filtrados = alertasData;
+
+        if (tipoAlertaActual !== 'todos') {
+            filtrados = filtrados.filter(a => a.id_tipo_inventario == tipoAlertaActual);
+        }
+
+        if (catId) {
+            filtrados = filtrados.filter(a => a.id_categoria == catId);
+        }
+
+        if (sevId) {
+            filtrados = filtrados.filter(a => a.severidad === sevId);
+        }
+
+        if (buscar) {
+            filtrados = filtrados.filter(a =>
+                (a.codigo || '').toLowerCase().includes(buscar) ||
+                (a.nombre || '').toLowerCase().includes(buscar)
+            );
+        }
+
+        renderAlertasTabla(filtrados);
+        const statsEle = document.getElementById('footerAlertStats');
+        if (statsEle) statsEle.textContent = `Mostrando ${filtrados.length} de ${alertasData.length} alertas`;
+    }
+
+    function renderAlertasTabla(documentos) {
         const tbody = document.getElementById('tablaAlertasBody');
-        if (alertasData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">🎉 No hay productos con stock bajo</td></tr>';
+        if (!tbody) return;
+
+        if (documentos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px;">No se encontraron alertas con los filtros aplicados</td></tr>';
             return;
         }
 
-        tbody.innerHTML = alertasData.map(item => {
+        tbody.innerHTML = documentos.map(item => {
             const stock = parseFloat(item.stock_actual) || 0;
             const min = parseFloat(item.stock_minimo) || 0;
             const faltante = min - stock;
 
+            let badgeSev = '';
+            if (item.severidad === 'SIN_STOCK') badgeSev = '<span class="badge-severidad-alert" style="background:#4b5563; color:white; padding:4px 10px; border-radius:12px; font-size:0.75rem;">Sin Stock</span>';
+            else if (item.severidad === 'CRITICO') badgeSev = '<span class="badge-severidad-alert" style="background:#fee2e2; color:#dc2626; padding:4px 10px; border-radius:12px; font-size:0.75rem;">Crítico</span>';
+            else if (item.severidad === 'BAJO') badgeSev = '<span class="badge-severidad-alert" style="background:#fef3c7; color:#d97706; padding:4px 10px; border-radius:12px; font-size:0.75rem;">Bajo</span>';
+
             return `
-            <tr>
-                <td class="codigo">${item.codigo}</td>
-                <td class="nombre">${item.nombre}</td>
-                <td class="stock ${stock <= 0 ? 'critico' : 'bajo'}" style="text-align: right;">${stock.toFixed(2)}</td>
-                <td style="text-align: right;">${min.toFixed(2)}</td>
-                <td style="text-align: right; color: #dc3545; font-weight: bold;">${faltante > 0 ? faltante.toFixed(2) : '0.00'}</td>
-            </tr>
-        `;
+                <tr>
+                    <td><span class="badge-tipo-alert" style="background:${item.tipo_color}20; color:${item.tipo_color}; border:1px solid ${item.tipo_color}">${item.tipo_codigo}</span></td>
+                    <td><strong>${item.codigo}</strong></td>
+                    <td>${item.nombre}</td>
+                    <td>
+                        <div class="stock-visual-alert">
+                            <div class="stock-bar-alert">
+                                <div class="stock-bar-fill-alert ${item.severidad.toLowerCase().replace('_', '-')}" style="width: ${Math.min(item.porcentaje, 100)}%"></div>
+                            </div>
+                            <span class="stock-percent-alert">${Math.round(item.porcentaje)}%</span>
+                        </div>
+                    </td>
+                    <td style="text-align: right;">${stock.toFixed(2)} ${item.unidad || ''}</td>
+                    <td style="text-align: right;">${min.toFixed(2)} ${item.unidad || ''}</td>
+                    <td style="text-align: right; color:#dc3545; font-weight:bold;">${faltante > 0 ? faltante.toFixed(2) : '0.00'}</td>
+                    <td>${badgeSev}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-accion-alert comprar" title="Comprar" onclick="Swal.fire('🛍️ Compra', 'Funcionalidad de compra próximamente disponible en este módulo', 'info')">
+                            <i class="fas fa-shopping-cart"></i>
+                        </button>
+                        <button class="btn-accion-alert kardex" title="Ver Kardex" onclick="verKardexGlobal(${item.id_inventario})">
+                            <i class="fas fa-book"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
         }).join('');
     }
 
     function exportarAlertasExcel() {
-        if (alertasData.length === 0) {
-            alert('No hay datos para exportar');
-            return;
-        }
+        const d = tipoAlertaActual === 'todos' ? alertasData : alertasData.filter(a => a.id_tipo_inventario == tipoAlertaActual);
+        if (d.length === 0) { alert('No hay datos para exportar'); return; }
 
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Código,Producto,Stock Actual,Stock Mínimo,Faltante\r\n";
+        csvContent += "Tipo,Código,Producto,Stock,Mínimo,Faltante,Estado\r\n";
 
-        alertasData.forEach(item => {
-            const stock = parseFloat(item.stock_actual) || 0;
-            const min = parseFloat(item.stock_minimo) || 0;
-            const faltante = min - stock;
+        d.forEach(item => {
             const row = [
+                item.tipo_codigo,
                 item.codigo,
-                `"${item.nombre.replace(/"/g, '""')}"`, // Escapar comillas
-                stock.toFixed(2),
-                min.toFixed(2),
-                faltante.toFixed(2)
+                `"${(item.nombre || '').replace(/"/g, '""')}"`,
+                item.stock_actual,
+                item.stock_minimo,
+                (item.stock_minimo - item.stock_actual).toFixed(2),
+                item.severidad
             ].join(",");
             csvContent += row + "\r\n";
         });
@@ -4847,91 +5319,71 @@ require_once '../../includes/header.php';
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "reporte_bajo_stock.csv");
+        link.setAttribute("download", `alertas_stock_${new Date().toISOString().split('T')[0]}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     }
 
     function imprimirAlertas() {
-        if (alertasData.length === 0) {
-            alert('No hay datos para imprimir');
-            return;
-        }
+        const d = tipoAlertaActual === 'todos' ? alertasData : alertasData.filter(a => a.id_tipo_inventario == tipoAlertaActual);
+        if (d.length === 0) { alert('No hay datos para imprimir'); return; }
 
         const logoImg = document.querySelector('.sidebar-header img');
         const logoSrc = logoImg ? logoImg.src : '';
         const fechaHoy = new Date().toLocaleDateString('es-BO');
 
-        const filas = alertasData.map(item => {
-            const stock = parseFloat(item.stock_actual) || 0;
-            const min = parseFloat(item.stock_minimo) || 0;
-            const faltante = min - stock;
-            return `
+        const filas = d.map(item => `
             <tr>
+                <td>${item.tipo_codigo}</td>
                 <td>${item.codigo}</td>
                 <td>${item.nombre}</td>
-                <td style="text-align: right;">${stock.toFixed(2)}</td>
-                <td style="text-align: right;">${min.toFixed(2)}</td>
-                <td style="text-align: right; font-weight: bold;">${faltante.toFixed(2)}</td>
+                <td style="text-align: right;">${parseFloat(item.stock_actual).toFixed(2)}</td>
+                <td style="text-align: right;">${parseFloat(item.stock_minimo).toFixed(2)}</td>
+                <td style="text-align: right; color:red; font-weight:bold;">${(item.stock_minimo - item.stock_actual).toFixed(2)}</td>
+                <td>${item.severidad}</td>
             </tr>
-            `;
-        }).join('');
+        `).join('');
 
         const ventana = window.open('', '_blank');
         ventana.document.write(`
-        <html>
-        <head>
-            <title>Reporte de Bajo Stock</title>
-            <style>
-                body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; }
-                .print-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #dc3545; padding-bottom: 20px; margin-bottom: 30px; }
-                .company-info img { max-width: 150px; height: auto; }
-                .report-title { text-align: right; }
-                .report-title h2 { margin: 0; color: #dc3545; font-size: 1.5rem; }
-                .report-title p { margin: 5px 0 0 0; color: #666; font-weight: 600; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-                th { background: #f8f9fa; color: #dc3545; font-weight: bold; }
-                tr:nth-child(even) { background-color: #f9f9f9; }
-            </style>
-        </head>
-        <body>
-            <div class="print-header">
-                <div class="company-info">
-                    ${logoSrc ? `<img src="${logoSrc}" alt="Logo">` : '<h1>HERMEN LTDA.</h1>'}
+            <html>
+            <head>
+                <title>Reporte de Alertas de Stock</title>
+                <style>
+                    body { font-family: 'Segoe UI', sans-serif; padding: 30px; }
+                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #dc3545; padding-bottom: 10px; margin-bottom: 20px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                    th { background: #f4f4f4; color: #dc3545; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>${logoSrc ? `<img src="${logoSrc}" height="50">` : '<h2>HERMEN LTDA</h2>'}</div>
+                    <div style="text-align:right">
+                        <h3>REPORTES DE ALERTAS DE STOCK</h3>
+                        <p>Fecha: ${fechaHoy}</p>
+                    </div>
                 </div>
-                <div class="report-title">
-                    <h2>⚠️ PRODUCTOS BAJO STOCK MÍNIMO</h2>
-                    <p>Fecha: ${fechaHoy}</p>
-                </div>
-            </div>
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Código</th>
-                        <th>Producto</th>
-                        <th style="text-align: right;">Stock Actual</th>
-                        <th style="text-align: right;">Stock Mínimo</th>
-                        <th style="text-align: right;">Faltante</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${filas}
-                </tbody>
-            </table>
-
-            <script>
-                window.onload = function() {
-                    setTimeout(() => {
-                        window.print();
-                    }, 500);
-                };
-            <\/script>
-        </body>
-        </html>
-    `);
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tipo</th>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th style="text-align:right">Stock Actual</th>
+                            <th style="text-align:right">Stock Mínimo</th>
+                            <th style="text-align:right">Faltante</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>${filas}</tbody>
+                </table>
+                <script>window.onload = () => { setTimeout(() => window.print(), 500); }<\/script>
+            </body>
+            </html>
+        `);
         ventana.document.close();
     }
 

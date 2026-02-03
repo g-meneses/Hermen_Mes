@@ -241,9 +241,17 @@ async function cargarReporte(tipo) {
  * Renderiza la tabla de datos según el reporte
  */
 function renderDataReporte(tipo, data) {
+    console.log('📊 renderDataReporte iniciado para tipo:', tipo);
+
     const contenido = document.getElementById('reporteContenido');
+    if (!contenido) {
+        console.error('❌ Error: reporteContenido no encontrado en renderDataReporte');
+        return;
+    }
+
     let html = '';
 
+    try {
     if (tipo === 'consolidado') {
         html = `
             <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
@@ -499,6 +507,12 @@ function renderDataReporte(tipo, data) {
     }
 
     contenido.innerHTML = html;
+    console.log('✅ HTML renderizado en reporteContenido, longitud:', html.length);
+
+    } catch (renderError) {
+        console.error('❌ Error en renderDataReporte:', renderError);
+        contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">Error al renderizar el reporte: ${renderError.message}</p>`;
+    }
 }
 
 /**

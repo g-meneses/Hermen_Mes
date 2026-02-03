@@ -39,6 +39,25 @@ console.log('📊 reportes_mp.js cargado correctamente');
  * Abre el modal de reporte con la configuración inicial
  */
 window.abrirReporte = function (tipo) {
+    console.log('📊 abrirReporte llamado con tipo:', tipo);
+
+    // Verificar que los elementos necesarios existen
+    const modalReporte = document.getElementById('modalReporte');
+    const reporteTitulo = document.getElementById('reporteTitulo');
+    const reporteFiltros = document.getElementById('reporteFiltros');
+    const reporteContenido = document.getElementById('reporteContenido');
+
+    if (!modalReporte || !reporteTitulo || !reporteFiltros || !reporteContenido) {
+        console.error('❌ Error: Elementos del modal de reportes no encontrados:', {
+            modalReporte: !!modalReporte,
+            reporteTitulo: !!reporteTitulo,
+            reporteFiltros: !!reporteFiltros,
+            reporteContenido: !!reporteContenido
+        });
+        alert('Error: No se pudo abrir el modal de reportes. Por favor recargue la página.');
+        return;
+    }
+
     window.reporteActual.tipo = tipo;
     const titulos = {
         'consolidado': 'Reporte Consolidado de Inventarios',
@@ -49,7 +68,7 @@ window.abrirReporte = function (tipo) {
         'rotacion': 'Reporte de Rotación de Inventario'
     };
 
-    document.getElementById('reporteTitulo').innerHTML = `<i class="fas fa-chart-bar"></i> ${titulos[tipo] || 'Reporte'}`;
+    reporteTitulo.innerHTML = `<i class="fas fa-chart-bar"></i> ${titulos[tipo] || 'Reporte'}`;
 
     // Configurar filtros según el tipo
     renderFiltrosReporte(tipo);
@@ -58,7 +77,8 @@ window.abrirReporte = function (tipo) {
     cargarReporte(tipo);
 
     // Mostrar modal
-    document.getElementById('modalReporte').classList.add('show');
+    modalReporte.classList.add('show');
+    console.log('✅ Modal de reporte abierto correctamente');
 };
 
 /**
@@ -164,7 +184,14 @@ function renderFiltrosReporte(tipo) {
  * Carga los datos desde la API
  */
 async function cargarReporte(tipo) {
+    console.log('📊 cargarReporte llamado con tipo:', tipo);
+
     const contenido = document.getElementById('reporteContenido');
+    if (!contenido) {
+        console.error('❌ Error: Elemento reporteContenido no encontrado');
+        return;
+    }
+
     contenido.innerHTML = `<p style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Cargando datos...</p>`;
 
     try {
@@ -192,17 +219,21 @@ async function cargarReporte(tipo) {
             if (catId) url += `&id_categoria=${catId}`;
         }
 
+        console.log('📊 Haciendo fetch a:', url);
         const response = await fetch(url);
         const data = await response.json();
+        console.log('📊 Respuesta recibida:', data);
 
         if (data.success) {
             renderDataReporte(tipo, data);
+            console.log('✅ Reporte renderizado correctamente');
         } else {
+            console.warn('⚠️ API retornó error:', data.message);
             contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">${data.message}</p>`;
         }
     } catch (e) {
-        console.error(e);
-        contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">Error de conexión con el servidor</p>`;
+        console.error('❌ Error en cargarReporte:', e);
+        contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">Error de conexión con el servidor: ${e.message}</p>`;
     }
 }
 

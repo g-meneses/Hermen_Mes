@@ -4,14 +4,15 @@ require_once '../config/database.php';
 if (!isLoggedIn()) {
     jsonResponse(['success' => false, 'message' => 'No autorizado'], 401);
 }
+session_write_close();
 
 try {
     $db = getDB();
-    
+
     // Contar máquinas operativas
     $stmtMaquinas = $db->query("SELECT COUNT(*) as total FROM maquinas WHERE estado = 'operativa'");
     $maquinasOperativas = $stmtMaquinas->fetch()['total'];
-    
+
     // Producción de hoy
     $stmtProduccion = $db->prepare("
         SELECT COALESCE(SUM(docenas_producidas), 0) as total 
@@ -21,14 +22,14 @@ try {
     ");
     $stmtProduccion->execute();
     $produccionHoy = $stmtProduccion->fetch()['total'];
-    
+
     // Inventario intermedio
     $stmtInventario = $db->query("
         SELECT COALESCE(SUM(stock_vaporizado_docenas), 0) as total 
         FROM inventario_intermedio
     ");
     $inventarioIntermedio = $stmtInventario->fetch()['total'];
-    
+
     // Plan semanal actual
     $stmtPlan = $db->query("
         SELECT codigo_plan 
@@ -39,7 +40,7 @@ try {
     ");
     $plan = $stmtPlan->fetch();
     $planSemanal = $plan ? $plan['codigo_plan'] : null;
-    
+
     jsonResponse([
         'success' => true,
         'maquinas_operativas' => $maquinasOperativas,
@@ -47,8 +48,8 @@ try {
         'inventario_intermedio' => $inventarioIntermedio,
         'plan_semanal' => $planSemanal
     ]);
-    
-} catch(Exception $e) {
+
+} catch (Exception $e) {
     jsonResponse(['success' => false, 'message' => 'Error al cargar estadísticas'], 500);
 }
 ?>

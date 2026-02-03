@@ -1,5 +1,6 @@
-// ========== CONFIGURACIÓN GLOBAL DE RESPALDO ==========
-if (typeof baseUrl === 'undefined') {
+// ========== CONFIGURACIÓN GLOBAL ==========
+// La variable global baseUrl ya está definida en header.php
+if (!window.baseUrl) {
     window.baseUrl = window.location.origin + '/mes_hermen';
 }
 
@@ -39,6 +40,13 @@ console.log('📊 reportes_mp.js cargado correctamente');
  * Abre el modal de reporte con la configuración inicial
  */
 window.abrirReporte = function (tipo) {
+    const modal = document.getElementById('modalReporte');
+    if (!modal) {
+        console.error('Modal #modalReporte no encontrado en el DOM');
+        alert('Error: El componente de reportes no está cargado correctamente en esta página.');
+        return;
+    }
+
     window.reporteActual.tipo = tipo;
     const titulos = {
         'consolidado': 'Reporte Consolidado de Inventarios',
@@ -58,7 +66,7 @@ window.abrirReporte = function (tipo) {
     cargarReporte(tipo);
 
     // Mostrar modal
-    document.getElementById('modalReporte').classList.add('show');
+    modal.classList.add('show');
 };
 
 /**
@@ -75,26 +83,30 @@ function renderFiltrosReporte(tipo) {
         html = `<p style="margin:0; color:#666;"><i class="fas fa-info-circle"></i> Resumen de todos los tipos de inventario del sistema.</p>`;
     } else if (tipo === 'stock_valorizado') {
         html = `
-            <div class="form-group" style="flex:1; min-width:150px;">
-                <label>Tipo Inventario</label>
-                <select id="repFiltroTipo" onchange="actualizarCategoriasReporte()">
-                    <option value="">Todos los tipos</option>
-                </select>
-            </div>
-            <div class="form-group" style="flex:1; min-width:150px;">
-                <label>Categoría</label>
-                <select id="repFiltroCat" onchange="actualizarSubcategoriasReporte()">
-                    <option value="">Todas las categorías</option>
-                </select>
-            </div>
-            <div class="form-group" style="flex:1; min-width:150px;">
-                <label>Subcategoría</label>
-                <select id="repFiltroSubcat">
-                    <option value="">Todas las subcategorías</option>
-                </select>
-            </div>
-            <div class="form-group" style="display:flex; align-items:flex-end;">
-                <button class="btn btn-primary" onclick="cargarReporte('stock_valorizado')"><i class="fas fa-search"></i> Filtrar</button>
+            <div class="filtros-grid">
+                <div class="filter-group">
+                    <label class="filter-label"><i class="fas fa-boxes"></i> Tipo Inventario</label>
+                    <select id="repFiltroTipo" class="filter-input" onchange="actualizarCategoriasReporte()">
+                        <option value="">Todos los tipos</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label"><i class="fas fa-tags"></i> Categoría</label>
+                    <select id="repFiltroCat" class="filter-input" onchange="actualizarSubcategoriasReporte()">
+                        <option value="">Todas las categorías</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label"><i class="fas fa-layer-group"></i> Subcategoría</label>
+                    <select id="repFiltroSubcat" class="filter-input">
+                        <option value="">Todas las subcategorías</option>
+                    </select>
+                </div>
+                <div class="filter-group filter-actions">
+                    <button class="btn-filtrar" onclick="cargarReporte('stock_valorizado')">
+                        <i class="fas fa-search"></i> Filtrar Resultados
+                    </button>
+                </div>
             </div>
         `;
 
@@ -167,8 +179,11 @@ async function cargarReporte(tipo) {
     const contenido = document.getElementById('reporteContenido');
     contenido.innerHTML = `<p style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Cargando datos...</p>`;
 
+    // Debugging: verificar baseUrl
+    console.log('🔍 cargarReporte - baseUrl:', window.baseUrl);
+
     try {
-        let url = `${baseUrl}/api/reportes_mp.php?action=${tipo}`;
+        let url = `${window.baseUrl}/api/reportes_mp.php?action=${tipo}`;
 
         if (tipo === 'stock_valorizado') {
             const tipoId = document.getElementById('repFiltroTipo')?.value;
@@ -192,6 +207,7 @@ async function cargarReporte(tipo) {
             if (catId) url += `&id_categoria=${catId}`;
         }
 
+        console.log('🌐 Fetching URL:', url);
         const response = await fetch(url);
         const data = await response.json();
 
@@ -201,7 +217,7 @@ async function cargarReporte(tipo) {
             contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">${data.message}</p>`;
         }
     } catch (e) {
-        console.error(e);
+        console.error('❌ Error en cargarReporte:', e);
         contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">Error de conexión con el servidor</p>`;
     }
 }
@@ -754,6 +770,69 @@ if (typeof window.estilosReportesMP === 'undefined') {
         position: sticky;
         top: 0;
         z-index: 10;
+    }
+    
+    /* Estilos nuevos para filtros */
+    .filtros-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+        align-items: end;
+        width: 100%;
+    }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .filter-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #555;
+        margin-left: 2px;
+    }
+    .filter-label i {
+        color: #007bff;
+        margin-right: 5px;
+        width: 16px;
+        text-align: center;
+    }
+    .filter-input {
+        padding: 10px 15px;
+        border: 1px solid #ced4da;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        background-color: white;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        width: 100%;
+    }
+    .filter-input:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        outline: none;
+    }
+    .btn-filtrar {
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #1a237e 0%, #3949ab 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+    }
+    .btn-filtrar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(26, 35, 126, 0.2);
+    }
+    .btn-filtrar:active {
+        transform: translateY(0);
     }
     </style>
     `;

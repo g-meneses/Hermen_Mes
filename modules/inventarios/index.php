@@ -3021,7 +3021,7 @@ require_once '../../includes/header.php';
 
 <script>
     // ========== VARIABLES GLOBALES ==========
-    const baseUrl = window.location.origin + '/mes_hermen';
+    // const baseUrl = window.location.origin + '/mes_hermen'; // Ya definido en header.php
 
     let tiposInventario = [];
     let categoriasInventario = [];
@@ -3034,10 +3034,13 @@ require_once '../../includes/header.php';
 
     // ========== INICIALIZACIÓN ==========
     document.addEventListener('DOMContentLoaded', function () {
+        // Cargar dashboard principal (crítico)
         cargarDashboard();
-        cargarUltimosMovimientos();
-        cargarCatalogos();
-        cargarTendencia();
+
+        // Cargar componentes secundarios con timeouts para evitar bloqueos
+        setTimeout(() => cargarUltimosMovimientos().catch(e => console.error('Error movimientos:', e)), 100);
+        setTimeout(() => cargarCatalogos().catch(e => console.error('Error catálogos:', e)), 200);
+        setTimeout(() => cargarTendencia().catch(e => console.error('Error tendencia:', e)), 300);
     });
 
     // ========== CARGA DE DATOS ==========
@@ -5225,16 +5228,11 @@ require_once '../../includes/header.php';
         if (document.getElementById('contentAlertas')) document.getElementById('contentAlertas').style.display = 'none';
 
         try {
-            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list`);
+            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=alertas`);
             const data = await response.json();
 
             if (data.success) {
-                // Filtrar solo los que tienen alerta (stock <= minimo)
-                alertasData = data.inventarios.filter(item => {
-                    const stock = parseFloat(item.stock_actual) || 0;
-                    const min = parseFloat(item.stock_minimo) || 0;
-                    return stock <= min && min > 0;
-                }).map(item => {
+                alertasData = data.inventarios.map(item => {
                     const stock = parseFloat(item.stock_actual) || 0;
                     const min = parseFloat(item.stock_minimo) || 0;
                     const pct = (stock / min) * 100;
@@ -5743,7 +5741,15 @@ require_once '../../includes/header.php';
 
     async function cargarTendencia() {
         try {
-            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=tendencia_valor`);
+            // Timeout de 10 segundos para evitar bloqueos
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+            const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=tendencia_valor`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
             const data = await response.json();
 
             if (data.success && data.tendencia) {
@@ -5756,7 +5762,12 @@ require_once '../../includes/header.php';
                 }
             }
         } catch (error) {
-            console.error('Error al cargar tendencia:', error);
+            if (error.name === 'AbortError') {
+                console.warn('Carga de tendencia cancelada por timeout');
+            } else {
+                console.error('Error al cargar tendencia:', error);
+            }
+            // No mostrar error al usuario, solo en consola
         }
     }
 

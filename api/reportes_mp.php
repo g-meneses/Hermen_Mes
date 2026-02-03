@@ -13,10 +13,13 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$db = getDB();
-$action = $_GET['action'] ?? '';
+// Liberar el bloqueo de sesión para evitar que otras peticiones esperen
+session_write_close();
 
 try {
+    $db = getDB();
+    $action = $_GET['action'] ?? '';
+
     switch ($action) {
         case 'stock_valorizado':
             $tipoId = $_GET['id_tipo'] ?? null;
@@ -145,6 +148,8 @@ try {
 
         case 'consolidado':
             // Reporte consolidado de todos los tipos de inventario
+            error_log("📊 Ejecutando reporte consolidado");
+
             $sql = "
                 SELECT 
                     ti.id_tipo_inventario,
@@ -155,36 +160,46 @@ try {
                     COUNT(i.id_inventario) AS total_items,
                     SUM(CASE WHEN i.stock_actual <= 0 THEN 1 ELSE 0 END) AS sin_stock,
                     SUM(CASE WHEN i.stock_actual > 0 AND i.stock_actual <= i.stock_minimo THEN 1 ELSE 0 END) AS stock_critico,
-                    COALESCE(SUM(i.stock_actual * i.costo_promedio), 0) AS valor_total
+                    COALESCE(SUM(i.stock_actual * COALESCE(i.costo_promedio, i.costo_unitario, 0)), 0) AS valor_total
                 FROM tipos_inventario ti
                 LEFT JOIN inventarios i ON ti.id_tipo_inventario = i.id_tipo_inventario AND i.activo = 1
                 WHERE ti.activo = 1
                 GROUP BY ti.id_tipo_inventario, ti.codigo, ti.nombre, ti.icono, ti.color
                 ORDER BY ti.orden
             ";
-            $stmt = $db->query($sql);
-            $tipos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Calcular totales generales
-            $totalItems = 0;
-            $totalValor = 0;
-            $totalAlertas = 0;
-            foreach ($tipos as &$tipo) {
-                $tipo['alertas'] = intval($tipo['sin_stock']) + intval($tipo['stock_critico']);
-                $totalItems += intval($tipo['total_items']);
-                $totalValor += floatval($tipo['valor_total']);
-                $totalAlertas += $tipo['alertas'];
+            try {
+                $stmt = $db->query($sql);
+                $tipos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                error_log("✅ Consolidado: " . count($tipos) . " tipos encontrados");
+
+                // Calcular totales generales
+                $totalItems = 0;
+                $totalValor = 0;
+                $totalAlertas = 0;
+                foreach ($tipos as &$tipo) {
+                    $tipo['alertas'] = intval($tipo['sin_stock']) + intval($tipo['stock_critico']);
+                    $totalItems += intval($tipo['total_items']);
+                    $totalValor += floatval($tipo['valor_total']);
+                    $totalAlertas += $tipo['alertas'];
+                }
+
+                echo json_encode([
+                    'success' => true,
+                    'tipos' => $tipos,
+                    'totales' => [
+                        'items' => $totalItems,
+                        'valor' => $totalValor,
+                        'alertas' => $totalAlertas
+                    ]
+                ]);
+            } catch (PDOException $e) {
+                error_log("❌ Error en consolidado: " . $e->getMessage());
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Error al generar reporte consolidado: ' . $e->getMessage()
+                ]);
             }
-
-            echo json_encode([
-                'success' => true,
-                'tipos' => $tipos,
-                'totales' => [
-                    'items' => $totalItems,
-                    'valor' => $totalValor,
-                    'alertas' => $totalAlertas
-                ]
-            ]);
             break;
 
         case 'tipos_categorias':
@@ -327,7 +342,7 @@ try {
             $stmt->bindValue(':desde3', $desde);
             $stmt->bindValue(':hasta', $hasta);
             $stmt->bindValue(':hasta2', $hasta);
-            
+
             if ($tipoId) {
                 $stmt->bindValue(':tipoId', $tipoId);
             }
@@ -345,16 +360,16 @@ try {
                 $stockFinal = floatval($prod['stock_actual']);
                 $entradas = floatval($prod['total_entradas']);
                 $salidas = floatval($prod['total_salidas']);
-                
+
                 // Inventario Promedio = (Stock Inicial + Stock Final) / 2
                 $inventarioPromedio = ($stockInicial + $stockFinal) / 2;
-                
+
                 // Índice de Rotación = Consumo / Inventario Promedio
                 $rotacion = $inventarioPromedio > 0 ? $salidas / $inventarioPromedio : 0;
-                
+
                 // Días de Stock = Días del Período / Rotación
                 $diasStock = $rotacion > 0 ? $diasPeriodo / $rotacion : 999;
-                
+
                 // Clasificación de rotación
                 $clasificacion = '';
                 if ($rotacion >= 2) {
@@ -366,7 +381,7 @@ try {
                 } else {
                     $clasificacion = 'SIN_MOVIMIENTO';
                 }
-                
+
                 $datos[] = [
                     'id_inventario' => $prod['id_inventario'],
                     'codigo' => $prod['codigo'],

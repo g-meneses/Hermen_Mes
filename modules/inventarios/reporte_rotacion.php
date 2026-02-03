@@ -312,7 +312,8 @@ if (!isLoggedIn()) {
                 <!-- Sección 1: ¿Qué es la Rotación? -->
                 <div class="tutorial-section">
                     <h3><i class="fas fa-question-circle"></i> ¿Qué es la Rotación de Inventario?</h3>
-                    <p>La rotación de inventario es un indicador que mide <strong>cuántas veces se renueva el inventario</strong> en un período determinado. Es fundamental para:</p>
+                    <p>La rotación de inventario es un indicador que mide <strong>cuántas veces se renueva el
+                            inventario</strong> en un período determinado. Es fundamental para:</p>
                     <ul>
                         <li>✅ Optimizar niveles de stock</li>
                         <li>✅ Reducir costos de almacenamiento</li>
@@ -324,40 +325,46 @@ if (!isLoggedIn()) {
                 <!-- Sección 2: Métricas del Reporte -->
                 <div class="tutorial-section">
                     <h3><i class="fas fa-calculator"></i> Métricas Calculadas</h3>
-                    
+
                     <div class="metric-card">
                         <h4>📊 Inventario Promedio</h4>
                         <p class="formula">Fórmula: (Stock Inicial + Stock Final) / 2</p>
-                        <p><strong>Qué significa:</strong> El stock promedio que se mantuvo durante el período analizado.</p>
-                        <p><strong>Ejemplo:</strong> Si empezó con 100 kg y terminó con 80 kg, el inventario promedio es 90 kg.</p>
+                        <p><strong>Qué significa:</strong> El stock promedio que se mantuvo durante el período
+                            analizado.</p>
+                        <p><strong>Ejemplo:</strong> Si empezó con 100 kg y terminó con 80 kg, el inventario promedio es
+                            90 kg.</p>
                     </div>
 
                     <div class="metric-card">
                         <h4>📉 Consumo Total</h4>
                         <p class="formula">Suma de todas las salidas en el período</p>
                         <p><strong>Qué significa:</strong> Cuánto producto se utilizó o vendió en el período.</p>
-                        <p><strong>Ejemplo:</strong> Si hubo salidas de 20 kg, 30 kg y 15 kg, el consumo total es 65 kg.</p>
+                        <p><strong>Ejemplo:</strong> Si hubo salidas de 20 kg, 30 kg y 15 kg, el consumo total es 65 kg.
+                        </p>
                     </div>
 
                     <div class="metric-card">
                         <h4>🔄 Índice de Rotación</h4>
                         <p class="formula">Fórmula: Consumo Total / Inventario Promedio</p>
                         <p><strong>Qué significa:</strong> Cuántas veces se renovó el inventario.</p>
-                        <p><strong>Ejemplo:</strong> Si consumió 65 kg con inventario promedio de 90 kg, la rotación es 0.72 (se renovó el 72% del inventario).</p>
+                        <p><strong>Ejemplo:</strong> Si consumió 65 kg con inventario promedio de 90 kg, la rotación es
+                            0.72 (se renovó el 72% del inventario).</p>
                     </div>
 
                     <div class="metric-card">
                         <h4>📅 Días de Stock</h4>
                         <p class="formula">Fórmula: Días del Período / Rotación</p>
-                        <p><strong>Qué significa:</strong> Cuántos días durará el inventario actual al ritmo de consumo actual.</p>
-                        <p><strong>Ejemplo:</strong> Si la rotación es 0.72 en 30 días, el stock actual durará 42 días (30/0.72).</p>
+                        <p><strong>Qué significa:</strong> Cuántos días durará el inventario actual al ritmo de consumo
+                            actual.</p>
+                        <p><strong>Ejemplo:</strong> Si la rotación es 0.72 en 30 días, el stock actual durará 42 días
+                            (30/0.72).</p>
                     </div>
                 </div>
 
                 <!-- Sección 3: Clasificaciones -->
                 <div class="tutorial-section">
                     <h3><i class="fas fa-tags"></i> Clasificación de Rotación</h3>
-                    
+
                     <div class="classification-grid">
                         <div class="classification-card alta">
                             <div class="classification-header">
@@ -382,7 +389,8 @@ if (!isLoggedIn()) {
                         <div class="classification-card baja">
                             <div class="classification-header">
                                 <span class="badge badge-baja">BAJA</span>
-                                <span class="classification-value">< 0.5</span>
+                                <span class="classification-value">
+                                    < 0.5</span>
                             </div>
                             <p><strong>Significado:</strong> El producto se mueve lentamente.</p>
                             <p><strong>Interpretación:</strong> ⚠️ Posible exceso de inventario.</p>
@@ -404,13 +412,15 @@ if (!isLoggedIn()) {
                 <!-- Sección 4: Alertas -->
                 <div class="tutorial-section">
                     <h3><i class="fas fa-exclamation-triangle"></i> Alertas del Sistema</h3>
-                    
+
                     <div class="alert-info">
                         <div class="alert-icon">⚠️</div>
                         <div>
                             <h4>Días de Stock > 180 días</h4>
-                            <p>El inventario actual durará más de 6 meses. Esto indica un posible <strong>exceso de inventario</strong> que genera costos de almacenamiento innecesarios.</p>
-                            <p><strong>Recomendación:</strong> Suspender compras hasta reducir el stock a niveles normales.</p>
+                            <p>El inventario actual durará más de 6 meses. Esto indica un posible <strong>exceso de
+                                    inventario</strong> que genera costos de almacenamiento innecesarios.</p>
+                            <p><strong>Recomendación:</strong> Suspender compras hasta reducir el stock a niveles
+                                normales.</p>
                         </div>
                     </div>
 
@@ -418,8 +428,10 @@ if (!isLoggedIn()) {
                         <div class="alert-icon">🔴</div>
                         <div>
                             <h4>Rotación muy baja con consumo</h4>
-                            <p>Hay consumo pero la rotación es menor a 0.1. Esto indica que el <strong>inventario es muy alto</strong> en relación a la demanda.</p>
-                            <p><strong>Recomendación:</strong> Ajustar políticas de compra y reducir cantidades de pedido.</p>
+                            <p>Hay consumo pero la rotación es menor a 0.1. Esto indica que el <strong>inventario es muy
+                                    alto</strong> en relación a la demanda.</p>
+                            <p><strong>Recomendación:</strong> Ajustar políticas de compra y reducir cantidades de
+                                pedido.</p>
                         </div>
                     </div>
                 </div>
@@ -427,7 +439,7 @@ if (!isLoggedIn()) {
                 <!-- Sección 5: Ejemplos Prácticos -->
                 <div class="tutorial-section">
                     <h3><i class="fas fa-lightbulb"></i> Ejemplos Prácticos</h3>
-                    
+
                     <div class="example-card good">
                         <h4>✅ Ejemplo: Rotación Saludable</h4>
                         <table class="example-table">
@@ -453,7 +465,9 @@ if (!isLoggedIn()) {
                             </tr>
                         </table>
                         <p class="example-interpretation">
-                            <strong>Interpretación:</strong> El producto tiene una rotación MEDIA (0.83). El stock actual durará aproximadamente 36 días (poco más de 1 mes), lo cual es un nivel saludable. No requiere acción correctiva.
+                            <strong>Interpretación:</strong> El producto tiene una rotación MEDIA (0.83). El stock
+                            actual durará aproximadamente 36 días (poco más de 1 mes), lo cual es un nivel saludable. No
+                            requiere acción correctiva.
                         </p>
                     </div>
 
@@ -482,8 +496,10 @@ if (!isLoggedIn()) {
                             </tr>
                         </table>
                         <p class="example-interpretation">
-                            <strong>Interpretación:</strong> Rotación BAJA (0.05) y el stock durará 600 días (casi 2 años). Hay un claro exceso de inventario. 
-                            <strong>Acción requerida:</strong> Suspender compras inmediatamente y evaluar si el producto sigue siendo necesario.
+                            <strong>Interpretación:</strong> Rotación BAJA (0.05) y el stock durará 600 días (casi 2
+                            años). Hay un claro exceso de inventario.
+                            <strong>Acción requerida:</strong> Suspender compras inmediatamente y evaluar si el producto
+                            sigue siendo necesario.
                         </p>
                     </div>
 
@@ -512,8 +528,10 @@ if (!isLoggedIn()) {
                             </tr>
                         </table>
                         <p class="example-interpretation">
-                            <strong>Interpretación:</strong> Rotación ALTA (2.25). El inventario se renovó más de 2 veces en el mes. El stock actual solo durará 13 días.
-                            <strong>Acción requerida:</strong> Asegurar reabastecimiento frecuente para evitar quiebres de stock.
+                            <strong>Interpretación:</strong> Rotación ALTA (2.25). El inventario se renovó más de 2
+                            veces en el mes. El stock actual solo durará 13 días.
+                            <strong>Acción requerida:</strong> Asegurar reabastecimiento frecuente para evitar quiebres
+                            de stock.
                         </p>
                     </div>
                 </div>
@@ -525,7 +543,8 @@ if (!isLoggedIn()) {
                         <div class="practice-item">
                             <i class="fas fa-check-circle"></i>
                             <div>
-                                <strong>Revisar mensualmente:</strong> Genere este reporte cada mes para identificar tendencias.
+                                <strong>Revisar mensualmente:</strong> Genere este reporte cada mes para identificar
+                                tendencias.
                             </div>
                         </div>
                         <div class="practice-item">
@@ -549,7 +568,8 @@ if (!isLoggedIn()) {
                         <div class="practice-item">
                             <i class="fas fa-check-circle"></i>
                             <div>
-                                <strong>Meta ideal:</strong> Busque mantener la mayoría de productos en rotación MEDIA o ALTA.
+                                <strong>Meta ideal:</strong> Busque mantener la mayoría de productos en rotación MEDIA o
+                                ALTA.
                             </div>
                         </div>
                     </div>
@@ -558,25 +578,29 @@ if (!isLoggedIn()) {
                 <!-- Sección 7: Preguntas Frecuentes -->
                 <div class="tutorial-section">
                     <h3><i class="fas fa-question"></i> Preguntas Frecuentes</h3>
-                    
+
                     <div class="faq-item">
                         <h4>❓ ¿Qué período debo analizar?</h4>
-                        <p>Se recomienda analizar períodos de 30 días (1 mes) para obtener datos representativos. Períodos muy cortos pueden dar resultados engañosos.</p>
+                        <p>Se recomienda analizar períodos de 30 días (1 mes) para obtener datos representativos.
+                            Períodos muy cortos pueden dar resultados engañosos.</p>
                     </div>
 
                     <div class="faq-item">
                         <h4>❓ ¿Una rotación alta siempre es buena?</h4>
-                        <p>Generalmente sí, pero una rotación extremadamente alta (>5) puede indicar que el stock es insuficiente y podría haber quiebres. Lo ideal es mantener un balance.</p>
+                        <p>Generalmente sí, pero una rotación extremadamente alta (>5) puede indicar que el stock es
+                            insuficiente y podría haber quiebres. Lo ideal es mantener un balance.</p>
                     </div>
 
                     <div class="faq-item">
                         <h4>❓ ¿Qué hago con productos sin movimiento?</h4>
-                        <p>Evalúe si el producto sigue siendo necesario. Considere: liquidar inventario, descontinuar el producto, o verificar si hay demanda estacional.</p>
+                        <p>Evalúe si el producto sigue siendo necesario. Considere: liquidar inventario, descontinuar el
+                            producto, o verificar si hay demanda estacional.</p>
                     </div>
 
                     <div class="faq-item">
                         <h4>❓ ¿Cómo mejoro la rotación de un producto?</h4>
-                        <p>Opciones: reducir el stock mantenido, aumentar las ventas/uso, mejorar la planificación de compras, o considerar descontinuar si no es estratégico.</p>
+                        <p>Opciones: reducir el stock mantenido, aumentar las ventas/uso, mejorar la planificación de
+                            compras, o considerar descontinuar si no es estratégico.</p>
                     </div>
                 </div>
             </div>
@@ -685,10 +709,21 @@ if (!isLoggedIn()) {
             border: 2px solid #e0e0e0;
         }
 
-        .classification-card.alta { border-left: 4px solid #4caf50; }
-        .classification-card.media { border-left: 4px solid #ff9800; }
-        .classification-card.baja { border-left: 4px solid #f44336; }
-        .classification-card.sin { border-left: 4px solid #9e9e9e; }
+        .classification-card.alta {
+            border-left: 4px solid #4caf50;
+        }
+
+        .classification-card.media {
+            border-left: 4px solid #ff9800;
+        }
+
+        .classification-card.baja {
+            border-left: 4px solid #f44336;
+        }
+
+        .classification-card.sin {
+            border-left: 4px solid #9e9e9e;
+        }
 
         .classification-header {
             display: flex;
@@ -738,9 +773,17 @@ if (!isLoggedIn()) {
             border: 2px solid #e0e0e0;
         }
 
-        .example-card.good { border-left: 4px solid #4caf50; }
-        .example-card.warning { border-left: 4px solid #ff9800; }
-        .example-card.excellent { border-left: 4px solid #2196f3; }
+        .example-card.good {
+            border-left: 4px solid #4caf50;
+        }
+
+        .example-card.warning {
+            border-left: 4px solid #ff9800;
+        }
+
+        .example-card.excellent {
+            border-left: 4px solid #2196f3;
+        }
 
         .example-card h4 {
             margin-bottom: 15px;
@@ -811,198 +854,208 @@ if (!isLoggedIn()) {
     </style>
 
     <script>
-        const baseUrl = '<?php echo SITE_URL; ?>';
+        // IIFE para evitar contaminar el scope global
+        (function () {
+            const baseUrl = '<?php echo SITE_URL; ?>';
 
-        // Cambiar entre tabs
-        function cambiarTab(tab) {
-            // Actualizar botones
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.closest('.tab-btn').classList.add('active');
+            // Cambiar entre tabs
+            window.cambiarTab = function (tab) {
+                // Actualizar botones
+                document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.closest('.tab-btn').classList.add('active');
 
-            // Mostrar/ocultar contenido
-            if (tab === 'reporte') {
-                document.getElementById('contenido-reporte').style.display = 'block';
-                document.getElementById('contenido-tutorial').style.display = 'none';
-            } else {
-                document.getElementById('contenido-reporte').style.display = 'none';
-                document.getElementById('contenido-tutorial').style.display = 'block';
-            }
-        }
-
-        // Cargar tipos de inventario
-        async function cargarTipos() {
-            try {
-                const response = await fetch(`${baseUrl}/api/categorias.php?action=get_tipos`);
-                const data = await response.json();
-                if (data.success) {
-                    const select = document.getElementById('tipoInventario');
-                    select.innerHTML = '<option value="">Todos los tipos</option>' +
-                        data.tipos.map(t => `<option value="${t.id_tipo_inventario}">${t.nombre}</option>`).join('');
-                }
-            } catch (e) {
-                console.error('Error cargando tipos:', e);
-            }
-        }
-
-        // Cargar categorías según tipo
-        document.getElementById('tipoInventario').addEventListener('change', async function () {
-            const tipoId = this.value;
-            const selectCat = document.getElementById('categoria');
-
-            if (!tipoId) {
-                selectCat.innerHTML = '<option value="">Todas las categorías</option>';
-                return;
-            }
-
-            try {
-                const response = await fetch(`${baseUrl}/api/categorias.php?action=get_categorias&id_tipo=${tipoId}`);
-                const data = await response.json();
-                if (data.success) {
-                    selectCat.innerHTML = '<option value="">Todas las categorías</option>' +
-                        data.categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
-                }
-            } catch (e) {
-                console.error('Error cargando categorías:', e);
-            }
-        });
-
-        // Generar reporte
-        async function generarReporte() {
-            const desde = document.getElementById('fechaDesde').value;
-            const hasta = document.getElementById('fechaHasta').value;
-            const tipoId = document.getElementById('tipoInventario').value;
-            const catId = document.getElementById('categoria').value;
-
-            const contenido = document.getElementById('contenido-reporte');
-            contenido.innerHTML = `
-                <div class="loading">
-                    <i class="fas fa-spinner"></i>
-                    <p style="margin-top: 20px; font-size: 1.1rem;">Generando reporte...</p>
-                </div>
-            `;
-
-            try {
-                let url = `${baseUrl}/api/reportes_mp.php?action=rotacion&desde=${desde}&hasta=${hasta}`;
-                if (tipoId) url += `&id_tipo=${tipoId}`;
-                if (catId) url += `&id_categoria=${catId}`;
-
-                const response = await fetch(url);
-                const data = await response.json();
-
-                if (data.success) {
-                    renderReporte(data);
+                // Mostrar/ocultar contenido
+                if (tab === 'reporte') {
+                    document.getElementById('contenido-reporte').style.display = 'block';
+                    document.getElementById('contenido-tutorial').style.display = 'none';
                 } else {
-                    contenido.innerHTML = `<p style="color:red; text-align:center; padding:40px;">${data.message}</p>`;
+                    document.getElementById('contenido-reporte').style.display = 'none';
+                    document.getElementById('contenido-tutorial').style.display = 'block';
                 }
-            } catch (e) {
-                console.error(e);
-                contenido.innerHTML = `<p style="color:red; text-align:center; padding:40px;">Error de conexión con el servidor</p>`;
+            };
+
+            // Cargar tipos de inventario
+            async function cargarTipos() {
+                try {
+                    const response = await fetch(`${baseUrl}/api/categorias.php?action=get_tipos`);
+                    const data = await response.json();
+                    if (data.success) {
+                        const select = document.getElementById('tipoInventario');
+                        select.innerHTML = '<option value="">Todos los tipos</option>' +
+                            data.tipos.map(t => `<option value="${t.id_tipo_inventario}">${t.nombre}</option>`).join('');
+                    }
+                } catch (e) {
+                    console.error('Error cargando tipos:', e);
+                }
             }
-        }
 
-        // Renderizar reporte
-        function renderReporte(data) {
-            const contenido = document.getElementById('contenido-reporte');
+            // Cargar categorías según tipo
+            document.getElementById('tipoInventario').addEventListener('change', async function () {
+                const tipoId = this.value;
+                const selectCat = document.getElementById('categoria');
 
-            const getColorClasificacion = (clasificacion) => {
-                switch (clasificacion) {
-                    case 'ALTA': return '#4caf50';
-                    case 'MEDIA': return '#ff9800';
-                    case 'BAJA': return '#f44336';
-                    case 'SIN_MOVIMIENTO': return '#9e9e9e';
-                    default: return '#666';
+                if (!tipoId) {
+                    selectCat.innerHTML = '<option value="">Todas las categorías</option>';
+                    return;
                 }
-            };
 
-            const getBadgeClass = (clasificacion) => {
-                switch (clasificacion) {
-                    case 'ALTA': return 'badge-alta';
-                    case 'MEDIA': return 'badge-media';
-                    case 'BAJA': return 'badge-baja';
-                    case 'SIN_MOVIMIENTO': return 'badge-sin';
-                    default: return '';
+                try {
+                    const response = await fetch(`${baseUrl}/api/categorias.php?action=get_categorias&id_tipo=${tipoId}`);
+                    const data = await response.json();
+                    if (data.success) {
+                        selectCat.innerHTML = '<option value="">Todas las categorías</option>' +
+                            data.categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
+                    }
+                } catch (e) {
+                    console.error('Error cargando categorías:', e);
                 }
-            };
-
-            const formatNum = (num, decimals = 2) => {
-                return parseFloat(num).toLocaleString('es-BO', {
-                    minimumFractionDigits: decimals,
-                    maximumFractionDigits: decimals
-                });
-            };
-
-            let html = `
-                <div class="periodo-info">
-                    <i class="fas fa-calendar-alt"></i>
-                    Período: ${new Date(data.periodo.desde).toLocaleDateString('es-BO')} - ${new Date(data.periodo.hasta).toLocaleDateString('es-BO')} (${data.periodo.dias} días)
-                </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th style="text-align:right;">Inv. Promedio</th>
-                            <th style="text-align:right;">Consumo</th>
-                            <th style="text-align:right;">Rotación</th>
-                            <th style="text-align:center;">Días Stock</th>
-                            <th style="text-align:center;">Clasificación</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
-            data.data.forEach(row => {
-                const alertaDias = row.dias_stock > 180 ? ' ⚠️' : '';
-                const alertaRotacion = row.rotacion < 0.1 && row.salidas > 0 ? ' 🔴' : '';
-                const diasClass = row.dias_stock > 180 ? 'alert-warning' : '';
-
-                html += `
-                    <tr>
-                        <td>
-                            <div style="font-weight:600;">${row.nombre}</div>
-                            <div style="font-size:0.85rem; color:#666;">${row.codigo} | ${row.categoria}</div>
-                        </td>
-                        <td style="text-align:right; font-weight:600;">
-                            ${formatNum(row.inventario_promedio, 2)} ${row.unidad}
-                        </td>
-                        <td style="text-align:right; ${row.salidas > 0 ? 'color:#2e7d32; font-weight:600;' : 'color:#999;'}">
-                            ${formatNum(row.salidas, 2)} ${row.unidad}
-                        </td>
-                        <td style="text-align:right; font-weight:700; color:${getColorClasificacion(row.clasificacion)};">
-                            ${formatNum(row.rotacion, 2)}${alertaRotacion}
-                        </td>
-                        <td style="text-align:center; font-weight:600;" class="${diasClass}">
-                            ${row.dias_stock >= 999 ? '∞' : row.dias_stock + ' días'}${alertaDias}
-                        </td>
-                        <td style="text-align:center;">
-                            <span class="badge ${getBadgeClass(row.clasificacion)}">
-                                ${row.clasificacion.replace('_', ' ')}
-                            </span>
-                        </td>
-                    </tr>
-                `;
             });
 
-            html += `
-                    </tbody>
-                    <tfoot>
-                        <tr style="background:#f5f5f5;">
-                            <td colspan="6" style="padding:15px; text-align:center; color:#666; font-weight:600;">
-                                <i class="fas fa-info-circle"></i> 
-                                Rotación Alta: ≥2 | Media: 0.5-2 | Baja: <0.5 | Sin Movimiento: 0
+            // Generar reporte
+            window.generarReporte = async function () {
+                const desde = document.getElementById('fechaDesde').value;
+                const hasta = document.getElementById('fechaHasta').value;
+                const tipoId = document.getElementById('tipoInventario').value;
+                const catId = document.getElementById('categoria').value;
+
+                const contenido = document.getElementById('contenido-reporte');
+                contenido.innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-spinner"></i>
+                        <p style="margin-top: 20px; font-size: 1.1rem;">Generando reporte...</p>
+                    </div>
+                `;
+
+                try {
+                    let url = `${baseUrl}/api/reportes_mp.php?action=rotacion&desde=${desde}&hasta=${hasta}`;
+                    if (tipoId) url += `&id_tipo=${tipoId}`;
+                    if (catId) url += `&id_categoria=${catId}`;
+
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        renderReporte(data);
+                    } else {
+                        contenido.innerHTML = `<p style="color:red; text-align:center; padding:40px;">${data.message}</p>`;
+                    }
+                } catch (e) {
+                    console.error(e);
+                    contenido.innerHTML = `<p style="color:red; text-align:center; padding:40px;">Error de conexión con el servidor</p>`;
+                }
+            };
+
+            // Renderizar reporte
+            function renderReporte(data) {
+                const contenido = document.getElementById('contenido-reporte');
+
+                const getColorClasificacion = (clasificacion) => {
+                    switch (clasificacion) {
+                        case 'ALTA': return '#4caf50';
+                        case 'MEDIA': return '#ff9800';
+                        case 'BAJA': return '#f44336';
+                        case 'SIN_MOVIMIENTO': return '#9e9e9e';
+                        default: return '#666';
+                    }
+                };
+
+                const getBadgeClass = (clasificacion) => {
+                    switch (clasificacion) {
+                        case 'ALTA': return 'badge-alta';
+                        case 'MEDIA': return 'badge-media';
+                        case 'BAJA': return 'badge-baja';
+                        case 'SIN_MOVIMIENTO': return 'badge-sin';
+                        default: return '';
+                    }
+                };
+
+                const formatNum = (num, decimals = 2) => {
+                    return parseFloat(num).toLocaleString('es-BO', {
+                        minimumFractionDigits: decimals,
+                        maximumFractionDigits: decimals
+                    });
+                };
+
+                let html = `
+                    <div class="periodo-info">
+                        <i class="fas fa-calendar-alt"></i>
+                        Período: ${new Date(data.periodo.desde).toLocaleDateString('es-BO')} - ${new Date(data.periodo.hasta).toLocaleDateString('es-BO')} (${data.periodo.dias} días)
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th style="text-align:right;">Inv. Promedio</th>
+                                <th style="text-align:right;">Consumo</th>
+                                <th style="text-align:right;">Rotación</th>
+                                <th style="text-align:center;">Días Stock</th>
+                                <th style="text-align:center;">Clasificación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.data.forEach(row => {
+                    const alertaDias = row.dias_stock > 180 ? ' ⚠️' : '';
+                    const alertaRotacion = row.rotacion < 0.1 && row.salidas > 0 ? ' 🔴' : '';
+                    const diasClass = row.dias_stock > 180 ? 'alert-warning' : '';
+
+                    html += `
+                        <tr>
+                            <td>
+                                <div style="font-weight:600;">${row.nombre}</div>
+                                <div style="font-size:0.85rem; color:#666;">${row.codigo} | ${row.categoria}</div>
+                            </td>
+                            <td style="text-align:right; font-weight:600;">
+                                ${formatNum(row.inventario_promedio, 2)} ${row.unidad}
+                            </td>
+                            <td style="text-align:right; ${row.salidas > 0 ? 'color:#2e7d32; font-weight:600;' : 'color:#999;'}">
+                                ${formatNum(row.salidas, 2)} ${row.unidad}
+                            </td>
+                            <td style="text-align:right; font-weight:700; color:${getColorClasificacion(row.clasificacion)};">
+                                ${formatNum(row.rotacion, 2)}${alertaRotacion}
+                            </td>
+                            <td style="text-align:center; font-weight:600;" class="${diasClass}">
+                                ${row.dias_stock >= 999 ? '∞' : row.dias_stock + ' días'}${alertaDias}
+                            </td>
+                            <td style="text-align:center;">
+                                <span class="badge ${getBadgeClass(row.clasificacion)}">
+                                    ${row.clasificacion.replace('_', ' ')}
+                                </span>
                             </td>
                         </tr>
-                    </tfoot>
-                </table>
-            `;
+                    `;
+                });
 
-            contenido.innerHTML = html;
-        }
+                html += `
+                        </tbody>
+                        <tfoot>
+                            <tr style="background:#f5f5f5;">
+                                <td colspan="6" style="padding:15px; text-align:center; color:#666; font-weight:600;">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Rotación Alta: ≥2 | Media: 0.5-2 | Baja: <0.5 | Sin Movimiento: 0
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                `;
 
-        // Inicializar
-        document.addEventListener('DOMContentLoaded', function () {
-            cargarTipos();
-        });
+                contenido.innerHTML = html;
+            }
+
+            // Inicializar
+            document.addEventListener('DOMContentLoaded', function () {
+                // Establecer fechas por defecto
+                const hoy = new Date();
+                const hace30dias = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+                document.getElementById('fechaHasta').value = hoy.toISOString().split('T')[0];
+                document.getElementById('fechaDesde').value = hace30dias.toISOString().split('T')[0];
+
+                // Cargar tipos
+                cargarTipos();
+            });
+        })();
     </script>
-</body>
 
-</html>
+<?php require_once '../../includes/footer.php'; ?>

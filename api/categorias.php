@@ -12,6 +12,7 @@ if (!isset($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'Sesión no iniciada']);
     exit;
 }
+session_write_close();
 
 $db = getDB();
 $action = $_GET['action'] ?? '';

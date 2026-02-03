@@ -250,7 +250,7 @@ if (!isLoggedIn()) {
 <body>
     <div class="container">
         <div class="header">
-            <a href="../inventarios/index.php" class="back-link">
+            <a href="<?php echo SITE_URL; ?>/modules/inventarios/index.php" class="back-link">
                 <i class="fas fa-arrow-left"></i> Volver al Dashboard
             </a>
             <h1><i class="fas fa-sync-alt"></i> Reporte de Rotación de Inventario</h1>

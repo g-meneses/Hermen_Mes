@@ -40,13 +40,6 @@ console.log('📊 reportes_mp.js cargado correctamente');
  * Abre el modal de reporte con la configuración inicial
  */
 window.abrirReporte = function (tipo) {
-    const modal = document.getElementById('modalReporte');
-    if (!modal) {
-        console.error('Modal #modalReporte no encontrado en el DOM');
-        alert('Error: El componente de reportes no está cargado correctamente en esta página.');
-        return;
-    }
-
     window.reporteActual.tipo = tipo;
     const titulos = {
         'consolidado': 'Reporte Consolidado de Inventarios',
@@ -57,7 +50,7 @@ window.abrirReporte = function (tipo) {
         'rotacion': 'Reporte de Rotación de Inventario'
     };
 
-    document.getElementById('reporteTitulo').innerHTML = `<i class="fas fa-chart-bar"></i> ${titulos[tipo] || 'Reporte'}`;
+    reporteTitulo.innerHTML = `<i class="fas fa-chart-bar"></i> ${titulos[tipo] || 'Reporte'}`;
 
     // Configurar filtros según el tipo
     renderFiltrosReporte(tipo);
@@ -66,7 +59,7 @@ window.abrirReporte = function (tipo) {
     cargarReporte(tipo);
 
     // Mostrar modal
-    modal.classList.add('show');
+    document.getElementById('modalReporte').classList.add('show');
 };
 
 /**
@@ -176,7 +169,14 @@ function renderFiltrosReporte(tipo) {
  * Carga los datos desde la API
  */
 async function cargarReporte(tipo) {
+    console.log('📊 cargarReporte llamado con tipo:', tipo);
+
     const contenido = document.getElementById('reporteContenido');
+    if (!contenido) {
+        console.error('❌ Error: Elemento reporteContenido no encontrado');
+        return;
+    }
+
     contenido.innerHTML = `<p style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Cargando datos...</p>`;
 
     // Debugging: verificar baseUrl
@@ -207,17 +207,19 @@ async function cargarReporte(tipo) {
             if (catId) url += `&id_categoria=${catId}`;
         }
 
-        console.log('🌐 Fetching URL:', url);
         const response = await fetch(url);
         const data = await response.json();
+        console.log('📊 Respuesta recibida:', data);
 
         if (data.success) {
             renderDataReporte(tipo, data);
+            console.log('✅ Reporte renderizado correctamente');
         } else {
+            console.warn('⚠️ API retornó error:', data.message);
             contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">${data.message}</p>`;
         }
     } catch (e) {
-        console.error('❌ Error en cargarReporte:', e);
+        console.error(e);
         contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">Error de conexión con el servidor</p>`;
     }
 }
@@ -226,11 +228,19 @@ async function cargarReporte(tipo) {
  * Renderiza la tabla de datos según el reporte
  */
 function renderDataReporte(tipo, data) {
+    console.log('📊 renderDataReporte iniciado para tipo:', tipo);
+
     const contenido = document.getElementById('reporteContenido');
+    if (!contenido) {
+        console.error('❌ Error: reporteContenido no encontrado en renderDataReporte');
+        return;
+    }
+
     let html = '';
 
-    if (tipo === 'consolidado') {
-        html = `
+    try {
+        if (tipo === 'consolidado') {
+            html = `
             <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
                 <thead>
                     <tr style="background:#1a237e; color:white;">
@@ -265,8 +275,8 @@ function renderDataReporte(tipo, data) {
                 </tfoot>
             </table>
         `;
-    } else if (tipo === 'stock_valorizado') {
-        html = `
+        } else if (tipo === 'stock_valorizado') {
+            html = `
             <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
                 <thead>
                     <tr style="background:#1a237e;">
@@ -300,8 +310,8 @@ function renderDataReporte(tipo, data) {
                 </tfoot>
             </table>
         `;
-    } else if (tipo === 'movimientos') {
-        html = `
+        } else if (tipo === 'movimientos') {
+            html = `
             <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
                 <thead>
                     <tr style="background:#37474f; color:white;">
@@ -329,8 +339,8 @@ function renderDataReporte(tipo, data) {
                 </tbody>
             </table>
         `;
-    } else if (tipo === 'analisis') {
-        html = `
+        } else if (tipo === 'analisis') {
+            html = `
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
                 <div style="background:white; padding:15px; border-radius:8px; border:1px solid #ddd;">
                     <h4 style="margin-bottom:15px; color:#1a237e;"><i class="fas fa-layer-group"></i> Valor por Categoría</h4>
@@ -356,8 +366,8 @@ function renderDataReporte(tipo, data) {
                 </div>
             </div>
         `;
-    } else if (tipo === 'tipos_categorias') {
-        html = `
+        } else if (tipo === 'tipos_categorias') {
+            html = `
             <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
                 <thead>
                     <tr style="background:#1a237e;">
@@ -406,25 +416,25 @@ function renderDataReporte(tipo, data) {
                 </tfoot>
             </table>
         `;
-    } else if (tipo === 'rotacion') {
-        // Helper para obtener color según clasificación
-        const getColorClasificacion = (clasificacion) => {
-            switch (clasificacion) {
-                case 'ALTA': return '#4caf50';
-                case 'MEDIA': return '#ff9800';
-                case 'BAJA': return '#f44336';
-                case 'SIN_MOVIMIENTO': return '#9e9e9e';
-                default: return '#666';
-            }
-        };
+        } else if (tipo === 'rotacion') {
+            // Helper para obtener color según clasificación
+            const getColorClasificacion = (clasificacion) => {
+                switch (clasificacion) {
+                    case 'ALTA': return '#4caf50';
+                    case 'MEDIA': return '#ff9800';
+                    case 'BAJA': return '#f44336';
+                    case 'SIN_MOVIMIENTO': return '#9e9e9e';
+                    default: return '#666';
+                }
+            };
 
-        const getBadgeClasificacion = (clasificacion) => {
-            const color = getColorClasificacion(clasificacion);
-            const texto = clasificacion.replace('_', ' ');
-            return `<span style="background:${color}; color:white; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">${texto}</span>`;
-        };
+            const getBadgeClasificacion = (clasificacion) => {
+                const color = getColorClasificacion(clasificacion);
+                const texto = clasificacion.replace('_', ' ');
+                return `<span style="background:${color}; color:white; padding:3px 8px; border-radius:4px; font-size:0.75rem; font-weight:600;">${texto}</span>`;
+            };
 
-        html = `
+            html = `
             <div style="background:#e3f2fd; padding:12px; border-radius:8px; margin-bottom:15px;">
                 <p style="margin:0; color:#1565c0; font-weight:600;">
                     <i class="fas fa-calendar-alt"></i> Período: ${new Date(data.periodo.desde).toLocaleDateString('es-BO')} - ${new Date(data.periodo.hasta).toLocaleDateString('es-BO')} (${data.periodo.dias} días)
@@ -443,10 +453,10 @@ function renderDataReporte(tipo, data) {
                 </thead>
                 <tbody>
                     ${data.data.map(row => {
-            const alertaDias = row.dias_stock > 180 ? ' ⚠️' : '';
-            const alertaRotacion = row.rotacion < 0.1 && row.salidas > 0 ? ' 🔴' : '';
+                const alertaDias = row.dias_stock > 180 ? ' ⚠️' : '';
+                const alertaRotacion = row.rotacion < 0.1 && row.salidas > 0 ? ' 🔴' : '';
 
-            return `
+                return `
                             <tr style="border-bottom:1px solid #eee;">
                                 <td style="padding:8px;">
                                     <div style="font-weight:600;">${row.nombre}</div>
@@ -469,7 +479,7 @@ function renderDataReporte(tipo, data) {
                                 </td>
                             </tr>
                         `;
-        }).join('')}
+            }).join('')}
                 </tbody>
                 <tfoot>
                     <tr style="background:#f5f5f5; font-weight:700;">
@@ -481,9 +491,15 @@ function renderDataReporte(tipo, data) {
                 </tfoot>
             </table>
         `;
-    }
+        }
 
-    contenido.innerHTML = html;
+        contenido.innerHTML = html;
+        console.log('✅ HTML renderizado en reporteContenido, longitud:', html.length);
+
+    } catch (renderError) {
+        console.error('❌ Error en renderDataReporte:', renderError);
+        contenido.innerHTML = `<p style="color:red; text-align:center; padding:20px;">Error al renderizar el reporte: ${renderError.message}</p>`;
+    }
 }
 
 /**

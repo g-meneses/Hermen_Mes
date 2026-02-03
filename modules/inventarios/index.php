@@ -2544,7 +2544,7 @@ require_once '../../includes/header.php';
             </div>
 
             <!-- Contenido del reporte -->
-            <div id="reporteContenido">
+            <div id="localReporteContenido">
                 <div style="text-align: center; padding: 50px; color: #666;">
                     <i class="fas fa-chart-pie" style="font-size: 3rem; margin-bottom: 15px;"></i>
                     <p>Seleccione un tipo de reporte para comenzar</p>

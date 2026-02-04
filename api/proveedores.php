@@ -200,7 +200,15 @@ try {
                                 condicion_pago = ?,
                                 dias_credito = ?,
                                 observaciones = ?,
-                                activo = ?
+
+                                activo = ?,
+                                tipo_contribuyente = ?,
+                                regimen_tributario = ?,
+                                limite_credito = ?,
+                                descuento_general = ?,
+                                categoria_proveedor = ?,
+                                es_preferente = ?,
+                                motivo_bloqueo = ?
                             WHERE id_proveedor = ?
                         ");
                         $stmt->execute([
@@ -221,6 +229,13 @@ try {
                             $data['dias_credito'] ?? 0,
                             $data['observaciones'] ?? null,
                             $data['activo'] ?? 1,
+                            $data['tipo_contribuyente'] ?? null,
+                            $data['regimen_tributario'] ?? null,
+                            $data['limite_credito'] ?? null,
+                            $data['descuento_general'] ?? 0,
+                            $data['categoria_proveedor'] ?? null,
+                            $data['es_preferente'] ?? 0,
+                            $data['motivo_bloqueo'] ?? null,
                             $id
                         ]);
 
@@ -233,8 +248,10 @@ try {
                                 codigo, razon_social, nombre_comercial, tipo, nit,
                                 nombre_contacto, contacto_telefono, telefono, email,
                                 direccion, ciudad, pais, moneda, condicion_pago,
-                                dias_credito, observaciones, activo
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                                dias_credito, observaciones, activo,
+                                tipo_contribuyente, regimen_tributario, limite_credito,
+                                descuento_general, categoria_proveedor, es_preferente, motivo_bloqueo
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
                         ");
                         $stmt->execute([
                             $codigo,
@@ -252,7 +269,14 @@ try {
                             $data['moneda'] ?? 'BOB',
                             $data['condicion_pago'] ?? 'Contado',
                             $data['dias_credito'] ?? 0,
-                            $data['observaciones'] ?? null
+                            $data['observaciones'] ?? null,
+                            $data['tipo_contribuyente'] ?? null,
+                            $data['regimen_tributario'] ?? null,
+                            $data['limite_credito'] ?? null,
+                            $data['descuento_general'] ?? 0,
+                            $data['categoria_proveedor'] ?? null,
+                            $data['es_preferente'] ?? 0,
+                            $data['motivo_bloqueo'] ?? null
                         ]);
 
                         ob_clean();

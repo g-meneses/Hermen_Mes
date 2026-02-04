@@ -608,12 +608,51 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                 </li>
 
                 <!-- COMPRAS -->
+                <!-- COMPRAS -->
                 <li class="menu-item">
-                    <a class="menu-link">
-                        <i class="fas fa-shopping-bag"></i>
+                    <a class="menu-link" onclick="toggleSubmenu(this)">
+                        <i class="fas fa-shopping-cart"></i>
                         <span class="menu-text">COMPRAS</span>
-                        <span class="menu-badge">Fase Futura</span>
+                        <i class="fas fa-chevron-right menu-arrow"></i>
                     </a>
+                    <ul class="submenu">
+                        <li class="menu-item">
+                            <a href="<?php echo SITE_URL; ?>/modules/compras/index.php" class="menu-link">
+                                <i class="fas fa-chart-line"></i>
+                                <span class="menu-text">Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="<?php echo SITE_URL; ?>/modules/compras/solicitudes.php" class="menu-link">
+                                <i class="fas fa-file-alt"></i>
+                                <span class="menu-text">Solicitudes</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="<?php echo SITE_URL; ?>/modules/compras/aprobaciones.php" class="menu-link">
+                                <i class="fas fa-check-double"></i>
+                                <span class="menu-text">Aprobaciones</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="<?php echo SITE_URL; ?>/modules/compras/ordenes.php" class="menu-link">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                <span class="menu-text">Órdenes de Compra</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="<?php echo SITE_URL; ?>/modules/compras/recepciones.php" class="menu-link">
+                                <i class="fas fa-truck-loading"></i>
+                                <span class="menu-text">Recepciones</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="<?php echo SITE_URL; ?>/modules/compras/proveedores.php" class="menu-link">
+                                <i class="fas fa-users"></i>
+                                <span class="menu-text">Proveedores</span>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
                 <div class="menu-separator"></div>

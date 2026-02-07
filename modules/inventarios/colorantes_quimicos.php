@@ -25,6 +25,7 @@ $tipoColor = $tipoInventario['color'] ?? '#6f42c1';
 $tipoIcono = $tipoInventario['icono'] ?? 'fa-flask';
 
 require_once '../../includes/header.php';
+require_once '../../includes/permisos_inventario.php';
 ?>
 
 <!--<link rel="stylesheet" href="css/inventario_tipo.css"> -->
@@ -1315,14 +1316,20 @@ require_once '../../includes/header.php';
             </div>
         </div>
         <div class="mp-header-actions">
-            <button class="btn-action btn-ingreso" onclick="abrirModalIngreso()"><i class="fas fa-arrow-down"></i>
-                Ingreso</button>
-            <button class="btn-action btn-salida" onclick="abrirModalSalida()"><i class="fas fa-arrow-up"></i>
-                Salida</button>
+            <?php if ($puedeIngreso): ?>
+                <button class="btn-action btn-ingreso" onclick="abrirModalIngreso()"><i class="fas fa-arrow-down"></i>
+                    Ingreso</button>
+            <?php endif; ?>
+            <?php if ($puedeSalida): ?>
+                <button class="btn-action btn-salida" onclick="abrirModalSalida()"><i class="fas fa-arrow-up"></i>
+                    Salida</button>
+            <?php endif; ?>
             <button class="btn-action btn-historial" onclick="abrirModalHistorial()"><i class="fas fa-history"></i>
                 Historial</button>
-            <button class="btn-action btn-nuevo" onclick="abrirModalNuevoItem()"><i class="fas fa-plus"></i> Nuevo
-                Item</button>
+            <?php if ($puedeCrear): ?>
+                <button class="btn-action btn-nuevo" onclick="abrirModalNuevoItem()"><i class="fas fa-plus"></i> Nuevo
+                    Item</button>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -1335,13 +1342,15 @@ require_once '../../includes/header.php';
                 <div class="kpi-value" id="kpiItems">0</div>
             </div>
         </div>
-        <div class="kpi-card">
-            <div class="kpi-icon valor"><i class="fas fa-dollar-sign"></i></div>
-            <div class="kpi-info">
-                <div class="kpi-label">Valor Total</div>
-                <div class="kpi-value" id="kpiValor">Bs. 0</div>
+        <?php if ($verValores): ?>
+            <div class="kpi-card">
+                <div class="kpi-icon valor"><i class="fas fa-dollar-sign"></i></div>
+                <div class="kpi-info">
+                    <div class="kpi-label">Valor Total</div>
+                    <div class="kpi-value" id="kpiValor">Bs. 0</div>
+                </div>
             </div>
-        </div>
+        <?php endif; ?>
         <div class="kpi-card">
             <div class="kpi-icon alertas"><i class="fas fa-exclamation-triangle"></i></div>
             <div class="kpi-info">

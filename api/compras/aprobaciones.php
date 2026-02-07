@@ -27,8 +27,9 @@ try {
     $method = $_SERVER['REQUEST_METHOD'];
 
     if ($method === 'GET') {
-        $action = $_GET['action'] ?? 'pedientes';
-        $userId = $_SESSION['user_id'] ?? 1; // Testing fallback
+        $action = $_GET['action'] ?? 'pendientes';
+        $userId = $_SESSION['user_id'] ?? 2; // Admin fallback based on check_users.php
+        $userRol = $_SESSION['rol'] ?? 'admin';
 
         if ($action === 'pendientes') {
             // Buscar solicitudes u órdenes que requieran aprobación DE ESTE USUARIO
@@ -41,7 +42,7 @@ try {
                        u.nombre_completo as solicitante, s.prioridad
                 FROM solicitudes_compra s
                 JOIN usuarios u ON s.id_usuario_solicitante = u.id_usuario
-                WHERE s.estado = 'EN_APROBACION'
+                WHERE s.estado IN ('EN_APROBACION', 'PENDIENTE')
                 -- AND (Logic to check if user is approver)
             ";
 
@@ -58,12 +59,12 @@ try {
                        CASE WHEN a.tipo_documento = 'SOLICITUD_COMPRA' THEN s.numero_solicitud 
                             ELSE oc.numero_orden END as documento_numero
                 FROM aprobaciones a
-                LEFT JOIN solicitudes_compra s ON a.id_documento = s.id_solicitud AND a.tipo_documento = 'SOLICITUD_COMPRA'
-                LEFT JOIN ordenes_compra oc ON a.id_documento = oc.id_orden_compra AND a.tipo_documento = 'ORDEN_COMPRA'
-                WHERE a.id_usuario_aprobador = ?
+                LEFT JOIN solicitudes_compra s ON a.id_documento = s.id_solicitud AND CAST(a.tipo_documento AS CHAR) = 'SOLICITUD_COMPRA'
+                LEFT JOIN ordenes_compra oc ON a.id_documento = oc.id_orden_compra AND CAST(a.tipo_documento AS CHAR) = 'ORDEN_COMPRA'
+                WHERE (a.id_usuario_aprobador = ? OR CAST(? AS CHAR) = 'admin')
                 ORDER BY a.fecha_aprobacion DESC
              ");
-            $stmt->execute([$userId]);
+            $stmt->execute([$userId, $userRol]);
             $historial = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             ob_clean();

@@ -59,6 +59,42 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
             min-height: 100vh;
         }
 
+        /* ESTADO COLAPSADO */
+        .layout.collapsed .sidebar {
+            width: 70px;
+        }
+
+        .layout.collapsed .sidebar .menu-text,
+        .layout.collapsed .sidebar .menu-arrow,
+        .layout.collapsed .sidebar .menu-badge,
+        .layout.collapsed .sidebar .user-info,
+        .layout.collapsed .sidebar .sidebar-user .user-avatar+div,
+        .layout.collapsed .sidebar .logo-container img {
+            display: none !important;
+        }
+
+        .layout.collapsed .sidebar .logo-container {
+            padding: 15px 5px !important;
+        }
+
+        .layout.collapsed .sidebar .menu-link {
+            justify-content: center;
+            padding: 12px 0;
+        }
+
+        .layout.collapsed .sidebar .menu-link i {
+            margin-right: 0;
+            font-size: 18px;
+        }
+
+        .layout.collapsed .main-content {
+            margin-left: 70px;
+        }
+
+        .layout.collapsed .sidebar .submenu {
+            display: none !important;
+        }
+
         /* SIDEBAR */
         .sidebar {
             width: var(--sidebar-width);
@@ -362,6 +398,10 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
             </div>
 
             <!-- Menú -->
+            <?php
+            // Determinar si es un usuario con rol restringido de inventario
+            $esOperadorInventario = ($_SESSION['user_role'] ?? '') === 'operador_inv';
+            ?>
             <ul class="sidebar-menu">
                 <!-- Dashboard -->
                 <li class="menu-item">
@@ -465,214 +505,216 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                     </ul>
                 </li>
 
-                <div class="menu-separator"></div>
+                <?php if (!$esOperadorInventario): ?>
+                    <div class="menu-separator"></div>
 
-                <!-- PRODUCCIÓN -->
-                <li class="menu-item">
-                    <a class="menu-link" onclick="toggleSubmenu(this)">
-                        <i class="fas fa-industry"></i>
-                        <span class="menu-text">PRODUCCIÓN (MES)</span>
-                        <i class="fas fa-chevron-right menu-arrow"></i>
-                    </a>
-                    <ul class="submenu">
-                        <!-- Planificación -->
-                        <li class="menu-item">
-                            <a class="menu-link" onclick="toggleSubmenu(this)">
-                                <i class="fas fa-calendar-alt"></i>
-                                <span class="menu-text">PLANIFICACIÓN</span>
-                                <i class="fas fa-chevron-right menu-arrow"></i>
-                            </a>
-                            <ul class="submenu">
-                                <li><a href="#" class="menu-link"><i class="fas fa-project-diagram"></i><span
-                                            class="menu-text">Config. Flujos</span><span
-                                            class="menu-badge badge-new">Nuevo</span></a></li>
-                                <li><a href="#" class="menu-link"><i class="fas fa-flask"></i><span
-                                            class="menu-text">Recetas (BOM)</span><span
-                                            class="menu-badge badge-soon">Pronto</span></a></li>
-                                <li><a href="<?php echo SITE_URL; ?>/modules/tejido/plan_generico.php"
-                                        class="menu-link <?php echo $currentPage === 'plan_generico' ? 'active' : ''; ?>"><i
-                                            class="fas fa-clipboard-list"></i><span class="menu-text">Plan
-                                            Genérico</span></a></li>
-                                <li><a href="#" class="menu-link"><i class="fas fa-calendar-week"></i><span
-                                            class="menu-text">Plan Semanal</span><span
-                                            class="menu-badge badge-soon">Pronto</span></a></li>
-                            </ul>
-                        </li>
+                    <!-- PRODUCCIÓN -->
+                    <li class="menu-item">
+                        <a class="menu-link" onclick="toggleSubmenu(this)">
+                            <i class="fas fa-industry"></i>
+                            <span class="menu-text">PRODUCCIÓN (MES)</span>
+                            <i class="fas fa-chevron-right menu-arrow"></i>
+                        </a>
+                        <ul class="submenu">
+                            <!-- Planificación -->
+                            <li class="menu-item">
+                                <a class="menu-link" onclick="toggleSubmenu(this)">
+                                    <i class="fas fa-calendar-alt"></i>
+                                    <span class="menu-text">PLANIFICACIÓN</span>
+                                    <i class="fas fa-chevron-right menu-arrow"></i>
+                                </a>
+                                <ul class="submenu">
+                                    <li><a href="#" class="menu-link"><i class="fas fa-project-diagram"></i><span
+                                                class="menu-text">Config. Flujos</span><span
+                                                class="menu-badge badge-new">Nuevo</span></a></li>
+                                    <li><a href="#" class="menu-link"><i class="fas fa-flask"></i><span
+                                                class="menu-text">Recetas (BOM)</span><span
+                                                class="menu-badge badge-soon">Pronto</span></a></li>
+                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/plan_generico.php"
+                                            class="menu-link <?php echo $currentPage === 'plan_generico' ? 'active' : ''; ?>"><i
+                                                class="fas fa-clipboard-list"></i><span class="menu-text">Plan
+                                                Genérico</span></a></li>
+                                    <li><a href="#" class="menu-link"><i class="fas fa-calendar-week"></i><span
+                                                class="menu-text">Plan Semanal</span><span
+                                                class="menu-badge badge-soon">Pronto</span></a></li>
+                                </ul>
+                            </li>
 
-                        <!-- Ejecución -->
-                        <li class="menu-item">
-                            <a class="menu-link" onclick="toggleSubmenu(this)">
-                                <i class="fas fa-tasks"></i>
-                                <span class="menu-text">EJECUCIÓN</span>
-                                <i class="fas fa-chevron-right menu-arrow"></i>
-                            </a>
-                            <ul class="submenu">
-                                <!-- Poliamida -->
-                                <li class="menu-item">
-                                    <a class="menu-link" onclick="toggleSubmenu(this)">
-                                        <i class="fas fa-socks"></i>
-                                        <span class="menu-text">POLIAMIDA</span>
-                                        <i class="fas fa-chevron-right menu-arrow"></i>
-                                    </a>
-                                    <ul class="submenu">
-                                        <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
-                                                    class="menu-text">Órdenes</span><span
-                                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                                        <li><a href="#" class="menu-link"><i class="fas fa-clock"></i><span
-                                                    class="menu-text">Por Turno</span><span
-                                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                                        <li><a href="#" class="menu-link"><i class="fas fa-route"></i><span
-                                                    class="menu-text">Control</span><span
-                                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                                        <li><a href="#" class="menu-link"><i class="fas fa-chart-line"></i><span
-                                                    class="menu-text">Reportes</span><span
-                                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                                    </ul>
-                                </li>
-                                <!-- Algodón -->
-                                <li class="menu-item">
-                                    <a class="menu-link" onclick="toggleSubmenu(this)">
-                                        <i class="fas fa-tshirt"></i>
-                                        <span class="menu-text">ALGODÓN</span>
-                                        <i class="fas fa-chevron-right menu-arrow"></i>
-                                    </a>
-                                    <ul class="submenu">
-                                        <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
-                                                    class="menu-text">Órdenes</span><span
-                                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                                        <li><a href="#" class="menu-link"><i class="fas fa-clock"></i><span
-                                                    class="menu-text">Por Turno</span><span
-                                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                                    </ul>
-                                </li>
-                                <!-- Confección -->
-                                <li class="menu-item">
-                                    <a class="menu-link" onclick="toggleSubmenu(this)">
-                                        <i class="fas fa-cut"></i>
-                                        <span class="menu-text">CONFECCIÓN</span>
-                                        <i class="fas fa-chevron-right menu-arrow"></i>
-                                    </a>
-                                    <ul class="submenu">
-                                        <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
-                                                    class="menu-text">Órdenes</span><span
-                                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                                    </ul>
-                                </li>
-                            </ul>
-                        </li>
+                            <!-- Ejecución -->
+                            <li class="menu-item">
+                                <a class="menu-link" onclick="toggleSubmenu(this)">
+                                    <i class="fas fa-tasks"></i>
+                                    <span class="menu-text">EJECUCIÓN</span>
+                                    <i class="fas fa-chevron-right menu-arrow"></i>
+                                </a>
+                                <ul class="submenu">
+                                    <!-- Poliamida -->
+                                    <li class="menu-item">
+                                        <a class="menu-link" onclick="toggleSubmenu(this)">
+                                            <i class="fas fa-socks"></i>
+                                            <span class="menu-text">POLIAMIDA</span>
+                                            <i class="fas fa-chevron-right menu-arrow"></i>
+                                        </a>
+                                        <ul class="submenu">
+                                            <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
+                                                        class="menu-text">Órdenes</span><span
+                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                            <li><a href="#" class="menu-link"><i class="fas fa-clock"></i><span
+                                                        class="menu-text">Por Turno</span><span
+                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                            <li><a href="#" class="menu-link"><i class="fas fa-route"></i><span
+                                                        class="menu-text">Control</span><span
+                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                            <li><a href="#" class="menu-link"><i class="fas fa-chart-line"></i><span
+                                                        class="menu-text">Reportes</span><span
+                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                        </ul>
+                                    </li>
+                                    <!-- Algodón -->
+                                    <li class="menu-item">
+                                        <a class="menu-link" onclick="toggleSubmenu(this)">
+                                            <i class="fas fa-tshirt"></i>
+                                            <span class="menu-text">ALGODÓN</span>
+                                            <i class="fas fa-chevron-right menu-arrow"></i>
+                                        </a>
+                                        <ul class="submenu">
+                                            <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
+                                                        class="menu-text">Órdenes</span><span
+                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                            <li><a href="#" class="menu-link"><i class="fas fa-clock"></i><span
+                                                        class="menu-text">Por Turno</span><span
+                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                        </ul>
+                                    </li>
+                                    <!-- Confección -->
+                                    <li class="menu-item">
+                                        <a class="menu-link" onclick="toggleSubmenu(this)">
+                                            <i class="fas fa-cut"></i>
+                                            <span class="menu-text">CONFECCIÓN</span>
+                                            <i class="fas fa-chevron-right menu-arrow"></i>
+                                        </a>
+                                        <ul class="submenu">
+                                            <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
+                                                        class="menu-text">Órdenes</span><span
+                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                        </ul>
+                                    </li>
+                                </ul>
+                            </li>
 
-                        <!-- Recursos -->
-                        <li class="menu-item">
-                            <a class="menu-link" onclick="toggleSubmenu(this)">
-                                <i class="fas fa-cogs"></i>
-                                <span class="menu-text">RECURSOS</span>
-                                <i class="fas fa-chevron-right menu-arrow"></i>
-                            </a>
-                            <ul class="submenu">
-                                <li><a href="<?php echo SITE_URL; ?>/modules/tejido/maquinas.php"
-                                        class="menu-link <?php echo $currentPage === 'maquinas' ? 'active' : ''; ?>"><i
-                                            class="fas fa-cog"></i><span class="menu-text">Máquinas</span></a></li>
-                                <li><a href="<?php echo SITE_URL; ?>/modules/tejido/productos.php"
-                                        class="menu-link <?php echo $currentPage === 'productos' ? 'active' : ''; ?>"><i
-                                            class="fas fa-box-open"></i><span class="menu-text">Productos</span></a>
-                                </li>
-                                <li><a href="<?php echo SITE_URL; ?>/modules/tejido/insumos.php"
-                                        class="menu-link <?php echo $currentPage === 'insumos' ? 'active' : ''; ?>"><i
-                                            class="fas fa-cube"></i><span class="menu-text">Insumos</span></a></li>
-                                <li><a href="#" class="menu-link"><i class="fas fa-users"></i><span
-                                            class="menu-text">Personal</span><span
-                                            class="menu-badge badge-soon">Pronto</span></a></li>
-                            </ul>
-                        </li>
-                    </ul>
-                </li>
+                            <!-- Recursos -->
+                            <li class="menu-item">
+                                <a class="menu-link" onclick="toggleSubmenu(this)">
+                                    <i class="fas fa-cogs"></i>
+                                    <span class="menu-text">RECURSOS</span>
+                                    <i class="fas fa-chevron-right menu-arrow"></i>
+                                </a>
+                                <ul class="submenu">
+                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/maquinas.php"
+                                            class="menu-link <?php echo $currentPage === 'maquinas' ? 'active' : ''; ?>"><i
+                                                class="fas fa-cog"></i><span class="menu-text">Máquinas</span></a></li>
+                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/productos.php"
+                                            class="menu-link <?php echo $currentPage === 'productos' ? 'active' : ''; ?>"><i
+                                                class="fas fa-box-open"></i><span class="menu-text">Productos</span></a>
+                                    </li>
+                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/insumos.php"
+                                            class="menu-link <?php echo $currentPage === 'insumos' ? 'active' : ''; ?>"><i
+                                                class="fas fa-cube"></i><span class="menu-text">Insumos</span></a></li>
+                                    <li><a href="#" class="menu-link"><i class="fas fa-users"></i><span
+                                                class="menu-text">Personal</span><span
+                                                class="menu-badge badge-soon">Pronto</span></a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
 
-                <div class="menu-separator"></div>
+                    <div class="menu-separator"></div>
 
-                <!-- INVENTARIO INTERMEDIO (MES) -->
-                <li class="menu-item">
-                    <a href="<?php echo SITE_URL; ?>/modules/inventario_intermedio/index.php"
-                        class="menu-link <?php echo $currentPage === 'inventario_intermedio' ? 'active' : ''; ?>">
-                        <i class="fas fa-layer-group"></i>
-                        <span class="menu-text">Inventario Intermedio</span>
-                    </a>
-                </li>
+                    <!-- INVENTARIO INTERMEDIO (MES) -->
+                    <li class="menu-item">
+                        <a href="<?php echo SITE_URL; ?>/modules/inventario_intermedio/index.php"
+                            class="menu-link <?php echo $currentPage === 'inventario_intermedio' ? 'active' : ''; ?>">
+                            <i class="fas fa-layer-group"></i>
+                            <span class="menu-text">Inventario Intermedio</span>
+                        </a>
+                    </li>
 
-                <!-- VENTAS -->
-                <li class="menu-item">
-                    <a class="menu-link">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span class="menu-text">VENTAS</span>
-                        <span class="menu-badge">Fase Futura</span>
-                    </a>
-                </li>
+                    <!-- VENTAS -->
+                    <li class="menu-item">
+                        <a class="menu-link">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="menu-text">VENTAS</span>
+                            <span class="menu-badge">Fase Futura</span>
+                        </a>
+                    </li>
 
-                <!-- COMPRAS -->
-                <!-- COMPRAS -->
-                <li class="menu-item">
-                    <a class="menu-link" onclick="toggleSubmenu(this)">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span class="menu-text">COMPRAS</span>
-                        <i class="fas fa-chevron-right menu-arrow"></i>
-                    </a>
-                    <ul class="submenu">
-                        <li class="menu-item">
-                            <a href="<?php echo SITE_URL; ?>/modules/compras/index.php" class="menu-link">
-                                <i class="fas fa-chart-line"></i>
-                                <span class="menu-text">Dashboard</span>
-                            </a>
-                        </li>
-                        <li class="menu-item">
-                            <a href="<?php echo SITE_URL; ?>/modules/compras/solicitudes.php" class="menu-link">
-                                <i class="fas fa-file-alt"></i>
-                                <span class="menu-text">Solicitudes</span>
-                            </a>
-                        </li>
-                        <li class="menu-item">
-                            <a href="<?php echo SITE_URL; ?>/modules/compras/aprobaciones.php" class="menu-link">
-                                <i class="fas fa-check-double"></i>
-                                <span class="menu-text">Aprobaciones</span>
-                            </a>
-                        </li>
-                        <li class="menu-item">
-                            <a href="<?php echo SITE_URL; ?>/modules/compras/ordenes.php" class="menu-link">
-                                <i class="fas fa-file-invoice-dollar"></i>
-                                <span class="menu-text">Órdenes de Compra</span>
-                            </a>
-                        </li>
-                        <li class="menu-item">
-                            <a href="<?php echo SITE_URL; ?>/modules/compras/recepciones.php" class="menu-link">
-                                <i class="fas fa-truck-loading"></i>
-                                <span class="menu-text">Recepciones</span>
-                            </a>
-                        </li>
-                        <li class="menu-item">
-                            <a href="<?php echo SITE_URL; ?>/modules/compras/proveedores.php" class="menu-link">
-                                <i class="fas fa-users"></i>
-                                <span class="menu-text">Proveedores</span>
-                            </a>
-                        </li>
-                    </ul>
-                </li>
+                    <!-- COMPRAS -->
+                    <!-- COMPRAS -->
+                    <li class="menu-item">
+                        <a class="menu-link" onclick="toggleSubmenu(this)">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span class="menu-text">COMPRAS</span>
+                            <i class="fas fa-chevron-right menu-arrow"></i>
+                        </a>
+                        <ul class="submenu">
+                            <li class="menu-item">
+                                <a href="<?php echo SITE_URL; ?>/modules/compras/index.php" class="menu-link">
+                                    <i class="fas fa-chart-line"></i>
+                                    <span class="menu-text">Dashboard</span>
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="<?php echo SITE_URL; ?>/modules/compras/solicitudes.php" class="menu-link">
+                                    <i class="fas fa-file-alt"></i>
+                                    <span class="menu-text">Solicitudes</span>
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="<?php echo SITE_URL; ?>/modules/compras/aprobaciones.php" class="menu-link">
+                                    <i class="fas fa-check-double"></i>
+                                    <span class="menu-text">Aprobaciones</span>
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="<?php echo SITE_URL; ?>/modules/compras/ordenes.php" class="menu-link">
+                                    <i class="fas fa-file-invoice-dollar"></i>
+                                    <span class="menu-text">Órdenes de Compra</span>
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="<?php echo SITE_URL; ?>/modules/compras/recepciones.php" class="menu-link">
+                                    <i class="fas fa-truck-loading"></i>
+                                    <span class="menu-text">Recepciones</span>
+                                </a>
+                            </li>
+                            <li class="menu-item">
+                                <a href="<?php echo SITE_URL; ?>/modules/compras/proveedores.php" class="menu-link">
+                                    <i class="fas fa-users"></i>
+                                    <span class="menu-text">Proveedores</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
 
-                <div class="menu-separator"></div>
+                    <div class="menu-separator"></div>
 
-                <!-- ADMINISTRACIÓN -->
-                <li class="menu-item">
-                    <a class="menu-link" onclick="toggleSubmenu(this)">
-                        <i class="fas fa-user-shield"></i>
-                        <span class="menu-text">ADMINISTRACIÓN</span>
-                        <i class="fas fa-chevron-right menu-arrow"></i>
-                    </a>
-                    <ul class="submenu">
-                        <li><a href="#" class="menu-link"><i class="fas fa-users-cog"></i><span
-                                    class="menu-text">Usuarios</span><span
-                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                        <li><a href="#" class="menu-link"><i class="fas fa-cog"></i><span
-                                    class="menu-text">Configuración</span><span
-                                    class="menu-badge badge-soon">Pronto</span></a></li>
-                    </ul>
-                </li>
+                    <!-- ADMINISTRACIÓN -->
+                    <li class="menu-item">
+                        <a class="menu-link" onclick="toggleSubmenu(this)">
+                            <i class="fas fa-user-shield"></i>
+                            <span class="menu-text">ADMINISTRACIÓN</span>
+                            <i class="fas fa-chevron-right menu-arrow"></i>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="#" class="menu-link"><i class="fas fa-users-cog"></i><span
+                                        class="menu-text">Usuarios</span><span
+                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                            <li><a href="#" class="menu-link"><i class="fas fa-cog"></i><span
+                                        class="menu-text">Configuración</span><span
+                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                        </ul>
+                    </li>
+                <?php endif; ?>
             </ul>
 
             <!-- Usuario -->
@@ -694,7 +736,12 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
         <main class="main-content">
             <!-- Top Bar -->
             <div class="topbar">
-                <h1><?php echo $pageTitle; ?></h1>
+                <div class="header-left d-flex align-items-center">
+                    <button id="sidebarToggle" class="btn btn-link text-dark mr-3" style="font-size: 20px; padding: 0;">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 class="mb-0" style="font-size: 24px; color: var(--dark-color);"><?php echo $pageTitle; ?></h1>
+                </div>
                 <div class="topbar-right">
                     <i class="fas fa-calendar"></i> <?php echo date('d/m/Y'); ?>
                 </div>

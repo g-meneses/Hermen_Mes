@@ -71,8 +71,24 @@
         }
     }
 
-    // Abrir submenús del ítem activo al cargar
+    // Sidebar Toggle Logic
     document.addEventListener('DOMContentLoaded', function () {
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const layout = document.querySelector('.layout');
+
+        // Cargar estado guardado
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            layout.classList.add('collapsed');
+        }
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', function () {
+                layout.classList.toggle('collapsed');
+                // Guardar preferencia
+                localStorage.setItem('sidebarCollapsed', layout.classList.contains('collapsed'));
+            });
+        }
+
         const activeLink = document.querySelector('.menu-link.active');
         if (activeLink) {
             let parent = activeLink.parentElement;

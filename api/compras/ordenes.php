@@ -122,43 +122,41 @@ try {
         $db->beginTransaction();
         try {
             if ($action === 'create' || $action === 'create_from_request') {
-                // Header
+                // Obtener datos proveedor
+                $stmtProv = $db->prepare("SELECT razon_social, nit FROM proveedores WHERE id_proveedor = ?");
+                $stmtProv->execute([$data['id_proveedor']]);
+                $prov = $stmtProv->fetch(PDO::FETCH_ASSOC);
+
+                $nombreProveedor = $data['nombre_proveedor'] ?? $prov['razon_social'] ?? '';
+                $nitProveedor = $data['nit_proveedor'] ?? $prov['nit'] ?? '';
+
+                // Header - usando solo columnas que existen en la tabla
                 $stmt = $db->prepare("
                     INSERT INTO ordenes_compra (
                         numero_orden, fecha_orden, id_proveedor, nombre_proveedor, nit_proveedor,
                         id_solicitud, numero_solicitud, id_comprador, moneda, tipo_cambio,
                         condicion_pago, dias_credito, fecha_entrega_estimada, lugar_entrega,
-                        subtotal, descuento_general, impuesto_linea, total, observaciones,
+                        subtotal, descuento_general, total, observaciones,
                         estado, creado_por
-                    ) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'BORRADOR', ?)
+                    ) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'BORRADOR', ?)
                 ");
-
-                // Obtener datos proveedor si faltan
-                if (empty($data['nombre_proveedor'])) {
-                    $stmtProv = $db->prepare("SELECT razon_social, nit FROM proveedores WHERE id_proveedor = ?");
-                    $stmtProv->execute([$data['id_proveedor']]);
-                    $prov = $stmtProv->fetch(PDO::FETCH_ASSOC);
-                    $data['nombre_proveedor'] = $prov['razon_social'];
-                    $data['nit_proveedor'] = $prov['nit'];
-                }
 
                 $stmt->execute([
                     $data['numero_orden'],
                     $data['id_proveedor'],
-                    $data['nombre_proveedor'],
-                    $data['nit_proveedor'],
+                    $nombreProveedor,
+                    $nitProveedor,
                     $data['id_solicitud'] ?? null,
                     $data['numero_solicitud'] ?? null,
-                    $_SESSION['user_id'] ?? 1, // Fallback ID
+                    $_SESSION['user_id'] ?? 1,
                     $data['moneda'] ?? 'BOB',
                     $data['tipo_cambio'] ?? 1,
                     $data['condicion_pago'] ?? 'CONTADO',
                     $data['dias_credito'] ?? 0,
-                    $data['fecha_entrega_estimada'] ?? null,
+                    !empty($data['fecha_entrega_estimada']) ? $data['fecha_entrega_estimada'] : null,
                     $data['lugar_entrega'] ?? null,
-                    $data['subtotal'] ?? 0,
+                    $data['total'] ?? 0,
                     $data['descuento_general'] ?? 0,
-                    0, // Impuesto placeholder (o calcular)
                     $data['total'] ?? 0,
                     $data['observaciones'] ?? null,
                     $_SESSION['user_id'] ?? 1
@@ -167,16 +165,6 @@ try {
                 $id_orden = $db->lastInsertId();
 
                 // Detalles
-                $stmtDet = $db->prepare("
-                    INSERT INTO ordenes_compra_detalle (
-                        id_orden_compra, numero_linea, id_producto, id_tipo_inventario,
-                        codigo_producto, descripcion_producto, quantidade_ordenada,
-                        unidad_medida, precio_unitario, subtotal_linea, total_linea,
-                        especificaciones
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                "); // Note: typo 'quantidade_ordenada' fixed in next line? No, check DB schema. 'cantidad_ordenada'
-
-                // Fix SQL above: 'cantidad_ordenada'
                 $stmtDet = $db->prepare("
                     INSERT INTO ordenes_compra_detalle (
                         id_orden_compra, numero_linea, id_producto, id_tipo_inventario,
@@ -213,6 +201,76 @@ try {
                 $db->commit();
                 ob_clean();
                 echo json_encode(['success' => true, 'message' => 'Orden creada', 'id' => $id_orden]);
+
+            } elseif ($action === 'update') {
+                // Actualizar orden existente (solo si está en BORRADOR)
+                $id_orden = $data['id_orden_compra'];
+
+                // Verificar que la orden existe y está en BORRADOR
+                $stmtCheck = $db->prepare("SELECT estado FROM ordenes_compra WHERE id_orden_compra = ?");
+                $stmtCheck->execute([$id_orden]);
+                $ordenActual = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+                if (!$ordenActual) {
+                    throw new Exception("Orden no encontrada");
+                }
+                if ($ordenActual['estado'] !== 'BORRADOR') {
+                    throw new Exception("Solo se pueden editar órdenes en estado BORRADOR");
+                }
+
+                // Actualizar header
+                $stmt = $db->prepare("
+                    UPDATE ordenes_compra SET
+                        id_proveedor = ?,
+                        fecha_entrega_estimada = ?,
+                        condicion_pago = ?,
+                        observaciones = ?,
+                        total = ?,
+                        subtotal = ?
+                    WHERE id_orden_compra = ?
+                ");
+                $stmt->execute([
+                    $data['id_proveedor'],
+                    !empty($data['fecha_entrega_estimada']) ? $data['fecha_entrega_estimada'] : null,
+                    $data['condicion_pago'] ?? 'CONTADO',
+                    $data['observaciones'] ?? null,
+                    $data['total'] ?? 0,
+                    $data['total'] ?? 0,
+                    $id_orden
+                ]);
+
+                // Eliminar detalles existentes y reinsertar
+                $db->prepare("DELETE FROM ordenes_compra_detalle WHERE id_orden_compra = ?")->execute([$id_orden]);
+
+                $stmtDet = $db->prepare("
+                    INSERT INTO ordenes_compra_detalle (
+                        id_orden_compra, numero_linea, id_producto, id_tipo_inventario,
+                        codigo_producto, descripcion_producto, cantidad_ordenada,
+                        unidad_medida, precio_unitario, subtotal_linea, total_linea, especificaciones
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+
+                foreach ($data['detalles'] as $idx => $det) {
+                    $subtotal = ($det['cantidad'] ?? 0) * ($det['precio_unitario'] ?? 0);
+                    $stmtDet->execute([
+                        $id_orden,
+                        $idx + 1,
+                        $det['id_producto'] ?? null,
+                        $det['id_tipo_inventario'] ?? 1,
+                        $det['codigo_producto'] ?? '',
+                        $det['descripcion_producto'],
+                        $det['cantidad'],
+                        $det['unidad_medida'],
+                        $det['precio_unitario'] ?? 0,
+                        $subtotal,
+                        $subtotal,
+                        $det['especificaciones'] ?? null
+                    ]);
+                }
+
+                $db->commit();
+                ob_clean();
+                echo json_encode(['success' => true, 'message' => 'Orden actualizada']);
 
             } elseif ($action === 'change_status') {
                 $id = $data['id_orden_compra'];

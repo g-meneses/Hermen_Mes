@@ -107,24 +107,28 @@ function renderFiltrosReporte(tipo) {
         setTimeout(cargarTiposParaReporte, 100);
     } else if (tipo === 'movimientos') {
         html = `
-            <div class="form-group">
-                <label>Desde</label>
-                <input type="date" id="repDesde" value="${primeroMes}">
-            </div>
-            <div class="form-group">
-                <label>Hasta</label>
-                <input type="date" id="repHasta" value="${hoy}">
-            </div>
-            <div class="form-group">
-                <label>Tipo</label>
-                <select id="repTipoMov">
-                    <option value="">Todos</option>
-                    <option value="ENTRADA">Entradas</option>
-                    <option value="SALIDA">Salidas</option>
-                </select>
-            </div>
-            <div class="form-group" style="display:flex; align-items:flex-end;">
-                <button class="btn btn-primary" onclick="cargarReporte('movimientos')"><i class="fas fa-search"></i> Buscar</button>
+            <div class="filtros-grid">
+                <div class="filter-group">
+                    <label class="filter-label"><i class="fas fa-calendar-alt"></i> Desde</label>
+                    <input type="date" id="repDesde" class="filter-input" value="${primeroMes}">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label"><i class="fas fa-calendar-check"></i> Hasta</label>
+                    <input type="date" id="repHasta" class="filter-input" value="${hoy}">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label"><i class="fas fa-exchange-alt"></i> Tipo de Movimiento</label>
+                    <select id="repTipoMov" class="filter-input">
+                        <option value="">Todos los movimientos</option>
+                        <option value="ENTRADA">🟢 Solo Entradas</option>
+                        <option value="SALIDA">🔴 Solo Salidas</option>
+                    </select>
+                </div>
+                <div class="filter-group filter-actions">
+                    <button class="btn-filtrar" onclick="cargarReporte('movimientos')">
+                        <i class="fas fa-search"></i> Buscar Movimientos
+                    </button>
+                </div>
             </div>
         `;
     } else if (tipo === 'analisis') {
@@ -311,32 +315,83 @@ function renderDataReporte(tipo, data) {
             </table>
         `;
         } else if (tipo === 'movimientos') {
+            // Calcular totales para el resumen
+            const totalEntradas = data.data.filter(r => r.tipo_movimiento.includes('ENTRADA')).reduce((s, r) => s + parseFloat(r.costo_total || 0), 0);
+            const totalSalidas = data.data.filter(r => r.tipo_movimiento.includes('SALIDA')).reduce((s, r) => s + parseFloat(r.costo_total || 0), 0);
+            const cantEntradas = data.data.filter(r => r.tipo_movimiento.includes('ENTRADA')).length;
+            const cantSalidas = data.data.filter(r => r.tipo_movimiento.includes('SALIDA')).length;
+
             html = `
-            <table class="tabla-reporte" style="width:100%; border-collapse:collapse;">
+            <!-- Resumen de movimientos -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px;">
+                <div style="background:linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); padding:15px 20px; border-radius:12px; border-left:4px solid #2e7d32;">
+                    <div style="font-size:0.85rem; color:#1b5e20; opacity:0.8;"><i class="fas fa-arrow-down"></i> Entradas</div>
+                    <div style="font-size:1.5rem; font-weight:700; color:#2e7d32;">${cantEntradas}</div>
+                    <div style="font-size:0.9rem; color:#388e3c;">Bs. ${formatNum(totalEntradas, 2)}</div>
+                </div>
+                <div style="background:linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%); padding:15px 20px; border-radius:12px; border-left:4px solid #c62828;">
+                    <div style="font-size:0.85rem; color:#b71c1c; opacity:0.8;"><i class="fas fa-arrow-up"></i> Salidas</div>
+                    <div style="font-size:1.5rem; font-weight:700; color:#c62828;">${cantSalidas}</div>
+                    <div style="font-size:0.9rem; color:#d32f2f;">Bs. ${formatNum(totalSalidas, 2)}</div>
+                </div>
+                <div style="background:linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding:15px 20px; border-radius:12px; border-left:4px solid #1565c0;">
+                    <div style="font-size:0.85rem; color:#0d47a1; opacity:0.8;"><i class="fas fa-list"></i> Total Movimientos</div>
+                    <div style="font-size:1.5rem; font-weight:700; color:#1565c0;">${data.data.length}</div>
+                    <div style="font-size:0.9rem; color:#1976d2;">registros encontrados</div>
+                </div>
+            </div>
+            
+            <!-- Tabla de movimientos -->
+            <table class="tabla-reporte tabla-movimientos" style="width:100%; border-collapse:collapse; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
                 <thead>
-                    <tr style="background:#37474f; color:white;">
-                        <th style="padding:10px; text-align:left;">Fecha</th>
-                        <th style="padding:10px; text-align:left;">Documento</th>
-                        <th style="padding:10px; text-align:left;">Producto</th>
-                        <th style="padding:10px; text-align:left;">Tipo Mov.</th>
-                        <th style="padding:10px; text-align:right;">Cant.</th>
-                        <th style="padding:10px; text-align:right;">Costo Unit.</th>
-                        <th style="padding:10px; text-align:right;">Total</th>
+                    <tr style="background:linear-gradient(135deg, #1a237e 0%, #283593 100%);">
+                        <th style="padding:14px 12px; text-align:left; color:white; font-weight:600; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">Fecha</th>
+                        <th style="padding:14px 12px; text-align:left; color:white; font-weight:600; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">Documento</th>
+                        <th style="padding:14px 12px; text-align:left; color:white; font-weight:600; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">Producto</th>
+                        <th style="padding:14px 12px; text-align:center; color:white; font-weight:600; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">Tipo</th>
+                        <th style="padding:14px 12px; text-align:right; color:white; font-weight:600; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">Cantidad</th>
+                        <th style="padding:14px 12px; text-align:right; color:white; font-weight:600; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">Costo Unit.</th>
+                        <th style="padding:14px 12px; text-align:right; color:white; font-weight:600; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px;">Total</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${data.data.map(row => `
-                        <tr style="border-bottom:1px solid #eee;">
-                            <td style="padding:8px; font-size:0.8rem;">${new Date(row.fecha).toLocaleDateString()}</td>
-                            <td style="padding:8px; font-weight:600;">${row.documento_numero}</td>
-                            <td style="padding:8px;">${row.producto}</td>
-                            <td style="padding:8px;"><span class="badge" style="background:${row.tipo_movimiento.includes('ENTRADA') ? '#e8f5e9' : '#ffebee'}; color:${row.tipo_movimiento.includes('ENTRADA') ? '#2e7d32' : '#c62828'}; font-size:0.75rem; padding:2px 6px; border-radius:4px;">${row.tipo_movimiento}</span></td>
-                            <td style="padding:8px; text-align:right;">${formatNum(row.cantidad, 2)}</td>
-                            <td style="padding:8px; text-align:right;">${formatNum(row.costo_unitario, 4)}</td>
-                            <td style="padding:8px; text-align:right; font-weight:600;">Bs. ${formatNum(row.costo_total, 2)}</td>
+                    ${data.data.map((row, idx) => {
+                const isEntrada = row.tipo_movimiento.includes('ENTRADA');
+                const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8f9fa';
+                return `
+                        <tr style="background:${rowBg}; transition:background 0.2s;" onmouseover="this.style.background='#e3f2fd'" onmouseout="this.style.background='${rowBg}'">
+                            <td style="padding:12px; font-size:0.9rem; color:#455a64;">
+                                <i class="fas fa-calendar-day" style="color:#90a4ae; margin-right:6px;"></i>
+                                ${new Date(row.fecha).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </td>
+                            <td style="padding:12px; font-weight:600; color:#1a237e;">${row.documento_numero || '-'}</td>
+                            <td style="padding:12px; max-width:250px;">
+                                <div style="font-weight:500;">${row.producto}</div>
+                            </td>
+                            <td style="padding:12px; text-align:center;">
+                                <span style="display:inline-flex; align-items:center; gap:6px; background:${isEntrada ? '#e8f5e9' : '#ffebee'}; color:${isEntrada ? '#2e7d32' : '#c62828'}; font-size:0.8rem; padding:6px 12px; border-radius:20px; font-weight:600;">
+                                    <i class="fas ${isEntrada ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
+                                    ${isEntrada ? 'ENTRADA' : 'SALIDA'}
+                                </span>
+                            </td>
+                            <td style="padding:12px; text-align:right; font-weight:600; font-size:1rem;">${formatNum(row.cantidad, 2)}</td>
+                            <td style="padding:12px; text-align:right; color:#666;">Bs. ${formatNum(row.costo_unitario, 4)}</td>
+                            <td style="padding:12px; text-align:right; font-weight:700; font-size:1.05rem; color:${isEntrada ? '#2e7d32' : '#c62828'};">Bs. ${formatNum(row.costo_total, 2)}</td>
                         </tr>
-                    `).join('')}
+                    `}).join('')}
                 </tbody>
+                <tfoot>
+                    <tr style="background:linear-gradient(135deg, #eceff1 0%, #cfd8dc 100%); font-weight:700;">
+                        <td colspan="4" style="padding:14px; text-align:right; font-size:0.95rem; color:#455a64;">
+                            <i class="fas fa-calculator"></i> TOTALES:
+                        </td>
+                        <td style="padding:14px; text-align:right;">-</td>
+                        <td style="padding:14px; text-align:right;">-</td>
+                        <td style="padding:14px; text-align:right; font-size:1.1rem; color:#1a237e;">
+                            Bs. ${formatNum(data.data.reduce((s, r) => s + parseFloat(r.costo_total || 0), 0), 2)}
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
         `;
         } else if (tipo === 'analisis') {

@@ -17,6 +17,15 @@ if (!isLoggedIn()) {
     redirect('index.php');
 }
 
+// === RESTRICCIÓN PARA OPERADORES DE INVENTARIO ===
+// Los usuarios con rol operador_inv no pueden acceder al Centro de Inventarios
+// Se les redirige directamente al módulo de Materias Primas
+$userRole = $_SESSION['user_role'] ?? '';
+if ($userRole === 'operador_inv') {
+    header('Location: materias_primas.php');
+    exit;
+}
+
 $pageTitle = 'Centro de Inventarios';
 $currentPage = 'centro_inventarios';
 require_once '../../includes/header.php';

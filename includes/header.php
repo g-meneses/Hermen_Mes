@@ -383,6 +383,218 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
             position: static;
             /* Cambiar de sticky a static */
         }
+
+        /* =====================================================
+           NOTIFICACIONES
+           ===================================================== */
+        .notification-wrapper {
+            position: relative;
+        }
+
+        .notification-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #666;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .notification-btn:hover {
+            background: #f0f0f0;
+            color: var(--primary-color);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: #dc3545;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        .notification-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 360px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            display: none;
+            z-index: 1000;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .notification-dropdown.show {
+            display: block;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #eee;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .notification-header h4 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .notification-header a {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            text-decoration: none;
+        }
+
+        .notification-header a:hover {
+            color: white;
+        }
+
+        .notification-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .notification-item {
+            display: flex;
+            gap: 12px;
+            padding: 14px 20px;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .notification-item:hover {
+            background: #f8f9fa;
+        }
+
+        .notification-item.unread {
+            background: #f0f7ff;
+        }
+
+        .notification-item.unread:hover {
+            background: #e6f0fa;
+        }
+
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 16px;
+        }
+
+        .notification-icon.alerta {
+            background: rgba(246, 173, 85, 0.2);
+            color: #f6ad55;
+        }
+
+        .notification-icon.error {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        .notification-icon.info {
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--primary-color);
+        }
+
+        .notification-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notification-content h5 {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .notification-content p {
+            margin: 0;
+            font-size: 12px;
+            color: #666;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .notification-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+
+        .notification-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: #999;
+        }
+
+        .notification-empty i {
+            font-size: 40px;
+            margin-bottom: 10px;
+            opacity: 0.3;
+        }
+
+        .notification-empty p {
+            margin: 0;
+        }
+
+        .notification-footer {
+            padding: 12px 20px;
+            text-align: center;
+            border-top: 1px solid #eee;
+            background: #fafafa;
+        }
+
+        .notification-footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .notification-footer a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -422,13 +634,15 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                         <i class="fas fa-chevron-right menu-arrow"></i>
                     </a>
                     <ul class="submenu">
-                        <li class="menu-item">
-                            <a href="<?php echo SITE_URL; ?>/modules/inventarios/index.php"
-                                class="menu-link <?php echo $currentPage === 'centro_inventarios' ? 'active' : ''; ?>">
-                                <i class="fas fa-warehouse"></i>
-                                <span class="menu-text">Centro de Inventarios</span>
-                            </a>
-                        </li>
+                        <?php if (!$esOperadorInventario): ?>
+                            <li class="menu-item">
+                                <a href="<?php echo SITE_URL; ?>/modules/inventarios/index.php"
+                                    class="menu-link <?php echo $currentPage === 'centro_inventarios' ? 'active' : ''; ?>">
+                                    <i class="fas fa-warehouse"></i>
+                                    <span class="menu-text">Centro de Inventarios</span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
                         <li class="menu-item">
                             <a class="menu-link" onclick="toggleSubmenu(this)">
                                 <i class="fas fa-list"></i>
@@ -471,28 +685,32 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                 <i class="fas fa-chevron-right menu-arrow"></i>
                             </a>
                             <ul class="submenu">
-                                <li><a href="javascript:void(0)" onclick="abrirReporte('consolidado')"
-                                        class="menu-link">
-                                        <i class="fas fa-file-invoice-dollar"></i><span class="menu-text">Reporte
-                                            Consolidado</span></a>
-                                </li>
-                                <li><a href="javascript:void(0)" onclick="abrirReporte('stock_valorizado')"
-                                        class="menu-link"><i class="fas fa-boxes"></i><span class="menu-text">Stock
-                                            Valorizado</span></a></li>
+                                <?php if (!$esOperadorInventario): ?>
+                                    <li><a href="javascript:void(0)" onclick="abrirReporte('consolidado')"
+                                            class="menu-link">
+                                            <i class="fas fa-file-invoice-dollar"></i><span class="menu-text">Reporte
+                                                Consolidado</span></a>
+                                    </li>
+                                    <li><a href="javascript:void(0)" onclick="abrirReporte('stock_valorizado')"
+                                            class="menu-link"><i class="fas fa-boxes"></i><span class="menu-text">Stock
+                                                Valorizado</span></a></li>
+                                <?php endif; ?>
                                 <li><a href="javascript:void(0)" onclick="abrirReporte('movimientos')"
                                         class="menu-link"><i class="fas fa-exchange-alt"></i><span
                                             class="menu-text">Movimientos</span></a></li>
-                                <li><a href="javascript:void(0)" onclick="abrirReporte('analisis')" class="menu-link"><i
-                                            class="fas fa-chart-pie"></i><span class="menu-text">Análisis</span></a>
-                                </li>
-                                <li><a href="javascript:void(0)" onclick="abrirReporte('tipos_categorias')"
-                                        class="menu-link"><i class="fas fa-sitemap"></i><span class="menu-text">Tipos y
-                                            Categorías</span></a>
-                                </li>
-                                <li><a href="<?php echo SITE_URL; ?>/modules/inventarios/reporte_rotacion.php"
-                                        class="menu-link"><i class="fas fa-sync-alt"></i><span
-                                            class="menu-text">Rotación de Inventario</span></a>
-                                </li>
+                                <?php if (!$esOperadorInventario): ?>
+                                    <li><a href="javascript:void(0)" onclick="abrirReporte('analisis')" class="menu-link"><i
+                                                class="fas fa-chart-pie"></i><span class="menu-text">Análisis</span></a>
+                                    </li>
+                                    <li><a href="javascript:void(0)" onclick="abrirReporte('tipos_categorias')"
+                                            class="menu-link"><i class="fas fa-sitemap"></i><span class="menu-text">Tipos y
+                                                Categorías</span></a>
+                                    </li>
+                                    <li><a href="<?php echo SITE_URL; ?>/modules/inventarios/reporte_rotacion.php"
+                                            class="menu-link"><i class="fas fa-sync-alt"></i><span
+                                                class="menu-text">Rotación de Inventario</span></a>
+                                    </li>
+                                <?php endif; ?>
                             </ul>
                         </li>
                         <li class="menu-item">
@@ -743,6 +961,29 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                     <h1 class="mb-0" style="font-size: 24px; color: var(--dark-color);"><?php echo $pageTitle; ?></h1>
                 </div>
                 <div class="topbar-right">
+                    <!-- Notificaciones -->
+                    <div class="notification-wrapper">
+                        <button class="notification-btn" id="notificationBtn" title="Notificaciones">
+                            <i class="fas fa-bell"></i>
+                            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                        </button>
+                        <div class="notification-dropdown" id="notificationDropdown">
+                            <div class="notification-header">
+                                <h4>Notificaciones</h4>
+                                <a href="#" id="markAllRead">Marcar leídas</a>
+                            </div>
+                            <div class="notification-list" id="notificationList">
+                                <div class="notification-empty">
+                                    <i class="fas fa-bell-slash"></i>
+                                    <p>No hay notificaciones</p>
+                                </div>
+                            </div>
+                            <div class="notification-footer">
+                                <a href="<?php echo SITE_URL; ?>/modules/notificaciones/index.php">Ver todas</a>
+                            </div>
+                        </div>
+                    </div>
+
                     <i class="fas fa-calendar"></i> <?php echo date('d/m/Y'); ?>
                 </div>
             </div>

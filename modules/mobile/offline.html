@@ -1,0 +1,480 @@
+<!--
+  PWA Mobile - Salidas de Inventario
+  Sistema MES Hermen Ltda.
+  
+  Archivo estático para funcionamiento offline
+-->
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Hermen Inv">
+
+    <title>Salidas de Inventario - Hermen</title>
+
+    <!-- Manifest PWA -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Icons -->
+    <link rel="apple-touch-icon" href="img/icons/icon-192.svg">
+    <link rel="icon" type="image/svg+xml" href="img/icons/icon-192.svg">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Estilos -->
+    <link rel="stylesheet" href="css/mobile.css">
+</head>
+
+<body>
+
+    <!-- =====================================================
+         PANTALLA 0: SPLASH
+    ====================================================== -->
+    <div id="screen-splash" class="screen active">
+        <div class="splash-content">
+            <div class="splash-logo">
+                <i class="fas fa-boxes-stacked"></i>
+            </div>
+            <h1 class="splash-title">HERMEN</h1>
+            <p class="splash-subtitle">Salidas de Inventario</p>
+
+            <div class="splash-status">
+                <div id="connection-status" class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Verificando conexión...</span>
+                </div>
+                <div id="pending-count" class="pending-badge" style="display: none;">
+                    <i class="fas fa-clock"></i>
+                    <span>0 pendientes</span>
+                </div>
+            </div>
+
+            <div class="splash-loader">
+                <div class="loader-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 1: LOGIN PIN
+    ====================================================== -->
+    <div id="screen-login" class="screen">
+        <div class="login-container">
+            <div class="login-header">
+                <i class="fas fa-user-lock"></i>
+                <h2>Ingresa tu PIN</h2>
+                <p>4 dígitos</p>
+            </div>
+
+            <div class="pin-display">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+
+            <div id="login-error" class="error-message" style="display: none;"></div>
+
+            <div class="pin-keypad">
+                <button class="key" data-value="1">1</button>
+                <button class="key" data-value="2">2</button>
+                <button class="key" data-value="3">3</button>
+                <button class="key" data-value="4">4</button>
+                <button class="key" data-value="5">5</button>
+                <button class="key" data-value="6">6</button>
+                <button class="key" data-value="7">7</button>
+                <button class="key" data-value="8">8</button>
+                <button class="key" data-value="9">9</button>
+                <button class="key key-clear" data-value="clear">
+                    <i class="fas fa-delete-left"></i>
+                </button>
+                <button class="key" data-value="0">0</button>
+                <button class="key key-enter" data-value="enter">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 2: MENÚ PRINCIPAL
+    ====================================================== -->
+    <div id="screen-menu" class="screen">
+        <header class="app-header">
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <div>
+                    <span id="user-name" class="user-name">Usuario</span>
+                    <span id="user-role" class="user-role">Rol</span>
+                </div>
+            </div>
+            <div id="menu-connection" class="connection-badge online">
+                <i class="fas fa-wifi"></i>
+            </div>
+        </header>
+
+        <main class="menu-grid">
+            <button class="menu-btn primary" id="btn-nueva-salida">
+                <i class="fas fa-minus-circle"></i>
+                <span>Nueva Salida</span>
+            </button>
+
+            <button class="menu-btn" id="btn-historial">
+                <i class="fas fa-history"></i>
+                <span>Historial</span>
+                <small>Solo hoy</small>
+            </button>
+
+            <button class="menu-btn" id="btn-sincronizar">
+                <i class="fas fa-sync-alt"></i>
+                <span>Sincronizar</span>
+                <span id="sync-badge" class="badge" style="display: none;">0</span>
+            </button>
+
+            <button class="menu-btn danger" id="btn-salir">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Salir</span>
+            </button>
+        </main>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 3: TIPO DE INVENTARIO
+    ====================================================== -->
+    <div id="screen-tipo-inventario" class="screen">
+        <header class="screen-header">
+            <button class="btn-back" id="btn-back-tipo-inv">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Tipo de Inventario</h2>
+        </header>
+
+        <main class="tipo-grid" id="tipos-inventario-container">
+            <!-- Se llena dinámicamente -->
+        </main>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 4: TIPO DE SALIDA
+    ====================================================== -->
+    <div id="screen-tipo" class="screen">
+        <header class="screen-header">
+            <button class="btn-back" id="btn-back-tipo">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Tipo de Salida</h2>
+            <span id="tipo-inv-badge" class="tipo-badge">MP</span>
+        </header>
+
+        <main class="tipo-grid" id="tipos-salida-container">
+            <!-- Se llena dinámicamente -->
+        </main>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 4: CARRITO DE PRODUCTOS
+    ====================================================== -->
+    <div id="screen-carrito" class="screen">
+        <header class="screen-header">
+            <button class="btn-back" id="btn-back-carrito">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Productos</h2>
+            <span id="carrito-tipo-badge" class="tipo-badge">Producción</span>
+        </header>
+
+        <main class="carrito-content">
+            <div id="carrito-empty" class="empty-state">
+                <i class="fas fa-box-open"></i>
+                <p>No hay productos agregados</p>
+            </div>
+
+            <ul id="carrito-list" class="carrito-list"></ul>
+        </main>
+
+        <footer class="screen-footer">
+            <button class="btn-secondary" id="btn-agregar-producto">
+                <i class="fas fa-plus"></i>
+                Agregar Producto
+            </button>
+            <button class="btn-primary" id="btn-continuar-destino" disabled>
+                Continuar
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        </footer>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 4A: AGREGAR PRODUCTO (Modal)
+    ====================================================== -->
+    <div id="screen-producto" class="screen modal-screen">
+        <div class="modal-content">
+            <header class="modal-header">
+                <h2>Agregar Producto</h2>
+                <button class="btn-close" id="btn-close-producto">
+                    <i class="fas fa-times"></i>
+                </button>
+            </header>
+
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="producto-search" placeholder="Buscar por código o nombre...">
+                </div>
+                <button class="btn-scan" id="btn-scan-qr" title="Escanear QR">
+                    <i class="fas fa-qrcode"></i>
+                </button>
+            </div>
+
+            <div id="productos-list" class="productos-list">
+                <!-- Se llena dinámicamente -->
+            </div>
+
+            <div id="producto-selected" class="producto-form" style="display: none;">
+                <div class="producto-info">
+                    <strong id="selected-producto-nombre"></strong>
+                    <small id="selected-producto-codigo"></small>
+                    <div class="stock-info">
+                        Stock: <span id="selected-producto-stock">0</span>
+                        <span id="selected-producto-unidad">kg</span>
+                    </div>
+                </div>
+
+                <div class="cantidad-input">
+                    <label>Cantidad</label>
+                    <div class="input-group">
+                        <button class="btn-minus" id="btn-cantidad-minus">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <input type="number" id="producto-cantidad" value="1" min="0.01" step="0.01">
+                        <button class="btn-plus" id="btn-cantidad-plus">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    <span id="cantidad-unidad" class="unidad-label">kg</span>
+                </div>
+
+                <button class="btn-primary btn-full" id="btn-add-to-cart">
+                    <i class="fas fa-cart-plus"></i>
+                    Agregar al Carrito
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 5: DESTINO / ÁREA
+    ====================================================== -->
+    <div id="screen-destino" class="screen">
+        <header class="screen-header">
+            <button class="btn-back" id="btn-back-destino">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Área Destino</h2>
+        </header>
+
+        <main class="areas-grid" id="areas-container">
+            <!-- Se llena dinámicamente -->
+        </main>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 6: FIRMA DIGITAL (PIN RECEPTOR)
+    ====================================================== -->
+    <div id="screen-firma" class="screen">
+        <header class="screen-header">
+            <button class="btn-back" id="btn-back-firma">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Firma Digital</h2>
+        </header>
+
+        <main class="firma-content">
+            <div class="firma-icon">
+                <i class="fas fa-signature"></i>
+            </div>
+            <p class="firma-instruction">
+                Quien <strong>recibe</strong> el material debe ingresar su PIN
+            </p>
+
+            <div class="pin-display firma-pin">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+
+            <div id="firma-error" class="error-message" style="display: none;"></div>
+
+            <div class="pin-keypad firma-keypad">
+                <button class="key" data-value="1">1</button>
+                <button class="key" data-value="2">2</button>
+                <button class="key" data-value="3">3</button>
+                <button class="key" data-value="4">4</button>
+                <button class="key" data-value="5">5</button>
+                <button class="key" data-value="6">6</button>
+                <button class="key" data-value="7">7</button>
+                <button class="key" data-value="8">8</button>
+                <button class="key" data-value="9">9</button>
+                <button class="key key-clear" data-value="clear">
+                    <i class="fas fa-delete-left"></i>
+                </button>
+                <button class="key" data-value="0">0</button>
+                <button class="key key-enter" data-value="enter">
+                    <i class="fas fa-check"></i>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 7: CONFIRMACIÓN
+    ====================================================== -->
+    <div id="screen-confirmacion" class="screen">
+        <header class="screen-header">
+            <button class="btn-back" id="btn-back-confirmacion">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Confirmar Salida</h2>
+        </header>
+
+        <main class="confirmacion-content">
+            <div class="resumen-card">
+                <div class="resumen-row">
+                    <span class="label">Tipo:</span>
+                    <span id="resumen-tipo" class="value"></span>
+                </div>
+                <div class="resumen-row">
+                    <span class="label">Destino:</span>
+                    <span id="resumen-destino" class="value"></span>
+                </div>
+                <div class="resumen-row">
+                    <span class="label">Entrega:</span>
+                    <span id="resumen-entrega" class="value"></span>
+                </div>
+                <div class="resumen-row">
+                    <span class="label">Recibe:</span>
+                    <span id="resumen-recibe" class="value"></span>
+                </div>
+                <div class="resumen-row">
+                    <span class="label">Hora:</span>
+                    <span id="resumen-hora" class="value"></span>
+                </div>
+            </div>
+
+            <div class="productos-resumen">
+                <h3><i class="fas fa-boxes"></i> Productos (<span id="resumen-total-items">0</span>)</h3>
+                <ul id="resumen-productos"></ul>
+            </div>
+        </main>
+
+        <footer class="screen-footer confirmacion-footer">
+            <button class="btn-danger" id="btn-cancelar">
+                <i class="fas fa-times"></i>
+                Cancelar
+            </button>
+            <button class="btn-success" id="btn-confirmar">
+                <i class="fas fa-check"></i>
+                Confirmar Salida
+            </button>
+        </footer>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA 8: COMPROBANTE
+    ====================================================== -->
+    <div id="screen-comprobante" class="screen">
+        <main class="comprobante-content">
+            <div class="comprobante-icon success">
+                <i class="fas fa-check-circle"></i>
+            </div>
+
+            <h2>¡Salida Registrada!</h2>
+
+            <div class="comprobante-card">
+                <div class="comprobante-numero">
+                    <small>Nº de Salida</small>
+                    <strong id="comprobante-uuid"></strong>
+                </div>
+
+                <div id="comprobante-estado" class="estado-badge pendiente">
+                    <i class="fas fa-clock"></i>
+                    <span>Pendiente de Sincronizar</span>
+                </div>
+
+                <div class="comprobante-detalles">
+                    <div class="detalle-row">
+                        <i class="fas fa-calendar"></i>
+                        <span id="comprobante-fecha"></span>
+                    </div>
+                    <div class="detalle-row">
+                        <i class="fas fa-boxes"></i>
+                        <span id="comprobante-items"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="comprobante-actions">
+                <button class="btn-primary btn-full" id="btn-nueva">
+                    <i class="fas fa-plus"></i>
+                    Nueva Salida
+                </button>
+                <button class="btn-secondary btn-full" id="btn-menu">
+                    <i class="fas fa-home"></i>
+                    Ir al Menú
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- =====================================================
+         PANTALLA: HISTORIAL
+    ====================================================== -->
+    <div id="screen-historial" class="screen">
+        <header class="screen-header">
+            <button class="btn-back" id="btn-back-historial">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h2>Historial de Hoy</h2>
+        </header>
+
+        <main class="historial-content">
+            <div id="historial-empty" class="empty-state">
+                <i class="fas fa-clipboard-list"></i>
+                <p>No hay salidas registradas hoy</p>
+            </div>
+
+            <ul id="historial-list" class="historial-list"></ul>
+        </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/db.js"></script>
+    <script src="js/sync.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- Registrar Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('SW registrado:', reg.scope))
+                .catch(err => console.error('SW error:', err));
+        }
+    </script>
+</body>
+
+</html>

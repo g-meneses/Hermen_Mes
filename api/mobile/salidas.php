@@ -40,7 +40,7 @@ try {
                     $limit = min((int) ($_GET['limit'] ?? 50), 100);
 
                     $sql = "
-                        SELECT 
+                        SELECT
                             sm.id_salida_movil AS id,
                             sm.uuid_local,
                             sm.tipo_salida,
@@ -51,7 +51,15 @@ try {
                             ap.nombre AS area_destino,
                             ue.nombre_completo AS usuario_entrega,
                             ur.nombre_completo AS usuario_recibe,
-                            (SELECT COUNT(*) FROM salidas_moviles_detalle WHERE id_salida_movil = sm.id_salida_movil) AS total_items
+                            (SELECT COUNT(*) FROM salidas_moviles_detalle WHERE id_salida_movil = sm.id_salida_movil) AS total_items,
+                            (SELECT ti.codigo FROM salidas_moviles_detalle smd2
+                                JOIN inventarios i2 ON smd2.id_inventario = i2.id_inventario
+                                JOIN tipos_inventario ti ON i2.id_tipo_inventario = ti.id_tipo_inventario
+                                WHERE smd2.id_salida_movil = sm.id_salida_movil LIMIT 1) AS tipo_inventario,
+                            (SELECT ti.nombre FROM salidas_moviles_detalle smd2
+                                JOIN inventarios i2 ON smd2.id_inventario = i2.id_inventario
+                                JOIN tipos_inventario ti ON i2.id_tipo_inventario = ti.id_tipo_inventario
+                                WHERE smd2.id_salida_movil = sm.id_salida_movil LIMIT 1) AS tipo_inventario_nombre
                         FROM salidas_moviles sm
                         LEFT JOIN areas_produccion ap ON sm.id_area_destino = ap.id_area
                         LEFT JOIN usuarios ue ON sm.usuario_entrega = ue.id_usuario

@@ -152,6 +152,12 @@ class MobileApp {
 
         // ===== HISTORIAL =====
         document.getElementById('btn-back-historial').addEventListener('click', () => this.showScreen('menu'));
+
+        // ===== MODAL DETALLE SALIDA =====
+        document.getElementById('btn-close-detalle').addEventListener('click', () => this.closeDetalleSalida());
+        document.getElementById('modal-detalle-salida').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) this.closeDetalleSalida();
+        });
     }
 
     // =====================================================
@@ -628,12 +634,20 @@ class MobileApp {
         try {
             const result = await syncManager.crearSalida({
                 tipo_salida: this.salida.tipo,
+                tipo_salida_nombre: this.salida.tipoNombre,
+                tipo_inventario: this.salida.tipoInventario,
+                tipo_inventario_nombre: this.salida.tipoInventarioNombre,
                 id_area_destino: this.salida.area,
+                area_nombre: this.salida.areaNombre,
                 usuario_entrega: this.currentUser.id,
+                usuario_entrega_nombre: this.currentUser.nombre,
                 usuario_recibe: this.receptorUser.id,
+                usuario_recibe_nombre: this.receptorUser.nombre,
                 items: this.salida.items.map(i => ({
                     id_inventario: i.id_inventario,
+                    nombre: i.nombre,
                     cantidad: i.cantidad,
+                    unidad: i.unidad,
                     stock_referencial: i.stock_referencial
                 }))
             });
@@ -741,15 +755,27 @@ class MobileApp {
                 const motivoHtml = motivoRechazo ?
                     `<div class="historial-motivo">${motivoRechazo}</div>` : '';
 
+                const tipoInvNombre = s.tipo_inventario_nombre || s.tipoInventarioNombre || '';
+                const tipoInvCodigo = s.tipo_inventario || s.tipoInventario || '';
+                const tipoSalidaLabel = {
+                    'PRODUCCION': 'Producción', 'MUESTRA': 'Muestra',
+                    'CONSUMO_INTERNO': 'Consumo Interno', 'MERMA': 'Merma', 'AJUSTE': 'Ajuste'
+                };
+                const tipoSalidaNombre = s.tipo_salida_nombre || s.tipoNombre ||
+                    tipoSalidaLabel[s.tipo_salida] || s.tipo_salida || 'Salida';
+                const titulo = tipoInvNombre
+                    ? `${tipoInvNombre} - ${tipoSalidaNombre}`
+                    : tipoSalidaNombre;
+
                 return `
-                    <li class="historial-item ${estadoClass}">
+                    <li class="historial-item ${estadoClass}" data-idx="${salidas.indexOf(s)}" style="cursor:pointer">
                         <div class="historial-icon" style="background: ${iconBg}; color: ${iconColor};">
                             <i class="fas ${estado === 'SINCRONIZADA' ? 'fa-check-circle' :
                         estado === 'OBSERVADA' ? 'fa-exclamation-triangle' :
                             estado === 'RECHAZADA' ? 'fa-times-circle' : 'fa-clock'}"></i>
                         </div>
                         <div class="historial-info">
-                            <strong>${s.tipo_salida || s.tipoNombre || 'Salida'}</strong>
+                            <strong>${titulo}</strong>
                             <small>${fechaStr} ${hora} • ${s.total_items || s.items?.length || 0} productos</small>
                             ${motivoHtml}
                         </div>
@@ -757,9 +783,118 @@ class MobileApp {
                     </li>
                 `;
             }).join('');
+
+            // Click en cada item para ver detalle
+            list.querySelectorAll('.historial-item').forEach(li => {
+                li.addEventListener('click', () => {
+                    const idx = parseInt(li.dataset.idx);
+                    this.showDetalleSalida(salidas[idx]);
+                });
+            });
         }
 
         this.showScreen('historial');
+    }
+
+    // =====================================================
+    // DETALLE DE SALIDA (MODAL)
+    // =====================================================
+
+    async showDetalleSalida(salida) {
+        const modal = document.getElementById('modal-detalle-salida');
+        const loading = document.getElementById('det-loading');
+        const productosList = document.getElementById('det-productos');
+
+        // Mostrar modal con datos básicos ya disponibles
+        const estado = salida.estado_sync || salida.estado || 'PENDIENTE_SYNC';
+        const estadoLabels = {
+            'SINCRONIZADA': 'Sincronizada', 'OBSERVADA': 'Observada',
+            'RECHAZADA': 'Rechazada', 'PENDIENTE_SYNC': 'Pendiente'
+        };
+        const estadoClasses = {
+            'SINCRONIZADA': 'sincronizada', 'OBSERVADA': 'observada',
+            'RECHAZADA': 'rechazada', 'PENDIENTE_SYNC': 'pendiente'
+        };
+
+        const fecha = new Date(salida.fecha_hora_local || salida.createdAt);
+        const fechaStr = fecha.toLocaleString('es-BO', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        document.getElementById('det-tipo-salida').textContent =
+            salida.tipo_salida_nombre || salida.tipoNombre || salida.tipo_salida || '—';
+        document.getElementById('det-tipo-inventario').textContent =
+            salida.tipo_inventario_nombre || salida.tipoInventarioNombre ||
+            salida.tipo_inventario || salida.tipoInventario || '—';
+        document.getElementById('det-area').textContent =
+            salida.area_nombre || salida.areaNombre || salida.area_destino || '—';
+        document.getElementById('det-fecha').textContent = fechaStr;
+        document.getElementById('det-entrega').textContent =
+            salida.usuario_entrega_nombre || salida.usuario_entrega || '—';
+        document.getElementById('det-recibe').textContent =
+            salida.usuario_recibe_nombre || salida.usuario_recibe || '—';
+
+        const estadoEl = document.getElementById('det-estado');
+        estadoEl.textContent = estadoLabels[estado] || estado;
+        estadoEl.className = `detalle-value detalle-estado ${estadoClasses[estado] || 'pendiente'}`;
+
+        const motivoRow = document.getElementById('det-motivo-row');
+        const motivo = salida.motivo_rechazo || salida.motivoRechazo || '';
+        if (motivo) {
+            document.getElementById('det-motivo').textContent = motivo;
+            motivoRow.style.display = 'flex';
+        } else {
+            motivoRow.style.display = 'none';
+        }
+
+        // Mostrar el modal antes de cargar productos
+        modal.style.display = 'flex';
+
+        // Mostrar productos: primero los locales si existen
+        const itemsLocales = salida.items;
+        if (itemsLocales && itemsLocales.length > 0) {
+            loading.style.display = 'none';
+            productosList.innerHTML = itemsLocales.map(i => `
+                <li class="detalle-producto-item">
+                    <span class="det-prod-nombre">${i.nombre || 'Producto'}</span>
+                    <span class="det-prod-cantidad">${i.cantidad} ${i.unidad || ''}</span>
+                </li>
+            `).join('');
+        } else {
+            productosList.innerHTML = '';
+            loading.style.display = 'flex';
+
+            // Cargar del servidor
+            const serverId = salida.id || salida.id_salida_movil;
+            const uuid = salida.uuid_local || salida.uuid;
+            if (syncManager.isOnline && (serverId || uuid)) {
+                try {
+                    const param = serverId ? `id=${serverId}` : `uuid=${uuid}`;
+                    const resp = await fetch(`${API_BASE}/salidas.php?action=detalle&${param}`);
+                    const data = await resp.json();
+                    if (data.success && data.detalle && data.detalle.length > 0) {
+                        productosList.innerHTML = data.detalle.map(d => `
+                            <li class="detalle-producto-item">
+                                <span class="det-prod-nombre">${d.producto_nombre || d.producto_codigo || 'Producto'}</span>
+                                <span class="det-prod-cantidad">${parseFloat(d.cantidad)} ${d.unidad || ''}</span>
+                            </li>
+                        `).join('');
+                    } else {
+                        productosList.innerHTML = '<li class="det-no-data">Sin detalle disponible</li>';
+                    }
+                } catch (e) {
+                    productosList.innerHTML = '<li class="det-no-data">Error al cargar productos</li>';
+                }
+            } else {
+                productosList.innerHTML = '<li class="det-no-data">Sin conexión para cargar productos</li>';
+            }
+            loading.style.display = 'none';
+        }
+    }
+
+    closeDetalleSalida() {
+        document.getElementById('modal-detalle-salida').style.display = 'none';
     }
 
     // =====================================================

@@ -1319,6 +1319,168 @@ button:active:not(:disabled) {
     border-left-color: var(--danger);
 }
 
+.historial-tipo-inv-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(79, 172, 254, 0.15);
+    color: var(--accent-primary);
+    margin-left: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.3px;
+}
+
+/* =====================================================
+   MODAL DETALLE SALIDA
+====================================================== */
+.modal-detalle-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.modal-detalle-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 480px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-detalle-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--bg-elevated);
+}
+
+.modal-detalle-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.btn-close-modal {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+}
+
+.modal-detalle-body {
+    overflow-y: auto;
+    padding: var(--spacing-md) var(--spacing-lg);
+    padding-bottom: calc(var(--spacing-lg) + var(--safe-bottom));
+}
+
+.detalle-meta {
+    background: var(--bg-elevated);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.detalle-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    gap: var(--spacing-sm);
+}
+
+.detalle-meta-row:last-child {
+    border-bottom: none;
+}
+
+.detalle-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    min-width: 90px;
+}
+
+.detalle-value {
+    font-size: 13px;
+    font-weight: 500;
+    text-align: right;
+}
+
+.detalle-value-danger {
+    color: var(--danger);
+    font-size: 12px;
+}
+
+.detalle-estado.sincronizada { color: var(--success); }
+.detalle-estado.observada    { color: var(--warning); }
+.detalle-estado.rechazada    { color: var(--danger); }
+.detalle-estado.pendiente    { color: var(--accent-primary); }
+
+.detalle-productos-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.detalle-productos-list {
+    list-style: none;
+}
+
+.detalle-producto-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px var(--spacing-sm);
+    background: var(--bg-elevated);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+}
+
+.det-prod-nombre {
+    font-size: 13px;
+    flex: 1;
+}
+
+.det-prod-cantidad {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-primary);
+    margin-left: var(--spacing-sm);
+    white-space: nowrap;
+}
+
+.det-no-data {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: var(--spacing-sm);
+    text-align: center;
+}
+
+.detalle-loading {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: var(--spacing-sm);
+    justify-content: center;
+}
+
 /* =====================================================
    TOAST NOTIFICATIONS
 ====================================================== */

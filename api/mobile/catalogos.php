@@ -105,13 +105,14 @@ try {
         // =====================================================
         case 'areas':
             $stmt = $db->query("
-                SELECT 
+                SELECT
                     id_area AS id,
                     codigo,
                     nombre,
                     descripcion
-                FROM areas_produccion 
+                FROM areas_produccion
                 WHERE activo = 1
+                  AND nombre IN ('Tejeduría', 'Costura', 'Teñido', 'Empaque')
                 ORDER BY nombre
             ");
             $areas = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -130,10 +131,7 @@ try {
         case 'tipos_salida':
             $tipos = [
                 ['id' => 'PRODUCCION', 'nombre' => 'Producción', 'icono' => 'fa-industry', 'color' => '#3498db'],
-                ['id' => 'CONSUMO_INTERNO', 'nombre' => 'Consumo Interno', 'icono' => 'fa-box-open', 'color' => '#27ae60'],
-                ['id' => 'MUESTRA', 'nombre' => 'Muestra', 'icono' => 'fa-flask', 'color' => '#9b59b6'],
-                ['id' => 'MERMA', 'nombre' => 'Merma', 'icono' => 'fa-trash-alt', 'color' => '#e74c3c'],
-                ['id' => 'AJUSTE', 'nombre' => 'Ajuste', 'icono' => 'fa-balance-scale', 'color' => '#f39c12']
+                ['id' => 'MUESTRA', 'nombre' => 'Muestra', 'icono' => 'fa-flask', 'color' => '#9b59b6']
             ];
 
             ob_clean();
@@ -191,7 +189,7 @@ try {
             $productos = $stmtP->fetchAll(PDO::FETCH_ASSOC);
 
             // Áreas
-            $stmtA = $db->query("SELECT id_area AS id, codigo, nombre FROM areas_produccion WHERE activo = 1");
+            $stmtA = $db->query("SELECT id_area AS id, codigo, nombre FROM areas_produccion WHERE activo = 1 AND nombre IN ('Tejeduría', 'Costura', 'Teñido', 'Empaque')");
             $areas = $stmtA->fetchAll(PDO::FETCH_ASSOC);
 
             // Tipos de inventario
@@ -246,10 +244,7 @@ try {
             // Tipos de salida
             $tipos_salida = [
                 ['id' => 'PRODUCCION', 'nombre' => 'Producción', 'icono' => 'fa-industry', 'color' => '#3498db'],
-                ['id' => 'CONSUMO_INTERNO', 'nombre' => 'Consumo Interno', 'icono' => 'fa-box-open', 'color' => '#27ae60'],
-                ['id' => 'MUESTRA', 'nombre' => 'Muestra', 'icono' => 'fa-flask', 'color' => '#9b59b6'],
-                ['id' => 'MERMA', 'nombre' => 'Merma', 'icono' => 'fa-trash-alt', 'color' => '#e74c3c'],
-                ['id' => 'AJUSTE', 'nombre' => 'Ajuste', 'icono' => 'fa-balance-scale', 'color' => '#f39c12']
+                ['id' => 'MUESTRA', 'nombre' => 'Muestra', 'icono' => 'fa-flask', 'color' => '#9b59b6']
             ];
 
             ob_clean();

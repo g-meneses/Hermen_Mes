@@ -461,6 +461,57 @@
         </main>
     </div>
 
+    <!-- Modal: Detalle de Salida -->
+    <div id="modal-detalle-salida" class="modal-detalle-overlay" style="display:none">
+        <div class="modal-detalle-card">
+            <div class="modal-detalle-header">
+                <h3>Detalle de Salida</h3>
+                <button id="btn-close-detalle" class="btn-close-modal"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-detalle-body">
+                <div class="detalle-meta">
+                    <div class="detalle-meta-row">
+                        <span class="detalle-label">Tipo de salida</span>
+                        <span id="det-tipo-salida" class="detalle-value"></span>
+                    </div>
+                    <div class="detalle-meta-row">
+                        <span class="detalle-label">Inventario</span>
+                        <span id="det-tipo-inventario" class="detalle-value"></span>
+                    </div>
+                    <div class="detalle-meta-row">
+                        <span class="detalle-label">Área destino</span>
+                        <span id="det-area" class="detalle-value"></span>
+                    </div>
+                    <div class="detalle-meta-row">
+                        <span class="detalle-label">Fecha / Hora</span>
+                        <span id="det-fecha" class="detalle-value"></span>
+                    </div>
+                    <div class="detalle-meta-row">
+                        <span class="detalle-label">Entrega</span>
+                        <span id="det-entrega" class="detalle-value"></span>
+                    </div>
+                    <div class="detalle-meta-row">
+                        <span class="detalle-label">Recibe</span>
+                        <span id="det-recibe" class="detalle-value"></span>
+                    </div>
+                    <div class="detalle-meta-row">
+                        <span class="detalle-label">Estado</span>
+                        <span id="det-estado" class="detalle-value"></span>
+                    </div>
+                    <div id="det-motivo-row" class="detalle-meta-row" style="display:none">
+                        <span class="detalle-label">Motivo</span>
+                        <span id="det-motivo" class="detalle-value detalle-value-danger"></span>
+                    </div>
+                </div>
+                <div class="detalle-productos-titulo">Productos</div>
+                <ul id="det-productos" class="detalle-productos-list"></ul>
+                <div id="det-loading" class="detalle-loading" style="display:none">
+                    <i class="fas fa-spinner fa-spin"></i> Cargando...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>
 

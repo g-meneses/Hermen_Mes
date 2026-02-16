@@ -424,9 +424,17 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
-            70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+            0% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+            }
         }
 
         .notification-dropdown {
@@ -449,8 +457,15 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
         }
 
         @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .notification-header {
@@ -900,6 +915,12 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                 </a>
                             </li>
                             <li class="menu-item">
+                                <a href="<?php echo SITE_URL; ?>/modules/compras/internaciones.php" class="menu-link">
+                                    <i class="fas fa-ship"></i>
+                                    <span class="menu-text">Internaciones</span>
+                                </a>
+                            </li>
+                            <li class="menu-item">
                                 <a href="<?php echo SITE_URL; ?>/modules/compras/recepciones.php" class="menu-link">
                                     <i class="fas fa-truck-loading"></i>
                                     <span class="menu-text">Recepciones</span>
@@ -907,7 +928,7 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                             </li>
                             <li class="menu-item">
                                 <a href="<?php echo SITE_URL; ?>/modules/compras/proveedores.php" class="menu-link">
-                                    <i class="fas fa-users"></i>
+                                    <i class="fas fa-handshake"></i>
                                     <span class="menu-text">Proveedores</span>
                                 </a>
                             </li>

@@ -133,16 +133,17 @@ try {
                 // Header - usando solo columnas que existen en la tabla
                 $stmt = $db->prepare("
                     INSERT INTO ordenes_compra (
-                        numero_orden, fecha_orden, id_proveedor, nombre_proveedor, nit_proveedor,
+                        numero_orden, tipo_compra, fecha_orden, id_proveedor, nombre_proveedor, nit_proveedor,
                         id_solicitud, numero_solicitud, id_comprador, moneda, tipo_cambio,
                         condicion_pago, dias_credito, fecha_entrega_estimada, lugar_entrega,
                         subtotal, descuento_general, total, observaciones,
                         estado, creado_por
-                    ) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'BORRADOR', ?)
+                    ) VALUES (?, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'BORRADOR', ?)
                 ");
 
                 $stmt->execute([
                     $data['numero_orden'],
+                    $data['tipo_compra'] ?? 'LOCAL',
                     $data['id_proveedor'],
                     $nombreProveedor,
                     $nitProveedor,
@@ -221,8 +222,10 @@ try {
                 // Actualizar header
                 $stmt = $db->prepare("
                     UPDATE ordenes_compra SET
+                        tipo_compra = ?,
                         id_proveedor = ?,
                         fecha_entrega_estimada = ?,
+                        lugar_entrega = ?,
                         condicion_pago = ?,
                         observaciones = ?,
                         total = ?,
@@ -230,8 +233,10 @@ try {
                     WHERE id_orden_compra = ?
                 ");
                 $stmt->execute([
+                    $data['tipo_compra'] ?? 'LOCAL',
                     $data['id_proveedor'],
                     !empty($data['fecha_entrega_estimada']) ? $data['fecha_entrega_estimada'] : null,
+                    $data['lugar_entrega'] ?? null,
                     $data['condicion_pago'] ?? 'CONTADO',
                     $data['observaciones'] ?? null,
                     $data['total'] ?? 0,

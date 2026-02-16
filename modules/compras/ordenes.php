@@ -29,6 +29,24 @@ include '../../includes/header.php';
     rel="stylesheet" />
 
 <style>
+    /* Forzar carga de fuente para iconos */
+    .material-symbols-outlined {
+        font-family: 'Material Symbols Outlined' !important;
+        font-weight: normal;
+        font-style: normal;
+        font-size: 24px;
+        line-height: 1;
+        letter-spacing: normal;
+        text-transform: none;
+        display: inline-block;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
     /* Estilos Premium estandarizados */
     .modal-content.xlarge {
         width: 100% !important;
@@ -206,106 +224,134 @@ include '../../includes/header.php';
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>Número (Auto)</label>
-                                <input type="text" class="form-control" id="numero_orden" readonly>
-                            </div>
+                    <!-- Datos Generales -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nº
+                                Orden</label>
+                            <input type="text" id="numero_orden"
+                                class="w-full border-slate-200 bg-slate-100 rounded-xl py-2 px-3 text-sm font-mono font-bold text-slate-600"
+                                readonly>
                         </div>
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label>Proveedor <span class="text-danger">*</span></label>
-                                <select class="form-control" id="id_proveedor" required>
-                                    <option value="">Seleccione Proveedor</option>
-                                </select>
-                            </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tipo de
+                                Compra</label>
+                            <select id="tipo_compra"
+                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all">
+                                <option value="LOCAL">🛒 Compra Local</option>
+                                <option value="IMPORTACION">🚢 Importación</option>
+                            </select>
                         </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label>Fecha Entrega Est.</label>
-                                <input type="date" class="form-control" id="fecha_entrega">
-                            </div>
+                        <div class="space-y-1.5">
+                            <label
+                                class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proveedor</label>
+                            <select id="id_proveedor"
+                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                                required>
+                                <option value="">Seleccione proveedor...</option>
+                            </select>
                         </div>
-                        <div class="col-md-2">
-                            <div class="form-group">
-                                <label>Condición Pago</label>
-                                <select class="form-control" id="condicion_pago">
-                                    <option value="CONTADO">Contado</option>
-                                    <option value="CREDITO">Crédito</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-12">
-                            <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-                                <h6 class="font-weight-bold mb-0"><i class="fas fa-boxes"></i> Detalle de Productos</h6>
-                                <button type="button" class="btn btn-sm btn-outline-secondary"
-                                    onclick="togglePrecios()">
-                                    <i class="fas fa-dollar-sign"></i> Mostrar/Ocultar Precios
-                                </button>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered" id="tablaDetalles">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th width="5%">#</th>
-                                            <th>Producto / Descripción</th>
-                                            <th width="12%">Cantidad</th>
-                                            <th width="10%">Unidad</th>
-                                            <th width="12%" class="precio-col">Precio Unit.</th>
-                                            <th width="12%" class="precio-col">Subtotal</th>
-                                            <th width="5%"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="bodyDetalles">
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td colspan="7">
-                                                <button type="button" class="btn btn-sm btn-info"
-                                                    onclick="agregarFila()">
-                                                    <i class="fas fa-plus"></i> Añadir Línea
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr class="precio-col">
-                                            <td colspan="5" class="text-right font-weight-bold">Total Orden (BOB):</td>
-                                            <td class="font-weight-bold text-primary" id="totalOrdenCell">0.00</td>
-                                            <td></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condición de
+                                Pago</label>
+                            <select id="condicion_pago"
+                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all">
+                                <option value="CONTADO">💵 Contado</option>
+                                <option value="CREDITO_15">⏳ Crédito 15 días</option>
+                                <option value="CREDITO_30">⏳ Crédito 30 días</option>
+                                <option value="CREDITO_60">⏳ Crédito 60 días</option>
+                            </select>
                         </div>
                     </div>
 
-                    <!-- Notas/Observaciones -->
-                    <div class="row mt-3">
-                        <div class="col-md-12">
-                            <div class="form-group">
-                                <label><i class="fas fa-sticky-note"></i> Notas / Observaciones Adicionales</label>
-                                <textarea class="form-control" id="observaciones_orden" rows="3"
-                                    placeholder="Instrucciones especiales de entrega, especificaciones adicionales, etc."></textarea>
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha Entrega
+                                Estimada</label>
+                            <input type="date" id="fecha_entrega"
+                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lugar de
+                                Entrega / Puerto</label>
+                            <input type="text" id="lugar_entrega"
+                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm"
+                                placeholder="Bodega Central / Arica / Iquique">
                         </div>
                     </div>
-                </form>
+                    <div class="col-md-12">
+                        <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+                            <h6 class="font-weight-bold mb-0"><i class="fas fa-boxes"></i> Detalle de
+                                Productos</h6>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="togglePrecios()">
+                                <i class="fas fa-dollar-sign"></i> Mostrar/Ocultar Precios
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered" id="tablaDetalles">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th width="5%">#</th>
+                                        <th>Producto / Descripción</th>
+                                        <th width="12%">Cantidad</th>
+                                        <th width="10%">Unidad</th>
+                                        <th width="12%" class="precio-col">Precio Unit.</th>
+                                        <th width="12%" class="precio-col">Subtotal</th>
+                                        <th width="5%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bodyDetalles">
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="7">
+                                            <button type="button" class="btn btn-sm btn-info" onclick="agregarFila()">
+                                                <i class="fas fa-plus"></i> Añadir Línea
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <tr class="precio-col">
+                                        <td colspan="5" class="text-right font-weight-bold">Total Orden
+                                            (BOB):</td>
+                                        <td class="font-weight-bold text-primary" id="totalOrdenCell">0.00
+                                        </td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
             </div>
-            <div class="modal-footer bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3">
-                <button type="button" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium transition-colors" data-dismiss="modal">
-                    <span class="material-symbols-outlined text-sm align-middle mr-1">close</span>
-                    Cancelar
-                </button>
-                <button type="button" class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition-colors shadow-sm" onclick="guardarOrden()">
-                    <span class="material-symbols-outlined text-sm align-middle mr-1">save</span>
-                    Guardar Orden
-                </button>
+
+            <!-- Notas/Observaciones -->
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <label><i class="fas fa-sticky-note"></i> Notas / Observaciones
+                            Adicionales</label>
+                        <textarea class="form-control" id="observaciones_orden" rows="3"
+                            placeholder="Instrucciones especiales de entrega, especificaciones adicionales, etc."></textarea>
+                    </div>
+                </div>
             </div>
+            </form>
+        </div>
+        <div class="modal-footer bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3">
+            <button type="button"
+                class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium transition-colors"
+                data-dismiss="modal">
+                <span class="material-symbols-outlined text-sm align-middle mr-1">close</span>
+                Cancelar
+            </button>
+            <button type="button"
+                class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition-colors shadow-sm"
+                onclick="guardarOrden()">
+                <span class="material-symbols-outlined text-sm align-middle mr-1">save</span>
+                Guardar Orden
+            </button>
         </div>
     </div>
+</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -409,33 +455,38 @@ include '../../includes/header.php';
                 }
 
                 data.ordenes.forEach(oc => {
+                    const estadoBase = (oc.estado || '').toUpperCase();
                     // Colores y emojis por estado (Tailwind classes)
                     let badgeClasses = '';
                     let estadoIcon = '';
-                    
-                    switch(oc.estado) {
-                        case 'BORRADOR': 
-                            badgeClasses = 'bg-amber-100 text-amber-700 border border-amber-200'; 
+
+                    switch (estadoBase) {
+                        case 'BORRADOR':
+                        case '':
+                            badgeClasses = 'bg-amber-100 text-amber-700 border border-amber-200';
                             estadoIcon = '📝';
+                            oc.estado = 'BORRADOR';
                             break;
-                        case 'EMITIDA': 
-                            badgeClasses = 'bg-blue-100 text-blue-700 border border-blue-200'; 
+                        case 'EMITIDA':
+                            badgeClasses = 'bg-blue-100 text-blue-700 border border-blue-200';
                             estadoIcon = '📤';
                             break;
-                        case 'ENVIADA': 
-                            badgeClasses = 'bg-cyan-100 text-cyan-700 border border-cyan-200'; 
+                        case 'ENVIADA':
+                            badgeClasses = 'bg-cyan-100 text-cyan-700 border border-cyan-200';
                             estadoIcon = '✈️';
                             break;
-                        case 'RECIBIDA': 
-                            badgeClasses = 'bg-emerald-100 text-emerald-700 border border-emerald-200'; 
+                        case 'RECIBIDA':
+                        case 'RECIBIDA_TOTAL':
+                            badgeClasses = 'bg-emerald-100 text-emerald-700 border border-emerald-200';
                             estadoIcon = '✅';
                             break;
-                        case 'CANCELADA': 
-                            badgeClasses = 'bg-red-100 text-red-700 border border-red-200'; 
+                        case 'CANCELADA':
+                            badgeClasses = 'bg-red-100 text-red-700 border border-red-200';
                             estadoIcon = '❌';
                             break;
-                        default: 
+                        default:
                             badgeClasses = 'bg-slate-100 text-slate-600 border border-slate-200';
+                            estadoIcon = '❓';
                     }
 
                     // Botones de acción con Tailwind
@@ -447,7 +498,7 @@ include '../../includes/header.php';
                             <span class="material-symbols-outlined text-lg">print</span>
                         </button>
                     `;
-                    
+
                     // Agregar botones de cambio de estado según estado actual
                     if (oc.estado === 'BORRADOR') {
                         accionesHtml += `<button class="p-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors" onclick="cambiarEstado(${oc.id_orden_compra}, 'EMITIDA')" title="Emitir Orden">
@@ -458,7 +509,7 @@ include '../../includes/header.php';
                             <span class="material-symbols-outlined text-lg">send</span>
                         </button>`;
                     } else if (oc.estado === 'ENVIADA') {
-                        accionesHtml += `<button class="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors" onclick="cambiarEstado(${oc.id_orden_compra}, 'RECIBIDA')" title="Marcar Recibida">
+                        accionesHtml += `<button class="p-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors" onclick="location.href='recepciones.php?id_oc=${oc.numero_orden}'" title="Recibir Mercancía">
                             <span class="material-symbols-outlined text-lg">inventory_2</span>
                         </button>`;
                     }
@@ -472,7 +523,10 @@ include '../../includes/header.php';
                         <td class="text-slate-500">${oc.numero_solicitud || '<span class="text-slate-300">—</span>'}</td>
                         <td class="text-right font-semibold text-slate-800">${parseFloat(oc.total).toFixed(2)}</td>
                         <td class="text-center">
-                            <span class="${badgeClasses} px-3 py-1 rounded-full text-xs font-semibold">${estadoIcon} ${oc.estado}</span>
+                            <span class="${badgeClasses} inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">
+                                <span>${estadoIcon}</span>
+                                <span>${oc.estado || 'S/E'}</span>
+                            </span>
                         </td>
                         <td class="text-center">
                             <div class="flex justify-center gap-1">${accionesHtml}</div>
@@ -495,19 +549,33 @@ include '../../includes/header.php';
         renderDetalles();
 
         // Restaurar UI para nueva orden
-        document.getElementById('tituloModal').innerHTML = '<i class="fas fa-file-invoice"></i> Nueva Orden de Compra';
-        document.querySelector('.alert-info').style.display = 'block';
-        document.getElementById('id_solicitud_origen').parentElement.style.display = 'block';
+        document.getElementById('tituloModal').innerHTML = `
+            <span class="material-symbols-outlined">description</span>
+            Nueva Orden de Compra
+        `;
+        const alertInfo = document.querySelector('.alert-info');
+        if (alertInfo) alertInfo.style.display = 'block';
 
-        // Reactivar campos
-        ['id_proveedor', 'fecha_entrega', 'condicion_pago', 'observaciones_orden'].forEach(id => {
-            document.getElementById(id).disabled = false;
+        const selectorOrigen = document.getElementById('id_solicitud_origen');
+        if (selectorOrigen && selectorOrigen.parentElement) {
+            selectorOrigen.parentElement.style.display = 'block';
+        }
+
+        ['id_proveedor', 'tipo_compra', 'fecha_entrega', 'lugar_entrega', 'condicion_pago', 'observaciones_orden'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = false;
         });
 
         // Mostrar botón guardar
         const btnGuardar = document.querySelector('.modal-footer .btn-success');
-        btnGuardar.style.display = 'inline-block';
-        btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar Orden';
+        if (btnGuardar) {
+            btnGuardar.style.display = 'inline-block';
+            btnGuardar.classList.remove('hidden');
+            btnGuardar.innerHTML = `
+                <span class="material-symbols-outlined text-sm align-middle mr-1">save</span>
+                Guardar Orden
+            `;
+        }
 
         // Cargar solicitudes aprobadas disponibles
         await cargarSolicitudesAprobadas();
@@ -580,8 +648,8 @@ include '../../includes/header.php';
                     ${subtotal.toFixed(2)}
                 </td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="eliminarFila(${index})">
-                        <i class="fas fa-trash"></i>
+                    <button type="button" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors" onclick="eliminarFila(${index})">
+                        <span class="material-symbols-outlined text-lg">delete</span>
                     </button>
                 </td>
             `;
@@ -616,21 +684,24 @@ include '../../includes/header.php';
         itemsDetalle.forEach(item => {
             totalCalculado += (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio_unitario) || 0);
         });
+        const totalGeneral = totalCalculado.toFixed(2);
 
         // Determinar si es creación o actualización
         const esActualizacion = ordenEnEdicion !== null;
 
         const data = {
-            action: esActualizacion ? 'update' : (idSolicitud ? 'create_from_request' : 'create'),
             id_orden_compra: esActualizacion ? ordenEnEdicion : null,
+            action: esActualizacion ? 'update' : (idSolicitud ? 'create_from_request' : 'create'),
             numero_orden: document.getElementById('numero_orden').value,
+            tipo_compra: document.getElementById('tipo_compra').value,
             id_proveedor: document.getElementById('id_proveedor').value,
-            fecha_entrega_estimada: document.getElementById('fecha_entrega').value,
-            condicion_pago: document.getElementById('condicion_pago').value,
-            observaciones: document.getElementById('observaciones_orden').value,
-            total: totalCalculado.toFixed(2),
             id_solicitud: idSolicitud || null,
             numero_solicitud: numeroSolicitud || null,
+            fecha_entrega_estimada: document.getElementById('fecha_entrega').value,
+            lugar_entrega: document.getElementById('lugar_entrega').value,
+            condicion_pago: document.getElementById('condicion_pago').value,
+            observaciones: document.getElementById('observaciones_orden').value,
+            total: totalGeneral,
             detalles: itemsDetalle.map(item => ({
                 ...item,
                 id_tipo_inventario: item.id_tipo_inventario || 1
@@ -686,13 +757,15 @@ include '../../includes/header.php';
 
                 // Actualizar título del modal
                 document.getElementById('tituloModal').innerHTML = esEditable
-                    ? `<i class="fas fa-edit"></i> Editar Orden: ${orden.numero_orden}`
-                    : `<i class="fas fa-eye"></i> Ver Orden: ${orden.numero_orden}`;
+                    ? `<span class="material-symbols-outlined">edit</span> Editar Orden: ${orden.numero_orden}`
+                    : `<span class="material-symbols-outlined">visibility</span> Ver Orden: ${orden.numero_orden}`;
 
                 // Poblar campos
                 document.getElementById('numero_orden').value = orden.numero_orden;
+                document.getElementById('tipo_compra').value = orden.tipo_compra || 'LOCAL';
                 document.getElementById('id_proveedor').value = orden.id_proveedor;
                 document.getElementById('fecha_entrega').value = orden.fecha_entrega_estimada ? orden.fecha_entrega_estimada.split(' ')[0] : '';
+                document.getElementById('lugar_entrega').value = orden.lugar_entrega || '';
                 document.getElementById('condicion_pago').value = orden.condicion_pago || 'CONTADO';
                 document.getElementById('observaciones_orden').value = orden.observaciones || '';
                 document.getElementById('id_solicitud_origen').value = orden.id_solicitud || '';
@@ -716,27 +789,41 @@ include '../../includes/header.php';
                 // Habilitar/deshabilitar campos según estado
                 const campos = ['id_proveedor', 'fecha_entrega', 'condicion_pago', 'observaciones_orden'];
                 campos.forEach(id => {
-                    document.getElementById(id).disabled = !esEditable;
+                    const el = document.getElementById(id);
+                    if (el) el.disabled = !esEditable;
                 });
 
                 // Ocultar/mostrar selector de solicitud y botón agregar fila
-                document.querySelector('.alert-info').style.display = esEditable ? 'block' : 'none';
-                document.getElementById('id_solicitud_origen').parentElement.style.display = esEditable ? 'block' : 'none';
+                const alertInfo = document.querySelector('.alert-info');
+                if (alertInfo) alertInfo.style.display = esEditable ? 'block' : 'none';
+
+                const selectorOrigen = document.getElementById('id_solicitud_origen');
+                if (selectorOrigen && selectorOrigen.parentElement) {
+                    selectorOrigen.parentElement.style.display = esEditable ? 'block' : 'none';
+                }
+
+                // Botón añadir línea
+                const btnAdd = document.querySelector('button[onclick="agregarFila()"]');
+                if (btnAdd) btnAdd.style.display = esEditable ? 'inline-block' : 'none';
 
                 // Botón guardar
                 const btnGuardar = document.querySelector('.modal-footer .btn-success');
-                if (esEditable) {
-                    btnGuardar.style.display = 'inline-block';
-                    btnGuardar.innerHTML = '<i class="fas fa-save"></i> Actualizar Orden';
-                } else {
-                    btnGuardar.style.display = 'none';
+                if (btnGuardar) {
+                    if (esEditable) {
+                        btnGuardar.classList.remove('hidden');
+                        btnGuardar.style.display = 'inline-block';
+                        btnGuardar.innerHTML = '<span class="material-symbols-outlined text-sm align-middle mr-1">save</span> Actualizar Orden';
+                    } else {
+                        btnGuardar.classList.add('hidden');
+                        btnGuardar.style.display = 'none';
+                    }
                 }
 
                 $('#modalOrden').modal('show');
             })
             .catch(err => {
                 console.error('Error cargando orden:', err);
-                Swal.fire('Error', 'Error de conexión', 'error');
+                Swal.fire('Error', 'No se pudo cargar el detalle de la orden: ' + err.message, 'error');
             });
     }
 

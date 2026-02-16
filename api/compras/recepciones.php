@@ -106,7 +106,7 @@ try {
 
                 $id_recepcion = $db->lastInsertId();
 
-                // Insertar Detalles y Actualizar OC
+                // Preparar sentencias para detalles
                 $stmtDet = $db->prepare("
                     INSERT INTO recepciones_compra_detalle (
                         id_recepcion, id_detalle_oc, numero_linea, id_producto,
@@ -121,15 +121,33 @@ try {
                     UPDATE ordenes_compra_detalle 
                     SET cantidad_recibida = cantidad_recibida + ?,
                         estado_recepcion = CASE 
-                            WHEN cantidad_recibida >= cantidad_ordenada THEN 'COMPLETA' 
+                            WHEN (cantidad_recibida + ?) >= cantidad_ordenada THEN 'COMPLETA' 
                             ELSE 'PARCIAL' 
                         END
                     WHERE id_detalle_oc = ?
                 ");
 
+                // Función auxiliar para generar número de movimiento
+                if (!function_exists('generarCodMov')) {
+                    function generarCodMov($db)
+                    {
+                        $fecha = date('Ymd');
+                        $stmt = $db->prepare("SELECT ultimo_numero FROM secuencias_documento WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ? FOR UPDATE");
+                        $stmt->execute([date('Y'), date('m')]);
+                        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+                        $siguiente = $row ? $row['ultimo_numero'] + 1 : 1;
+                        if ($row) {
+                            $db->prepare("UPDATE secuencias_documento SET ultimo_numero = ? WHERE tipo_documento = 'MOVIMIENTO' AND prefijo = 'MOV' AND anio = ? AND mes = ?")->execute([$siguiente, date('Y'), date('m')]);
+                        } else {
+                            $db->prepare("INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero) VALUES ('MOVIMIENTO', 'MOV', ?, ?, 1)")->execute([date('Y'), date('m')]);
+                        }
+                        return 'MOV-' . $fecha . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
+                    }
+                }
+
                 foreach ($data['detalles'] as $idx => $det) {
-                    $cantRecibida = $det['cantidad_recibida'];
-                    $cantAceptada = $det['cantidad_aceptada'] ?? $cantRecibida;
+                    $cantRecibida = (float) $det['cantidad_recibida'];
+                    $cantAceptada = (float) ($det['cantidad_aceptada'] ?? $cantRecibida);
 
                     $stmtDet->execute([
                         $id_recepcion,
@@ -149,20 +167,80 @@ try {
                     ]);
 
                     // Actualizar detalle OC
-                    $stmtUpdateOCDet->execute([$cantRecibida, $det['id_detalle_oc']]);
+                    $stmtUpdateOCDet->execute([$cantRecibida, $cantRecibida, $det['id_detalle_oc']]);
 
-                    // TODO: Integración con Inventario (Movimiento de Entrada)
-                    // require_once '../../models/Inventario.php';
-                    // Inventario::registrarIngreso(...);
+                    // --- INTEGRACIÓN CON INVENTARIO ---
+
+                    // 1. Obtener precio unitario (priorizando costo internado si existe)
+                    $stmtOCP = $db->prepare("
+                        SELECT COALESCE(precio_unitario_internacion, precio_unitario) as costo_real 
+                        FROM ordenes_compra_detalle WHERE id_detalle_oc = ?
+                    ");
+                    $stmtOCP->execute([$det['id_detalle_oc']]);
+                    $precioUnitOC = $stmtOCP->fetchColumn();
+
+                    // 2. Obtener datos actuales de inventario
+                    $stmtInv = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ? FOR UPDATE");
+                    $stmtInv->execute([$det['id_producto']]);
+                    $inv = $stmtInv->fetch(PDO::FETCH_ASSOC);
+
+                    $stockAnterior = (float) ($inv['stock_actual'] ?? 0);
+                    $cppAnterior = (float) ($inv['costo_promedio'] ?? 0);
+                    $stockNuevo = $stockAnterior + $cantRecibida;
+
+                    // Cálculo de nuevo costo promedio (CPP)
+                    $cppNuevo = ($stockNuevo > 0)
+                        ? (($stockAnterior * $cppAnterior) + ($cantRecibida * $precioUnitOC)) / $stockNuevo
+                        : $precioUnitOC;
+
+                    // 3. Actualizar Maestro de Inventario
+                    $db->prepare("UPDATE inventarios SET stock_actual = ?, costo_promedio = ?, costo_unitario = ? WHERE id_inventario = ?")
+                        ->execute([$stockNuevo, $cppNuevo, $precioUnitOC, $det['id_producto']]);
+
+                    // 4. Registrar Movimiento (Kardex)
+                    $codMov = generarCodMov($db);
+                    $stmtMov = $db->prepare("
+                        INSERT INTO movimientos_inventario (
+                            id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento, 
+                            codigo_movimiento, documento_tipo, documento_numero, documento_id,
+                            cantidad, costo_unitario, costo_total,
+                            stock_anterior, stock_posterior,
+                            costo_promedio_anterior, costo_promedio_posterior,
+                            estado, creado_por
+                        ) VALUES (?, ?, NOW(), 'ENTRADA_COMPRA', ?, 'RECEPCION_OC', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
+                    ");
+                    $stmtMov->execute([
+                        $det['id_producto'],
+                        $det['id_tipo_inventario'],
+                        $codMov,
+                        $numRecepcion,
+                        $id_recepcion,
+                        $cantRecibida,
+                        $precioUnitOC,
+                        ($cantRecibida * $precioUnitOC),
+                        $stockAnterior,
+                        $stockNuevo,
+                        $cppAnterior,
+                        $cppNuevo,
+                        $_SESSION['user_id'] ?? 1
+                    ]);
                 }
 
-                // Actualizar Estado General de OC
-                // Logica simple: Si todos los detalles están COMPLETOS -> OC RECIBIDA_TOTAL
-                // Esto podría ser un trigger o stored procedure, o lógica PHP aquí.
+                // Actualizar Estado General de OC si ya se recibió todo
+                $stmtCheckOC = $db->prepare("
+                    SELECT SUM(cantidad_ordenada) as tot_ord, SUM(cantidad_recibida) as tot_rec 
+                    FROM ordenes_compra_detalle WHERE id_orden_compra = ?
+                ");
+                $stmtCheckOC->execute([$data['id_orden_compra']]);
+                $progreso = $stmtCheckOC->fetch(PDO::FETCH_ASSOC);
+
+                $nuevoEstadoOC = ($progreso['tot_rec'] >= $progreso['tot_ord']) ? 'RECIBIDA' : 'RECIBIDA_PARCIAL';
+                $db->prepare("UPDATE ordenes_compra SET estado = ? WHERE id_orden_compra = ?")
+                    ->execute([$nuevoEstadoOC, $data['id_orden_compra']]);
 
                 $db->commit();
                 ob_clean();
-                echo json_encode(['success' => true, 'message' => 'Recepción registrada', 'id' => $id_recepcion]);
+                echo json_encode(['success' => true, 'message' => 'Recepción registrada e inventario actualizado', 'id' => $id_recepcion]);
 
             } catch (Exception $e) {
                 $db->rollBack();

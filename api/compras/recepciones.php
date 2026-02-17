@@ -88,18 +88,27 @@ try {
                 // Generar número de recepción si no viene
                 $numRecepcion = $data['numero_recepcion'] ?? 'REC-' . date('Ymd-His');
 
+                // Determinar si es TOTAL o PARCIAL
+                $totalOrdenadoOC = 0;
+                $totalRecibidoAhora = 0;
+                foreach ($data['detalles'] as $det) {
+                    $totalOrdenadoOC += (float) $det['cantidad_ordenada'];
+                    $totalRecibidoAhora += (float) $det['cantidad_recibida'];
+                }
+                $tipoRecepcionAuto = ($totalRecibidoAhora >= $totalOrdenadoOC) ? 'TOTAL' : 'PARCIAL';
+
                 $stmt->execute([
                     $numRecepcion,
                     $data['id_orden_compra'],
-                    $data['numero_orden'] ?? '', // Debería venir de frontend o lookup
+                    $data['numero_orden'] ?? '',
                     $data['id_proveedor'],
                     $data['nombre_proveedor'],
                     $data['numero_guia_remision'] ?? '',
                     $data['numero_factura'] ?? '',
                     $data['fecha_factura'] ?? null,
-                    $data['id_almacen'] ?? 1, // Default main warehouse
+                    $data['id_almacen'] ?? 1,
                     $_SESSION['user_id'] ?? 1,
-                    $data['tipo_recepcion'] ?? 'PARCIAL',
+                    $tipoRecepcionAuto,
                     $data['observaciones'] ?? '',
                     $_SESSION['user_id'] ?? 1
                 ]);

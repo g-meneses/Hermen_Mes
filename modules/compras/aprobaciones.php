@@ -65,9 +65,12 @@ include '../../includes/header.php';
     /* Estilos Modal Detail */
     .modal-content.xlarge {
         width: 100% !important;
-        max-width: 900px !important;
+        max-width: 1000px !important;
         border-radius: 1.5rem !important;
         overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        max-height: 90vh !important;
     }
 
     .modal-body-scroll {
@@ -127,8 +130,6 @@ include '../../includes/header.php';
                         <th
                             class="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
                             Prioridad</th>
-                        <th class="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">
-                            Monto Estimado</th>
                         <th
                             class="py-4 px-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">
                             Acciones</th>
@@ -295,9 +296,6 @@ include '../../includes/header.php';
                 <td class="py-4 px-6 text-center">
                     <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold ${prioClass}">${p.prioridad}</span>
                 </td>
-                <td class="py-4 px-6 text-right font-mono font-bold text-slate-700">
-                    ${new Intl.NumberFormat('es-BO', { minimumFractionDigits: 2 }).format(p.monto)} <span class="text-[10px] opacity-40">BOB</span>
-                </td>
                 <td class="py-4 px-6">
                     <div class="flex justify-center gap-2">
                         <button onclick="verDetalle('${p.tipo}', ${p.id})" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Ver Detalle">
@@ -330,9 +328,9 @@ include '../../includes/header.php';
 
         let aprobadosHoy = 0;
         const now = new Date();
-        const hoje = now.getFullYear() + '-' + 
-                    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
-                    String(now.getDate()).padStart(2, '0');
+        const hoje = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0');
 
         data.historial.forEach(h => {
             if (h.fecha_aprobacion.includes(hoje) && h.accion === 'APROBADO') aprobadosHoy++;
@@ -396,8 +394,8 @@ include '../../includes/header.php';
                             <p class="text-sm text-slate-500">${doc.area_solicitante || 'Planta Hermen'}</p>
                         </div>
                         <div class="text-right">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Monto Estimado</p>
-                            <p class="text-2xl font-bold text-primary">${new Intl.NumberFormat('es-BO', { minimumFractionDigits: 2 }).format(doc.monto_estimado)} BOB</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Prioridad</p>
+                            <span class="px-3 py-1 rounded-lg text-xs font-bold ${doc.prioridad === 'URGENTE' ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-600'}">${doc.prioridad}</span>
                         </div>
                     </div>
                     
@@ -411,7 +409,9 @@ include '../../includes/header.php';
                         <thead>
                             <tr class="bg-slate-50">
                                 <th class="py-3 px-4 font-bold text-slate-500">Producto</th>
-                                <th class="py-3 px-4 font-bold text-slate-500 text-center">Cant.</th>
+                                <th class="py-3 px-4 font-bold text-slate-500 text-center">Stock Sol.</th>
+                                <th class="py-3 px-4 font-bold text-slate-500 text-center">Stock Act.</th>
+                                <th class="py-3 px-4 font-bold text-slate-500 text-center">Cant. Pedida</th>
                                 <th class="py-3 px-4 font-bold text-slate-500 text-center">Unidad</th>
                             </tr>
                         </thead>
@@ -422,8 +422,10 @@ include '../../includes/header.php';
                     html += `
                         <tr>
                             <td class="py-3 px-4 font-medium text-slate-700">${d.descripcion_producto}</td>
-                            <td class="py-3 px-4 text-center font-bold">${parseFloat(d.cantidad_solicitada || d.cantidad).toLocaleString()}</td>
-                            <td class="py-3 px-4 text-center text-slate-500">${d.unidad_medida}</td>
+                            <td class="py-3 px-4 text-center font-mono font-bold text-slate-500">${parseFloat(d.stock_solicitud || 0).toLocaleString(undefined, { minimumFractionDigits: 1 })}</td>
+                            <td class="py-3 px-4 text-center font-mono font-bold ${parseFloat(d.stock_actual || 0) <= 0 ? 'text-rose-500' : 'text-blue-500'}">${parseFloat(d.stock_actual || 0).toLocaleString(undefined, { minimumFractionDigits: 1 })}</td>
+                            <td class="py-3 px-4 text-center font-bold text-slate-900">${parseFloat(d.cantidad_solicitada || d.cantidad).toLocaleString(undefined, { minimumFractionDigits: 0 })}</td>
+                            <td class="py-3 px-4 text-center text-slate-400 font-medium">${d.unidad_medida}</td>
                         </tr>
                     `;
                 });

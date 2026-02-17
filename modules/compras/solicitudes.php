@@ -148,15 +148,6 @@ include '../../includes/header.php';
                 <p class="text-xl font-bold text-slate-800" id="stat-urgentes">--</p>
             </div>
         </div>
-        <div class="bg-white p-4 border border-slate-200 shadow-sm flex items-center space-x-4">
-            <div class="bg-emerald-100 p-2 text-emerald-600">
-                <span class="material-symbols-outlined text-2xl">payments</span>
-            </div>
-            <div>
-                <p class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Total Est.</p>
-                <p class="text-xl font-bold text-slate-800" id="stat-total">Bs 0.00</p>
-            </div>
-        </div>
     </div>
 
     <!-- Contenedor Principal (Tabla y Filtros) -->
@@ -244,7 +235,6 @@ include '../../includes/header.php';
                         <th class="px-4 py-3">Fecha / Hora</th>
                         <th class="px-4 py-3">Solicitante</th>
                         <th class="px-4 py-3">Prioridad</th>
-                        <th class="px-4 py-3 text-right">Monto Est.</th>
                         <th class="px-4 py-3">Estado</th>
                         <th class="px-4 py-3 text-right">Acciones</th>
                     </tr>
@@ -285,11 +275,13 @@ include '../../includes/header.php';
                 <span class="material-symbols-outlined text-white">description</span>
                 Solicitud de Compra
             </h3>
-            <button class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 text-white transition-all outline-none" onclick="$('#modalSolicitud').modal('hide')">
+            <button
+                class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 text-white transition-all outline-none"
+                onclick="$('#modalSolicitud').modal('hide')">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
-        
+
         <div class="modal-body-scroll p-6 lg:p-8 bg-slate-50/50">
             <form id="formSolicitud">
                 <input type="hidden" id="id_solicitud">
@@ -305,12 +297,16 @@ include '../../includes/header.php';
                             <div class="space-y-4">
                                 <div>
                                     <label class="section-label">Número de Documento</label>
-                                    <input type="text" class="w-full bg-slate-100 border-none rounded-xl py-2.5 px-4 font-bold text-slate-600 cursor-not-allowed" id="numero_solicitud" readonly>
+                                    <input type="text"
+                                        class="w-full bg-slate-100 border-none rounded-xl py-2.5 px-4 font-bold text-slate-600 cursor-not-allowed"
+                                        id="numero_solicitud" readonly>
                                 </div>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label class="section-label">Prioridad</label>
-                                        <select class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary" id="prioridad" required>
+                                        <select
+                                            class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                            id="prioridad" required>
                                             <option value="NORMAL">Normal</option>
                                             <option value="ALTA">Alta</option>
                                             <option value="URGENTE">Urgente</option>
@@ -318,7 +314,9 @@ include '../../includes/header.php';
                                     </div>
                                     <div>
                                         <label class="section-label">Tipo Compra</label>
-                                        <select class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary" id="tipo_compra">
+                                        <select
+                                            class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                            id="tipo_compra">
                                             <option value="REPOSICION">Reposición</option>
                                             <option value="PRODUCCION">Producción</option>
                                             <option value="PROYECTO">Proyecto</option>
@@ -337,7 +335,9 @@ include '../../includes/header.php';
                             <div class="space-y-4">
                                 <div>
                                     <label class="section-label">Centro de Costo</label>
-                                    <select class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary" id="centro_costo">
+                                    <select
+                                        class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                        id="centro_costo">
                                         <option value="">Seleccione línea...</option>
                                         <option value="Línea Poliamida">Línea Poliamida</option>
                                         <option value="Línea Calcetería">Línea Calcetería</option>
@@ -346,7 +346,9 @@ include '../../includes/header.php';
                                 </div>
                                 <div>
                                     <label class="section-label">Tipo Inventario</label>
-                                    <select class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary font-semibold text-primary" id="id_tipo_inventario">
+                                    <select
+                                        class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary font-semibold text-primary"
+                                        id="id_tipo_inventario">
                                         <option value="">Seleccione tipo...</option>
                                     </select>
                                 </div>
@@ -361,16 +363,22 @@ include '../../includes/header.php';
                                 <span class="material-symbols-outlined text-sm text-primary">chat_bubble_outline</span>
                                 Justificación de Requerimiento
                             </h4>
-                            <textarea class="w-full border-slate-200 bg-slate-50 rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary min-h-[120px]" id="motivo" placeholder="Escriba el motivo detallado de esta solicitud de compra..."></textarea>
-                            
+                            <textarea
+                                class="w-full border-slate-200 bg-slate-50 rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary min-h-[120px]"
+                                id="motivo"
+                                placeholder="Escriba el motivo detallado de esta solicitud de compra..."></textarea>
+
                             <div class="mt-6 pt-6 border-t border-slate-100 filtros-box">
                                 <div class="flex items-center justify-between mb-4">
-                                    <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Búsqueda Rápida de Ítems</h5>
+                                    <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Búsqueda
+                                        Rápida de Ítems</h5>
                                     <div class="flex gap-2">
-                                        <select id="filtro_categoria" onchange="cargarSubcategoriasFiltro()" class="text-xs border-slate-200 bg-white rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary">
+                                        <select id="filtro_categoria" onchange="cargarSubcategoriasFiltro()"
+                                            class="text-xs border-slate-200 bg-white rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary">
                                             <option value="">Categorías</option>
                                         </select>
-                                        <select id="filtro_subcategoria" onchange="cargarProductosFiltrados()" class="text-xs border-slate-200 bg-white rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary">
+                                        <select id="filtro_subcategoria" onchange="cargarProductosFiltrados()"
+                                            class="text-xs border-slate-200 bg-white rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-primary">
                                             <option value="">Subcategorías</option>
                                         </select>
                                     </div>
@@ -386,8 +394,9 @@ include '../../includes/header.php';
                         <table class="w-full text-left border-collapse table-premium">
                             <thead>
                                 <tr>
-                                    <th style="width: 55%;">Producto / Descripción</th>
-                                    <th style="width: 15%;" class="text-center">Unidad</th>
+                                    <th style="width: 40%;">Producto / Descripción</th>
+                                    <th style="width: 12%;" class="text-center">Unidad</th>
+                                    <th style="width: 18%;" class="text-center">Stock Actual</th>
                                     <th style="width: 20%;" class="text-center">Cantidad</th>
                                     <th style="width: 10%;" class="text-center">Acción</th>
                                 </tr>
@@ -401,13 +410,16 @@ include '../../includes/header.php';
 
                 <!-- Resumen y Acción Principal -->
                 <div class="flex flex-col md:flex-row items-center justify-between gap-6 mt-8">
-                    <button type="button" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-slate-200" id="btnAgregarFila" onclick="agregarFila()">
+                    <button type="button"
+                        class="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-slate-200"
+                        id="btnAgregarFila" onclick="agregarFila()">
                         <span class="material-symbols-outlined">add_circle</span>
                         Añadir otra línea
                     </button>
-                    
+
                     <div class="badge-premium-total">
-                        <div class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-600">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-600">
                             <span class="material-symbols-outlined">format_list_numbered</span>
                         </div>
                         <div>
@@ -420,10 +432,14 @@ include '../../includes/header.php';
         </div>
 
         <div class="px-8 py-6 bg-white border-t border-slate-100 flex justify-end gap-3">
-            <button type="button" class="px-8 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all" onclick="$('#modalSolicitud').modal('hide')">
+            <button type="button"
+                class="px-8 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all"
+                onclick="$('#modalSolicitud').modal('hide')">
                 Cancelar
             </button>
-            <button type="button" class="px-10 py-3 rounded-xl bg-primary text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-primary/20 flex items-center gap-2" id="btnGuardarSolicitud" onclick="guardarSolicitud()">
+            <button type="button"
+                class="px-10 py-3 rounded-xl bg-primary text-white font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                id="btnGuardarSolicitud" onclick="guardarSolicitud()">
                 <span class="material-symbols-outlined text-[20px]">save</span>
                 Guardar Solicitud
             </button>
@@ -601,7 +617,7 @@ include '../../includes/header.php';
                 actualizarEstadisticas(data.solicitudes);
 
                 if (data.solicitudes.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-8 text-slate-400 text-sm">No se encontraron solicitudes que coincidan con los filtros</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400 text-sm">No se encontraron solicitudes que coincidan con los filtros</td></tr>';
                     document.getElementById('infoPaginacion').innerHTML = 'Mostrando 0 de 0 solicitudes';
                     return;
                 }
@@ -648,20 +664,14 @@ include '../../includes/header.php';
                         </td>
                         <td class="px-4 py-3 text-xs text-slate-700 font-medium">${sol.solicitante_nombre}</td>
                         <td class="px-4 py-3 text-xs">${prioBadge}</td>
-                        <td class="px-4 py-3 text-xs text-right font-mono font-bold text-slate-700">Bs ${parseFloat(sol.monto_estimado).toLocaleString('es-BO', { minimumFractionDigits: 2 })}</td>
                         <td class="px-4 py-3 text-xs">${estadoBadge}</td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end space-x-1">
                                 <button onclick="editarSolicitud(${sol.id_solicitud})" class="p-1 hover:bg-slate-100 text-slate-500 rounded transition-colors" title="Ver Detalle">
                                     <span class="material-symbols-outlined text-lg">visibility</span>
                                 </button>
-                                ${sol.estado === 'PENDIENTE' ? `
-                                <button onclick="aprobarSolicitud(${sol.id_solicitud})" class="p-1 hover:bg-emerald-50 text-emerald-600 rounded transition-colors" title="Aprobar">
-                                    <span class="material-symbols-outlined text-lg">check_circle</span>
-                                </button>
-                                ` : ''}
-                                <button class="p-1 hover:bg-slate-100 text-slate-500 rounded transition-colors">
-                                    <span class="material-symbols-outlined text-lg">more_vert</span>
+                                <button onclick="imprimirSolicitud(${sol.id_solicitud})" class="p-1 hover:bg-slate-100 text-slate-500 rounded transition-colors" title="Imprimir">
+                                    <span class="material-symbols-outlined text-lg">print</span>
                                 </button>
                             </div>
                         </td>
@@ -677,12 +687,10 @@ include '../../includes/header.php';
         const pendientes = solicitudes.filter(s => s.estado === 'PENDIENTE').length;
         const aprobadas = solicitudes.filter(s => s.estado === 'APROBADA').length;
         const urgentes = solicitudes.filter(s => s.prioridad === 'URGENTE' && s.estado === 'PENDIENTE').length;
-        const totalMonto = solicitudes.reduce((acc, s) => acc + parseFloat(s.monto_estimado), 0);
 
         document.getElementById('stat-pendientes').textContent = pendientes;
         document.getElementById('stat-aprobados').textContent = aprobadas;
         document.getElementById('stat-urgentes').textContent = urgentes;
-        document.getElementById('stat-total').textContent = `Bs ${totalMonto.toLocaleString('es-BO', { minimumFractionDigits: 2 })}`;
     }
 
     function toggleFiltros() {
@@ -728,7 +736,8 @@ include '../../includes/header.php';
             codigo_producto: '',
             descripcion_producto: '',
             cantidad_solicitada: 1,
-            unidad_medida: 'Unidad'
+            unidad_medida: 'Unidad',
+            stock_actual: 0
         });
         renderDetalles();
     }
@@ -757,7 +766,7 @@ include '../../includes/header.php';
             <td>
                 <div class="flex items-center gap-3">
                     ${esPersonalizado ?
-                        `<div class="flex-1 relative group/input">
+                    `<div class="flex-1 relative group/input">
                             <input type="text" value="${item.descripcion_producto}" placeholder="Escriba la descripción..." 
                              class="w-full bg-slate-50 border-slate-200 rounded-xl py-2 px-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                              onchange="actualizarItem(${index}, 'descripcion_producto', this.value)"
@@ -767,17 +776,22 @@ include '../../includes/header.php';
                                 <span class="material-symbols-outlined text-sm">list</span>
                              </button>
                         </div>`
-                        :
-                        `<select onchange="seleccionarProducto(${index}, this.value)" 
+                    :
+                    `<select onchange="seleccionarProducto(${index}, this.value)" 
                          class="w-full bg-slate-50 border-slate-200 rounded-xl py-2 px-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium text-slate-700"
                          ${currentIsReadOnly ? 'disabled' : ''}>
                             ${productosOptions}
                         </select>`
-                    }
+                }
                 </div>
             </td>
             <td class="text-center font-mono text-xs font-bold text-slate-400">
                 ${item.unidad_medida}
+            </td>
+            <td class="text-center">
+                <div class="${(item.stock_actual <= 0) ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600'} px-3 py-1.5 rounded-xl inline-block font-mono font-bold text-xs ring-1 ring-inset ${(item.stock_actual <= 0) ? 'ring-rose-200' : 'ring-blue-100'}">
+                    ${parseFloat(item.stock_actual || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
             </td>
             <td>
                 <div class="flex justify-center">
@@ -789,15 +803,15 @@ include '../../includes/header.php';
             </td>
             <td>
                 <div class="flex justify-center">
-                    ${currentIsReadOnly ? 
-                        `<span class="w-10 h-10 flex items-center justify-center text-slate-300">
+                    ${currentIsReadOnly ?
+                    `<span class="w-10 h-10 flex items-center justify-center text-slate-300">
                             <span class="material-symbols-outlined">lock</span>
-                        </span>` : 
-                        `<button type="button" class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center shadow-sm" 
+                        </span>` :
+                    `<button type="button" class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center shadow-sm" 
                          onclick="eliminarFila(${index})" title="Eliminar línea">
                             <span class="material-symbols-outlined text-lg">delete</span>
                         </button>`
-                    }
+                }
                 </div>
             </td>
         `;
@@ -814,6 +828,7 @@ include '../../includes/header.php';
             itemsDetalle[index].id_producto = 'CUSTOM';
             itemsDetalle[index].descripcion_producto = '';
             itemsDetalle[index].unidad_medida = 'Unidad';
+            itemsDetalle[index].stock_actual = 0;
         } else if (productoId) {
             // Buscar el producto seleccionado
             const producto = productosFiltrados.find(p => p.id_inventario == productoId);
@@ -822,12 +837,14 @@ include '../../includes/header.php';
                 itemsDetalle[index].codigo_producto = producto.codigo;
                 itemsDetalle[index].descripcion_producto = producto.nombre;
                 itemsDetalle[index].unidad_medida = producto.unidad || 'Unidad';
+                itemsDetalle[index].stock_actual = producto.stock_actual || 0;
             }
         } else {
             // Limpiar selección
             itemsDetalle[index].id_producto = null;
             itemsDetalle[index].descripcion_producto = '';
             itemsDetalle[index].unidad_medida = 'Unidad';
+            itemsDetalle[index].stock_actual = 0;
         }
         renderDetalles();
     }
@@ -894,7 +911,8 @@ include '../../includes/header.php';
                                 codigo_producto: d.codigo_producto,
                                 descripcion_producto: d.descripcion_producto,
                                 cantidad_solicitada: parseFloat(d.cantidad_solicitada),
-                                unidad_medida: d.unidad_medida
+                                unidad_medida: d.unidad_medida,
+                                stock_actual: d.stock_actual || 0
                             }));
 
                             renderDetalles();
@@ -979,6 +997,7 @@ include '../../includes/header.php';
             detalles: itemsDetalle.filter(i => i.descripcion_producto.trim() !== '').map(item => ({
                 ...item,
                 id_tipo_inventario: document.getElementById('id_tipo_inventario').value,
+                stock_solicitud: item.stock_actual,
                 precio_estimado: 0,
                 subtotal_estimado: 0
             }))
@@ -1011,38 +1030,8 @@ include '../../includes/header.php';
             });
     }
 
-    function aprobarSolicitud(id) {
-        Swal.fire({
-            title: '¿Aprobar Solicitud?',
-            text: "Esta acción habilitará la creación de órden de compra.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28a745',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, aprobar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch('../../api/compras/solicitudes.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'update_status',
-                        id_solicitud: id,
-                        estado: 'APROBADA',
-                        motivo: 'Aprobación directa'
-                    })
-                })
-                    .then(res => res.json())
-                    .then(res => {
-                        if (res.success) {
-                            Swal.fire('Aprobada', 'La solicitud ha sido aprobada', 'success');
-                            cargarSolicitudes();
-                        } else {
-                            Swal.fire('Error', res.message, 'error');
-                        }
-                    });
-            }
-        });
+    function imprimirSolicitud(id) {
+        window.open(`solicitud_pdf.php?id=${id}`, '_blank');
     }
 </script>
 

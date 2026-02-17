@@ -47,31 +47,33 @@ include '../../includes/header.php';
 
 <div class="container-fluid font-display py-6 px-8">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div>
-            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Costo de Internación</h1>
-            <p class="text-sm text-slate-500 mt-1">Liquidación de gastos para órdenes de importación (Landed Cost)</p>
+            <h1 class="text-4xl font-black text-slate-900 tracking-tight">Costo de Internación</h1>
+            <p class="text-sm text-slate-500 mt-1 uppercase tracking-widest font-bold opacity-60">Liquidación de
+                importaciones (Landed Cost)</p>
         </div>
-        <div class="flex space-x-3">
-            <div class="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2 flex items-center gap-3">
-                <span class="material-symbols-outlined text-blue-600">info</span>
-                <span class="text-xs text-blue-700 font-medium">Solo se muestran órdenes de tipo
-                    <b>IMPORTACIÓN</b></span>
+
+        <div class="flex items-center gap-4 bg-white p-2 rounded-[2rem] shadow-xl border border-slate-100">
+            <div class="pl-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-xl">inventory</span>
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Orden de
+                    Importación</span>
+            </div>
+            <select id="selectorOrdenes" onchange="if(this.value) cargarOrden(this.value)"
+                class="min-w-[300px] border-none bg-slate-50 rounded-2xl py-3 px-4 text-sm font-bold focus:ring-0 cursor-pointer hover:bg-slate-100 transition-all">
+                <option value="">-- Seleccione una importación --</option>
+            </select>
+            <div class="pr-2">
+                <span id="recuentoOrdenes"
+                    class="bg-primary text-white text-[10px] px-3 py-1.5 rounded-full font-black shadow-lg shadow-primary/30">0</span>
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <!-- Sidebar: Listado de Órdenes -->
-        <div class="lg:col-span-4 space-y-4">
-            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-widest px-2">Órdenes Pendientes</h2>
-            <div id="listaOrdenes" class="space-y-3 overflow-y-auto pr-2" style="max-height: 70vh;">
-                <!-- Cargado via JS -->
-            </div>
-        </div>
-
-        <!-- Main Workspace -->
-        <div class="lg:col-span-8">
+    <div class="w-full">
+        <!-- Main Workspace Full Width -->
+        <div class="w-full">
             <div id="vacioState"
                 class="glass-card rounded-3xl p-12 text-center border-dashed border-2 flex flex-col items-center justify-center space-y-4">
                 <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
@@ -82,97 +84,172 @@ include '../../includes/header.php';
                     registro de gastos y prorrateo.</p>
             </div>
 
-            <div id="detalleInternacion" class="hidden space-y-6">
+            <div id="detalleInternacion" class="hidden space-y-6 animate__animated animate__fadeIn">
                 <!-- Header de Orden Seleccionada -->
                 <div
-                    class="glass-card rounded-3xl p-6 shadow-sm flex items-center justify-between border-l-4 border-l-primary">
-                    <div>
-                        <span id="labelOC"
-                            class="text-xs font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded mb-2 inline-block">OC-CODE</span>
-                        <h2 id="labelProveedor" class="text-xl font-bold text-slate-800">Nombre del Proveedor</h2>
-                        <div class="flex gap-4 mt-1 text-xs text-slate-500">
-                            <span class="flex items-center gap-1"><span
-                                    class="material-symbols-outlined text-xs">calendar_month</span> <span
-                                    id="labelFecha">---</span></span>
-                            <span class="flex items-center gap-1"><span
-                                    class="material-symbols-outlined text-xs">payments</span> FOB: <span
-                                    id="labelTotalFOB" class="font-bold">0.00</span></span>
+                    class="glass-card rounded-[2.5rem] p-8 shadow-xl border-t-4 border-t-primary relative overflow-hidden">
+                    <div class="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl"></div>
+
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-3 mb-3">
+                                <span id="labelOC"
+                                    class="text-xs font-mono font-black text-white bg-primary px-3 py-1 rounded-full shadow-lg shadow-primary/20 tracking-tighter">OC-CODE</span>
+                                <span
+                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">Importación
+                                    Activa</span>
+                            </div>
+                            <h2 id="labelProveedor" class="text-3xl font-black text-slate-900 tracking-tight mb-2">
+                                Nombre del Proveedor</h2>
+                            <div class="flex flex-wrap gap-6 text-sm">
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <span class="material-symbols-outlined text-sm text-primary">calendar_today</span>
+                                    <span id="labelFecha" class="font-medium">---</span>
+                                </div>
+                                <div class="flex items-center gap-2 text-slate-500">
+                                    <span
+                                        class="material-symbols-outlined text-sm text-primary">currency_exchange</span>
+                                    <span>Valor FOB: <b id="labelTotalFOB" class="text-slate-900">0.00</b> BOB</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <button onclick="finalizarLiquidacion()"
+                                class="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-2xl font-black text-sm flex items-center gap-3 transition-all active:scale-95 shadow-2xl shadow-slate-900/20 group">
+                                <span
+                                    class="material-symbols-outlined group-hover:rotate-12 transition-transform">task_alt</span>
+                                FINALIZAR LIQUIDACIÓN
+                            </button>
                         </div>
                     </div>
-                    <button onclick="finalizarLiquidacion()"
-                        class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-500/20">
-                        <span class="material-symbols-outlined">verified</span> Finalizar Liquidación
-                    </button>
+                </div>
+
+                <!-- Stats Quick View -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-card p-4 rounded-3xl flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-amber-600">payments</span>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Gastos Adic.</p>
+                            <p class="text-lg font-black text-slate-800" id="statGastos">0.00</p>
+                        </div>
+                    </div>
+                    <div class="glass-card p-4 rounded-3xl flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-blue-600">calculate</span>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Factor Prorrateo</p>
+                            <p class="text-lg font-black text-slate-800" id="statFactor">1.0000</p>
+                        </div>
+                    </div>
+                    <div class="glass-card p-4 rounded-3xl flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-emerald-600">show_chart</span>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Impacto Costo</p>
+                            <p class="text-lg font-black text-slate-800" id="statImpacto">0.0%</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Gastos y Prorrateo -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-7 gap-6">
                     <!-- Registro de Gastos -->
-                    <div class="glass-card rounded-3xl p-6 shadow-sm overflow-hidden">
+                    <div class="md:col-span-4 glass-card rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col">
                         <div class="flex items-center justify-between mb-6">
-                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-amber-500">receipt_long</span> Gastos de
-                                Internación
-                            </h3>
+                            <div>
+                                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                    <span
+                                        class="material-symbols-outlined text-amber-500 font-variation-fill">receipt_long</span>
+                                    Registro de Gastos
+                                </h3>
+                                <p class="text-[10px] text-slate-400 font-medium">Vincule facturas de flete, seguros y
+                                    aduana</p>
+                            </div>
                             <button onclick="abrirModalGasto()"
-                                class="text-primary hover:bg-primary/5 text-xs font-bold px-3 py-1.5 rounded-lg border border-primary/20 transition-all">+
-                                Añadir Gasto</button>
+                                class="bg-primary hover:bg-primary/90 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-all shadow-lg shadow-primary/20">
+                                + Añadir Gasto
+                            </button>
                         </div>
-                        <div class="overflow-x-auto">
+                        <div class="overflow-x-auto flex-1">
                             <table class="w-full text-sm" id="tablaGastos">
                                 <thead class="text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-                                    <tr class="border-b border-slate-50">
-                                        <th class="py-2 text-left">Tipo</th>
-                                        <th class="py-2 text-left">Fact/Monto</th>
-                                        <th class="py-2 text-center w-8"></th>
+                                    <tr class="border-b border-slate-100">
+                                        <th class="py-3 text-left">Concepto</th>
+                                        <th class="py-3 text-right">Monto (BOB)</th>
+                                        <th class="py-3 text-center w-8"></th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-50">
                                     <!-- Cargado via JS -->
                                 </tbody>
-                                <tfoot>
-                                    <tr class="bg-slate-50/50">
-                                        <td class="py-3 px-2 font-bold text-slate-600">TOTAL GASTOS</td>
-                                        <td id="totalGastosMonto" class="py-3 px-2 text-right font-bold text-slate-800">
-                                            0.00</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
                             </table>
+                        </div>
+                        <div class="mt-4 p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-500 tracking-wider">TOTAL ACUMULADO</span>
+                            <span id="totalGastosMonto" class="text-xl font-black text-slate-900 font-mono">0.00</span>
                         </div>
                     </div>
 
                     <!-- Resumen del Factor -->
-                    <div class="bg-slate-900 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden">
-                        <div class="absolute top-0 right-0 p-4 opacity-10">
-                            <span class="material-symbols-outlined text-9xl">calculate</span>
+                    <div
+                        class="md:col-span-3 bg-slate-900 rounded-[2.5rem] p-8 shadow-2xl text-white relative overflow-hidden flex flex-col justify-between">
+                        <div
+                            class="absolute -right-10 -bottom-10 w-40 h-40 bg-primary/20 rounded-full blur-3xl opacity-50">
                         </div>
-                        <h3 class="font-bold text-slate-400 text-xs uppercase tracking-widest mb-6">Factor de
-                            Internación</h3>
-                        <div class="space-y-4 relative z-10">
-                            <div class="flex justify-between items-end">
-                                <span class="text-sm opacity-60">Suma FOB:</span>
-                                <span id="factFob" class="text-lg font-mono">0.00</span>
+
+                        <div>
+                            <div class="flex items-center gap-2 mb-8 opacity-60">
+                                <span class="material-symbols-outlined text-sm">analytics</span>
+                                <h3 class="font-bold text-white text-[10px] uppercase tracking-[0.2em]">Cálculo Final
+                                    (Landed Cost)</h3>
                             </div>
-                            <div class="flex justify-between items-end">
-                                <span class="text-sm opacity-60">Suma Gastos:</span>
-                                <span id="factGastos" class="text-lg font-mono text-amber-400">+ 0.00</span>
+
+                            <div class="space-y-6 relative z-10">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs opacity-60 uppercase font-bold tracking-widest">Valor
+                                        FOB</span>
+                                    <span id="factFob" class="text-lg font-mono font-bold text-white/90">0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs opacity-60 uppercase font-bold tracking-widest">Sumatoria
+                                        Gastos</span>
+                                    <span id="factGastos" class="text-lg font-mono font-bold text-amber-400">+
+                                        0.00</span>
+                                </div>
+                                <div class="h-px bg-white/10 my-4"></div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-black text-primary uppercase tracking-widest">Total
+                                        Liquidación</span>
+                                    <span id="factTotal"
+                                        class="text-3xl font-black font-mono tracking-tighter shadow-sm">0.00</span>
+                                </div>
                             </div>
-                            <div class="flex justify-between items-end border-t border-white/10 pt-4">
-                                <span class="text-sm font-bold">TOTAL INTERNACIÓN:</span>
-                                <span id="factTotal" class="text-2xl font-bold font-mono">0.00</span>
-                            </div>
+                        </div>
+
+                        <div class="mt-12 group">
                             <div
-                                class="mt-8 p-4 bg-white/5 rounded-2xl border border-white/10 flex items-center justify-between">
-                                <div>
-                                    <span class="block text-[10px] uppercase font-bold text-primary">Factor
-                                        Prorrateo</span>
-                                    <span id="factorProrrateo" class="text-3xl font-black text-white">0.0000</span>
-                                </div>
-                                <div class="text-[10px] text-white/40 italic text-right max-w-[100px]">
-                                    (Total / FOB)
+                                class="relative p-6 bg-white/5 rounded-3xl border border-white/10 overflow-hidden hover:bg-white/10 transition-all cursor-default">
+                                <div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span
+                                            class="block text-[9px] uppercase font-black text-primary tracking-[0.3em] mb-1">Factor
+                                            de Prorrateo</span>
+                                        <span id="factorProrrateo"
+                                            class="text-5xl font-black text-white tracking-tighter">1.0000</span>
+                                    </div>
+                                    <div class="w-12 h-12 rounded-2xl bg-primary/20 flex items-center justify-center">
+                                        <span class="material-symbols-outlined text-primary text-3xl">hub</span>
+                                    </div>
                                 </div>
                             </div>
+                            <p class="text-[9px] text-white/30 italic mt-3 text-center tracking-widest uppercase">
+                                Aplicado a todos los ítems de la orden</p>
                         </div>
                     </div>
                 </div>
@@ -274,29 +351,23 @@ include '../../includes/header.php';
         fetch('../../api/compras/internaciones.php?action=list_pending')
             .then(res => res.json())
             .then(data => {
-                const container = document.getElementById('listaOrdenes');
-                container.innerHTML = '';
+                const select = document.getElementById('selectorOrdenes');
+                const badge = document.getElementById('recuentoOrdenes');
+                
+                select.innerHTML = '<option value="">-- Seleccione una importación --</option>';
+                
                 if (!data.ordenes || data.ordenes.length === 0) {
-                    container.innerHTML = '<div class="p-8 text-center bg-slate-50 rounded-3xl border border-dashed text-slate-400 text-sm">No hay importaciones pendientes</div>';
+                    badge.innerText = '0';
                     return;
                 }
+                
+                badge.innerText = data.ordenes.length;
                 data.ordenes.forEach(o => {
-                    const card = document.createElement('div');
-                    const isSelected = ordenActual && ordenActual.id_orden_compra == o.id_orden_compra;
-                    card.className = `glass-card p-4 rounded-2xl cursor-pointer hover:border-primary/50 transition-all border-l-4 ${isSelected ? 'border-l-primary ring-2 ring-primary/10 shadow-md' : 'border-l-transparent'}`;
-                    card.onclick = () => cargarOrden(o.id_orden_compra);
-                    card.innerHTML = `
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-[10px] font-mono font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">${o.numero_orden}</span>
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">${(o.fecha_orden || '').split(' ')[0]}</span>
-                        </div>
-                        <h4 class="font-bold text-slate-800 text-sm leading-tight">${o.nombre_proveedor || 'Sin Nombre'}</h4>
-                        <div class="flex justify-between items-center mt-3 pt-3 border-t border-slate-50">
-                            <span class="text-[10px] text-slate-400">Total FOB</span>
-                            <span class="text-xs font-bold text-slate-700">${parseFloat(o.total || 0).toLocaleString()} BOB</span>
-                        </div>
-                    `;
-                    container.appendChild(card);
+                    const opt = document.createElement('option');
+                    opt.value = o.id_orden_compra;
+                    opt.textContent = `${o.numero_orden} - ${o.nombre_proveedor} (${(o.fecha_orden || '').split(' ')[0]})`;
+                    if (ordenActual && ordenActual.id_orden_compra == o.id_orden_compra) opt.selected = true;
+                    select.appendChild(opt);
                 });
             })
             .catch(err => console.error('Error listando órdenes:', err));
@@ -368,6 +439,12 @@ include '../../includes/header.php';
         document.getElementById('factFob').innerText = totalFob.toLocaleString(undefined, { minimumFractionDigits: 2 });
         document.getElementById('factTotal').innerText = totalInternacion.toLocaleString(undefined, { minimumFractionDigits: 2 });
         document.getElementById('factorProrrateo').innerText = factor.toFixed(4);
+
+        // Actualizar Stats Top
+        document.getElementById('statGastos').innerText = totalGastos.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('statFactor').innerText = factor.toFixed(4);
+        const impacto = (factor - 1) * 100;
+        document.getElementById('statImpacto').innerText = impacto.toFixed(1) + "%";
 
         const tbody = document.querySelector('#tablaItemsRecalculo tbody');
         tbody.innerHTML = '';

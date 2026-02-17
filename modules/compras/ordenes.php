@@ -221,137 +221,172 @@ include '../../includes/header.php';
                                 </select>
                                 <input type="hidden" id="numero_solicitud_ref">
                             </div>
-                        </div>
-                    </div>
+                            <!-- Datos Generales -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nº
+                                        Orden</label>
+                                    <input type="text" id="numero_orden"
+                                        class="w-full border-slate-200 bg-slate-100 rounded-xl py-2 px-3 text-sm font-mono font-bold text-slate-600"
+                                        readonly>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tipo
+                                        de
+                                        Compra</label>
+                                    <select id="tipo_compra"
+                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                                        onchange="filtrarProveedores()">
+                                        <option value="LOCAL">🛒 Compra Local</option>
+                                        <option value="IMPORTACION">🚢 Importación</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label
+                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proveedor</label>
+                                    <select id="id_proveedor"
+                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                                        required>
+                                        <option value="">Seleccione proveedor...</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label
+                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condición
+                                        de
+                                        Pago</label>
+                                    <select id="condicion_pago"
+                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all">
+                                        <option value="CONTADO">💵 Contado</option>
+                                        <option value="CREDITO_15">⏳ Crédito 15 días</option>
+                                        <option value="CREDITO_30">⏳ Crédito 30 días</option>
+                                        <option value="CREDITO_60">⏳ Crédito 60 días</option>
+                                        <option value="A_CONVENIR">🤝 A convenir con el proveedor</option>
+                                    </select>
+                                </div>
+                            </div>
 
-                    <!-- Datos Generales -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nº
-                                Orden</label>
-                            <input type="text" id="numero_orden"
-                                class="w-full border-slate-200 bg-slate-100 rounded-xl py-2 px-3 text-sm font-mono font-bold text-slate-600"
-                                readonly>
-                        </div>
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tipo de
-                                Compra</label>
-                            <select id="tipo_compra"
-                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all">
-                                <option value="LOCAL">🛒 Compra Local</option>
-                                <option value="IMPORTACION">🚢 Importación</option>
-                            </select>
-                        </div>
-                        <div class="space-y-1.5">
-                            <label
-                                class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proveedor</label>
-                            <select id="id_proveedor"
-                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                                required>
-                                <option value="">Seleccione proveedor...</option>
-                            </select>
-                        </div>
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Condición de
-                                Pago</label>
-                            <select id="condicion_pago"
-                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all">
-                                <option value="CONTADO">💵 Contado</option>
-                                <option value="CREDITO_15">⏳ Crédito 15 días</option>
-                                <option value="CREDITO_30">⏳ Crédito 30 días</option>
-                                <option value="CREDITO_60">⏳ Crédito 60 días</option>
-                            </select>
-                        </div>
-                    </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha
+                                        Entrega
+                                        Estimada</label>
+                                    <input type="date" id="fecha_entrega"
+                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lugar
+                                        de
+                                        Entrega / Puerto</label>
+                                    <input type="text" id="lugar_entrega"
+                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm"
+                                        placeholder="Bodega Central / Arica / Iquique">
+                                </div>
+                            </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha Entrega
-                                Estimada</label>
-                            <input type="date" id="fecha_entrega"
-                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm">
-                        </div>
-                        <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lugar de
-                                Entrega / Puerto</label>
-                            <input type="text" id="lugar_entrega"
-                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm"
-                                placeholder="Bodega Central / Arica / Iquique">
-                        </div>
-                    </div>
-                    <div class="col-md-12">
-                        <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-                            <h6 class="font-weight-bold mb-0"><i class="fas fa-boxes"></i> Detalle de
-                                Productos</h6>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="togglePrecios()">
-                                <i class="fas fa-dollar-sign"></i> Mostrar/Ocultar Precios
-                            </button>
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered" id="tablaDetalles">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th width="5%">#</th>
-                                        <th>Producto / Descripción</th>
-                                        <th width="12%">Cantidad</th>
-                                        <th width="10%">Unidad</th>
-                                        <th width="12%" class="precio-col">Precio Unit.</th>
-                                        <th width="12%" class="precio-col">Subtotal</th>
-                                        <th width="5%"></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="bodyDetalles">
-                                </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <td colspan="7">
-                                            <button type="button" class="btn btn-sm btn-info" onclick="agregarFila()">
-                                                <i class="fas fa-plus"></i> Añadir Línea
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr class="precio-col">
-                                        <td colspan="5" class="text-right font-weight-bold">Total Orden
-                                            (BOB):</td>
-                                        <td class="font-weight-bold text-primary" id="totalOrdenCell">0.00
-                                        </td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
+                            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+                                <div
+                                    class="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                                    <h4
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm">inventory_2</span>
+                                        Detalle de Productos
+                                    </h4>
+                                    <button type="button"
+                                        class="text-[10px] font-bold text-primary hover:text-blue-700 uppercase tracking-wider"
+                                        onclick="togglePrecios()">
+                                        <span class="material-symbols-outlined text-xs align-middle">visibility</span>
+                                        Alternar Precios
+                                    </button>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse table-premium" id="tablaDetalles">
+                                        <thead>
+                                            <tr>
+                                                <th width="5%" class="text-center">#</th>
+                                                <th width="45%">Producto / Descripción</th>
+                                                <th width="15%" class="text-center">Cantidad</th>
+                                                <th width="10%" class="text-center">Unidad</th>
+                                                <th width="12%" class="text-right precio-col">Precio Unit.</th>
+                                                <th width="13%" class="text-right precio-col">Subtotal</th>
+                                                <th width="5%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="bodyDetalles">
+                                            <!-- Dinámico -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="p-4 border-t border-slate-50 bg-slate-50/30">
+                                    <button type="button"
+                                        class="flex items-center gap-2 text-xs font-bold text-primary hover:bg-white px-4 py-2 rounded-xl transition-all"
+                                        onclick="agregarFila()">
+                                        <span class="material-symbols-outlined text-sm">add_circle</span>
+                                        AÑADIR NUEVA LÍNEA
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mt-8">
+                                <div class="flex flex-col md:flex-row gap-6 items-start">
+                                    <!-- Notas a la izquierda -->
+                                    <div class="flex-1 w-full space-y-2">
+                                        <label
+                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-sm">notes</span>
+                                            Notas y Especificaciones
+                                        </label>
+                                        <textarea id="observaciones_orden" rows="4"
+                                            class="w-full border-slate-200 rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none bg-slate-50/50"
+                                            placeholder="Instrucciones especiales de entrega, especificaciones adicionales, etc."></textarea>
+                                    </div>
+
+                                    <!-- Totales a la derecha -->
+                                    <div
+                                        class="w-full md:w-80 bg-slate-900 rounded-3xl p-6 text-white shadow-xl shadow-slate-200">
+                                        <div class="space-y-4">
+                                            <div class="flex justify-between items-center opacity-60">
+                                                <span class="text-xs font-bold uppercase tracking-wider">Subtotal</span>
+                                                <span class="font-mono" id="subtotal_display">0.00</span>
+                                            </div>
+                                            <div class="flex justify-between items-center opacity-60">
+                                                <span
+                                                    class="text-xs font-bold uppercase tracking-wider">Descuentos</span>
+                                                <span class="font-mono">0.00</span>
+                                            </div>
+                                            <div class="h-px bg-white/10 my-2"></div>
+                                            <div class="flex justify-between items-end">
+                                                <div>
+                                                    <span
+                                                        class="text-[10px] font-bold uppercase tracking-widest text-primary-400 block mb-1">Total
+                                                        Orden</span>
+                                                    <span class="text-3xl font-bold tracking-tighter"
+                                                        id="totalOrdenCell">0.00</span>
+                                                </div>
+                                                <span class="text-sm font-bold opacity-40 mb-1 ml-2">BOB</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                </form>
             </div>
-
-            <!-- Notas/Observaciones -->
-            <div class="row mt-3">
-                <div class="col-md-12">
-                    <div class="form-group">
-                        <label><i class="fas fa-sticky-note"></i> Notas / Observaciones
-                            Adicionales</label>
-                        <textarea class="form-control" id="observaciones_orden" rows="3"
-                            placeholder="Instrucciones especiales de entrega, especificaciones adicionales, etc."></textarea>
-                    </div>
-                </div>
+            <div class="modal-footer bg-white border-t border-slate-100 p-6 flex justify-end gap-3 rounded-b-[2rem]">
+                <button type="button"
+                    class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all active:scale-95 flex items-center gap-2"
+                    data-dismiss="modal">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                    Cancelar
+                </button>
+                <button type="button" id="btnGuardarOrden"
+                    class="px-8 py-2.5 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold transition-all active:scale-95 shadow-lg shadow-primary/20 flex items-center gap-2"
+                    onclick="guardarOrden()">
+                    <span class="material-symbols-outlined text-[20px]">task_alt</span>
+                    Confirmar Orden
+                </button>
             </div>
-            </form>
-        </div>
-        <div class="modal-footer bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3">
-            <button type="button"
-                class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium transition-colors"
-                data-dismiss="modal">
-                <span class="material-symbols-outlined text-sm align-middle mr-1">close</span>
-                Cancelar
-            </button>
-            <button type="button"
-                class="px-5 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition-colors shadow-sm"
-                onclick="guardarOrden()">
-                <span class="material-symbols-outlined text-sm align-middle mr-1">save</span>
-                Guardar Orden
-            </button>
         </div>
     </div>
-</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -423,17 +458,42 @@ include '../../includes/header.php';
         });
     }
 
+    let listaProveedores = [];
+    let totalGeneral = 0;
+
     function cargarProveedores() {
-        fetch('../../api/proveedores.php?action=list&activo=1')
+        return fetch('../../api/proveedores.php?action=list&activo=1')
             .then(res => res.json())
             .then(data => {
-                const select = document.getElementById('id_proveedor');
+                listaProveedores = data.proveedores || [];
+                // El filtro se encarga de poblar el select del modal
+                filtrarProveedores();
+
+                // Poblar filtro de la tabla (todos siempre)
                 const filtro = document.getElementById('filtroProveedor');
-                data.proveedores.forEach(p => {
-                    select.innerHTML += `<option value="${p.id_proveedor}">${p.razon_social}</option>`;
+                filtro.innerHTML = '<option value="">Todos los proveedores</option>';
+                listaProveedores.forEach(p => {
                     filtro.innerHTML += `<option value="${p.id_proveedor}">${p.razon_social}</option>`;
                 });
             });
+    }
+
+    function filtrarProveedores() {
+        const tipo = document.getElementById('tipo_compra').value;
+        const select = document.getElementById('id_proveedor');
+        const currentVal = select.value;
+
+        select.innerHTML = '<option value="">Seleccione proveedor...</option>';
+
+        const filtrados = listaProveedores.filter(p => {
+            if (tipo === 'LOCAL') return p.tipo === 'LOCAL';
+            if (tipo === 'IMPORTACION') return p.tipo === 'IMPORTACION';
+            return true;
+        });
+
+        filtrados.forEach(p => {
+            select.innerHTML += `<option value="${p.id_proveedor}" ${p.id_proveedor == currentVal ? 'selected' : ''}>${p.razon_social}</option>`;
+        });
     }
 
     function cargarOrdenes() {
@@ -567,13 +627,13 @@ include '../../includes/header.php';
         });
 
         // Mostrar botón guardar
-        const btnGuardar = document.querySelector('.modal-footer .btn-success');
+        const btnGuardar = document.getElementById('btnGuardarOrden');
         if (btnGuardar) {
-            btnGuardar.style.display = 'inline-block';
             btnGuardar.classList.remove('hidden');
+            btnGuardar.style.display = 'flex'; // Usar flex por el gap de Tailwind
             btnGuardar.innerHTML = `
-                <span class="material-symbols-outlined text-sm align-middle mr-1">save</span>
-                Guardar Orden
+                <span class="material-symbols-outlined text-[20px]">task_alt</span>
+                Confirmar Orden
             `;
         }
 
@@ -622,25 +682,29 @@ include '../../includes/header.php';
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="text-center">${index + 1}</td>
+                <td class="text-center font-mono text-xs text-slate-400">${index + 1}</td>
                 <td>
-                    <input type="text" class="form-control form-control-sm" 
+                    <input type="text" 
+                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
                         value="${item.descripcion_producto || ''}" 
                         onchange="actualizarItem(${index}, 'descripcion_producto', this.value)"
                         placeholder="Descripción del producto">
                 </td>
                 <td>
-                    <input type="number" class="form-control form-control-sm text-center" 
+                    <input type="number" 
+                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-center font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
                         value="${item.cantidad}" min="0.01" step="0.01"
                         onchange="actualizarItem(${index}, 'cantidad', parseFloat(this.value))">
                 </td>
                 <td>
-                    <input type="text" class="form-control form-control-sm text-center" 
+                    <input type="text" 
+                        class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm text-center text-slate-500 font-medium"
                         value="${item.unidad_medida}" 
                         onchange="actualizarItem(${index}, 'unidad_medida', this.value)">
                 </td>
                 <td class="precio-col${preciosVisibles ? '' : ' hidden'}">
-                    <input type="number" class="form-control form-control-sm text-right" 
+                    <input type="number" 
+                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-right font-mono font-bold text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
                         value="${item.precio_unitario || 0}" min="0" step="0.01"
                         onchange="actualizarItem(${index}, 'precio_unitario', parseFloat(this.value))">
                 </td>
@@ -657,9 +721,10 @@ include '../../includes/header.php';
             total += subtotal;
         });
 
-        // Actualizar total en footer
-        const totalCell = document.getElementById('totalOrdenCell');
-        if (totalCell) totalCell.textContent = total.toFixed(2);
+        totalGeneral = total;
+        document.getElementById('totalOrdenCell').textContent = total.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        const subtotalEl = document.getElementById('subtotal_display');
+        if (subtotalEl) subtotalEl.textContent = total.toLocaleString(undefined, { minimumFractionDigits: 2 });
     }
 
     function actualizarItem(index, field, value) {
@@ -763,6 +828,7 @@ include '../../includes/header.php';
                 // Poblar campos
                 document.getElementById('numero_orden').value = orden.numero_orden;
                 document.getElementById('tipo_compra').value = orden.tipo_compra || 'LOCAL';
+                filtrarProveedores(); // Refrescar lista según tipo
                 document.getElementById('id_proveedor').value = orden.id_proveedor;
                 document.getElementById('fecha_entrega').value = orden.fecha_entrega_estimada ? orden.fecha_entrega_estimada.split(' ')[0] : '';
                 document.getElementById('lugar_entrega').value = orden.lugar_entrega || '';
@@ -807,12 +873,12 @@ include '../../includes/header.php';
                 if (btnAdd) btnAdd.style.display = esEditable ? 'inline-block' : 'none';
 
                 // Botón guardar
-                const btnGuardar = document.querySelector('.modal-footer .btn-success');
+                const btnGuardar = document.getElementById('btnGuardarOrden');
                 if (btnGuardar) {
                     if (esEditable) {
                         btnGuardar.classList.remove('hidden');
-                        btnGuardar.style.display = 'inline-block';
-                        btnGuardar.innerHTML = '<span class="material-symbols-outlined text-sm align-middle mr-1">save</span> Actualizar Orden';
+                        btnGuardar.style.display = 'flex';
+                        btnGuardar.innerHTML = '<span class="material-symbols-outlined text-[20px]">save</span> Actualizar Orden';
                     } else {
                         btnGuardar.classList.add('hidden');
                         btnGuardar.style.display = 'none';

@@ -98,9 +98,12 @@ try {
                     // Detalle
                     $stmtDet = $db->prepare("
                         SELECT d.*, 
-                               p.razon_social as proveedor_sugerido_nombre
+                               p.razon_social as proveedor_sugerido_nombre,
+                               d.stock_solicitud,
+                               i.stock_actual
                         FROM solicitudes_compra_detalle d
                         LEFT JOIN proveedores p ON d.id_proveedor_sugerido = p.id_proveedor
+                        LEFT JOIN inventarios i ON d.id_producto = i.id_inventario
                         WHERE d.id_solicitud = ?
                     ");
                     $stmtDet->execute([$id]);
@@ -221,10 +224,10 @@ try {
                             INSERT INTO solicitudes_compra_detalle (
                                 id_solicitud, numero_linea, id_producto,
                                 id_tipo_inventario, codigo_producto, descripcion_producto,
-                                cantidad_solicitada, id_unidad_medida, unidad_medida,
+                                cantidad_solicitada, stock_solicitud, id_unidad_medida, unidad_medida,
                                 especificaciones, precio_estimado, subtotal_estimado,
                                 id_proveedor_sugerido
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
 
                         foreach ($data['detalles'] as $index => $det) {
@@ -236,6 +239,7 @@ try {
                                 $det['codigo_producto'] ?? '',
                                 $det['descripcion_producto'],
                                 $det['cantidad_solicitada'],
+                                $det['stock_solicitud'] ?? 0,
                                 $det['id_unidad_medida'] ?? null,
                                 $det['unidad_medida'] ?? '',
                                 $det['especificaciones'] ?? null,
@@ -289,9 +293,9 @@ try {
                             INSERT INTO solicitudes_compra_detalle (
                                 id_solicitud, numero_linea, id_producto,
                                 id_tipo_inventario, codigo_producto, descripcion_producto,
-                                cantidad_solicitada, id_unidad_medida, unidad_medida,
+                                cantidad_solicitada, stock_solicitud, id_unidad_medida, unidad_medida,
                                 precio_estimado, subtotal_estimado
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
 
                         foreach ($data['detalles'] as $index => $det) {
@@ -303,6 +307,7 @@ try {
                                 $det['codigo_producto'] ?? '',
                                 $det['descripcion_producto'],
                                 $det['cantidad_solicitada'],
+                                $det['stock_solicitud'] ?? 0,
                                 $det['id_unidad_medida'] ?? null,
                                 $det['unidad_medida'] ?? '',
                                 $det['precio_estimado'] ?? 0,

@@ -113,18 +113,14 @@ include '../../includes/header.php';
                 <form id="formRecepcion">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div class="space-y-1.5">
-                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Buscar
-                                Orden</label>
-                            <div class="flex">
-                                <input type="text"
-                                    class="flex-1 border-slate-200 bg-slate-50 rounded-l-xl py-2 px-3 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-mono"
-                                    id="orden_busqueda" placeholder="OC-202602-001">
-                                <button type="button"
-                                    class="bg-slate-100 border border-l-0 border-slate-200 px-3 rounded-r-xl hover:bg-slate-200 transition-colors"
-                                    onclick="buscarOrden()">
-                                    <span class="material-symbols-outlined text-slate-600">search</span>
-                                </button>
-                            </div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Seleccionar
+                                Orden Pendiente</label>
+                            <select id="id_orden_compra_select"
+                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-mono"
+                                onchange="if(this.value) cargarDetalleOrden(this.value)">
+                                <option value="">-- Cargando órdenes --</option>
+                            </select>
+                            <input type="hidden" id="orden_busqueda">
                         </div>
                         <div class="space-y-1.5">
                             <label
@@ -186,6 +182,77 @@ include '../../includes/header.php';
     </div>
 </div>
 
+<!-- Modal Detalle Recepción -->
+<div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 900px;">
+        <div class="modal-content xlarge">
+            <div class="premium-modal-header !bg-slate-800">
+                <h3 class="flex items-center gap-2 font-bold text-lg">
+                    <span class="material-symbols-outlined">description</span>
+                    Detalle de Recepción: <span id="det_numero"></span>
+                </h3>
+                <button type="button" class="text-white/70 hover:text-white transition-colors" data-dismiss="modal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="modal-body p-6">
+                <!-- Header Info -->
+                <div
+                    class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Orden de Compra</p>
+                        <p class="font-mono font-bold text-slate-700" id="det_orden"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proveedor</p>
+                        <p class="font-bold text-slate-700" id="det_proveedor"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha</p>
+                        <p class="text-slate-600" id="det_fecha"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Factura</p>
+                        <p class="text-slate-600" id="det_factura"></p>
+                    </div>
+                </div>
+
+                <!-- Tabla Detalle -->
+                <div class="overflow-x-auto rounded-xl border border-slate-100">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+                            <tr>
+                                <th class="py-3 px-4 text-left">Producto</th>
+                                <th class="py-3 px-4 text-center">Cant. Recibida</th>
+                                <th class="py-3 px-4 text-left">Lote</th>
+                                <th class="py-3 px-4 text-left">Vencimiento</th>
+                                <th class="py-3 px-4 text-center">Calidad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="det_body" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100 hidden" id="det_obs_cont">
+                    <p class="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Observaciones</p>
+                    <p class="text-xs text-amber-800 italic" id="det_observaciones"></p>
+                </div>
+            </div>
+            <div class="modal-footer bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3">
+                <button type="button"
+                    class="px-5 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold transition-all shadow-sm flex items-center gap-2"
+                    onclick="imprimirRecepcion(currentIdRecepcion)">
+                    <span class="material-symbols-outlined text-sm">print</span>
+                    Imprimir Comprobante
+                </button>
+                <button type="button"
+                    class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium"
+                    data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let detallesOrden = [];
@@ -226,9 +293,14 @@ include '../../includes/header.php';
                         <td class="text-slate-500"><span class="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-bold">${rec.tipo_recepcion}</span></td>
                         <td class="text-center"><span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold">✅ ${rec.estado}</span></td>
                         <td class="text-center">
-                            <button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" onclick="verRecepcion(${rec.id_recepcion})">
-                                <span class="material-symbols-outlined text-lg">visibility</span>
-                            </button>
+                            <div class="flex justify-center gap-1">
+                                <button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" onclick="verRecepcion(${rec.id_recepcion})" title="Ver detalle">
+                                    <span class="material-symbols-outlined text-lg">visibility</span>
+                                </button>
+                                <button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" onclick="imprimirRecepcion(${rec.id_recepcion})" title="Imprimir comprobante">
+                                    <span class="material-symbols-outlined text-lg">print</span>
+                                </button>
+                            </div>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -239,6 +311,34 @@ include '../../includes/header.php';
     function abrirModalRecepcion() {
         document.getElementById('formRecepcion').reset();
         document.getElementById('panelDetalles').style.display = 'none';
+
+        // Cargar las órdenes pendientes en el select
+        const select = document.getElementById('id_orden_compra_select');
+        select.innerHTML = '<option value="">-- Buscando órdenes pendientes --</option>';
+
+        fetch('../../api/compras/ordenes.php?action=list&estado=todos')
+            .then(res => res.json())
+            .then(data => {
+                const pendientes = data.ordenes.filter(o =>
+                    ['EMITIDA', 'ENVIADA', 'RECIBIDA_PARCIAL'].includes(o.estado)
+                );
+
+                select.innerHTML = '<option value="">-- Seleccione una orden --</option>';
+                if (pendientes.length === 0) {
+                    select.innerHTML = '<option value="">No hay órdenes pendientes</option>';
+                } else {
+                    pendientes.forEach(o => {
+                        select.innerHTML += `<option value="${o.id_orden_compra}">
+                            ${o.numero_orden} - ${o.proveedor_nombre} (${o.fecha_orden.split(' ')[0]})
+                        </option>`;
+                    });
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                select.innerHTML = '<option value="">Error al cargar órdenes</option>';
+            });
+
         $('#modalRecepcion').modal('show');
     }
 
@@ -275,7 +375,8 @@ include '../../includes/header.php';
                 document.getElementById('id_orden_compra').value = orden.id_orden_compra;
                 document.getElementById('nombre_proveedor').value = orden.proveedor_nombre;
                 document.getElementById('id_proveedor').value = orden.id_proveedor;
-                document.getElementById('orden_busqueda').value = orden.numero_orden; // Asegurar número si se buscó por ID
+                document.getElementById('orden_busqueda').value = orden.numero_orden;
+                document.getElementById('id_orden_compra_select').value = orden.id_orden_compra;
 
                 detallesOrden = orden.detalles;
                 renderDetallesRecepcion();
@@ -374,35 +475,89 @@ include '../../includes/header.php';
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         })
-        .then(res => res.json())
-        .then(res => {
-            if (res.success) {
-                // 3. Aviso de Confirmación (Éxito)
-                Swal.fire({
-                    title: 'Ingreso Correcto',
-                    text: 'La mercancía ha sido registrada en el inventario.',
-                    icon: 'success',
-                    confirmButtonColor: '#059669'
-                });
-                cargarRecepciones();
-            } else {
-                // En caso de error, permitir corregir
-                Swal.fire({
-                    title: 'Error',
-                    text: res.message,
-                    icon: 'error'
-                }).then(() => {
-                    $('#modalRecepcion').modal('show');
-                });
-            }
-        })
-        .catch(err => {
-            console.error('Error en recepción:', err);
-            Swal.fire('Error Inesperado', 'Verifique su conexión o contacte soporte.', 'error')
-            .then(() => {
-                 $('#modalRecepcion').modal('show');
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    // 3. Aviso de Confirmación (Éxito)
+                    Swal.fire({
+                        title: 'Ingreso Correcto',
+                        text: 'La mercancía ha sido registrada en el inventario.',
+                        icon: 'success',
+                        confirmButtonColor: '#059669'
+                    });
+                    cargarRecepciones();
+                } else {
+                    // En caso de error, permitir corregir
+                    Swal.fire({
+                        title: 'Error',
+                        text: res.message,
+                        icon: 'error'
+                    }).then(() => {
+                        $('#modalRecepcion').modal('show');
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Error en recepción:', err);
+                Swal.fire('Error Inesperado', 'Verifique su conexión o contacte soporte.', 'error')
+                    .then(() => {
+                        $('#modalRecepcion').modal('show');
+                    });
             });
-        });
+    }
+
+    let currentIdRecepcion = null;
+
+    function verRecepcion(id) {
+        currentIdRecepcion = id;
+        fetch(`../../api/compras/recepciones.php?action=get&id=${id}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.message);
+
+                const rec = data.recepcion;
+                document.getElementById('det_numero').textContent = rec.numero_recepcion;
+                document.getElementById('det_orden').textContent = rec.numero_orden || rec.id_orden_compra;
+                document.getElementById('det_proveedor').textContent = rec.razon_social;
+                document.getElementById('det_fecha').textContent = rec.fecha_recepcion;
+                document.getElementById('det_factura').textContent = rec.numero_factura || 'N/A';
+
+                if (rec.observaciones) {
+                    document.getElementById('det_obs_cont').classList.remove('hidden');
+                    document.getElementById('det_observaciones').textContent = rec.observaciones;
+                } else {
+                    document.getElementById('det_obs_cont').classList.add('hidden');
+                }
+
+                const tbody = document.getElementById('det_body');
+                tbody.innerHTML = '';
+                rec.detalles.forEach(det => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="py-3 px-4">
+                            <p class="font-medium text-slate-800">${det.descripcion_producto}</p>
+                            <p class="text-[10px] text-slate-400 font-mono">${det.codigo_producto}</p>
+                        </td>
+                        <td class="py-3 px-4 text-center font-bold text-slate-700">${parseFloat(det.cantidad_recibida).toLocaleString()}</td>
+                        <td class="py-3 px-4 text-slate-600">${det.numero_lote || '-'}</td>
+                        <td class="py-3 px-4 text-slate-600">${det.fecha_vencimiento || '-'}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="px-2 py-1 rounded-lg text-[10px] font-bold ${det.estado_calidad === 'APROBADO' ? 'bg-emerald-100 text-emerald-700' :
+                            det.estado_calidad === 'OBSERVADO' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                        }">${det.estado_calidad}</span>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                $('#modalDetalle').modal('show');
+            })
+            .catch(err => Swal.fire('Error', err.message, 'error'));
+    }
+
+    function imprimirRecepcion(id) {
+        if (!id) id = currentIdRecepcion;
+        window.open(`recepcion_pdf.php?id=${id}`, '_blank');
     }
 </script>
 

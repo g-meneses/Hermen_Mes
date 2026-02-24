@@ -55,8 +55,14 @@ try {
             $stmt->execute([$id]);
             $recepcion = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            // Detalles
-            $stmtDet = $db->prepare("SELECT * FROM recepciones_compra_detalle WHERE id_recepcion = ?");
+            // Detalles con contexto de la OC (Precios y Cantidades Acumuladas)
+            $stmtDet = $db->prepare("
+                SELECT rd.*, od.precio_unitario as precio_oc, od.cantidad_recibida as cant_acumulada_oc,
+                       od.unidad_medida as unidad_oc
+                FROM recepciones_compra_detalle rd
+                LEFT JOIN ordenes_compra_detalle od ON rd.id_detalle_oc = od.id_detalle_oc
+                WHERE rd.id_recepcion = ?
+            ");
             $stmtDet->execute([$id]);
             $recepcion['detalles'] = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
 
@@ -82,13 +88,13 @@ try {
                         id_proveedor, nombre_proveedor, numero_guia_remision, numero_factura,
                         fecha_factura, id_almacen, id_usuario_recibe, tipo_recepcion,
                         observaciones, estado, creado_por
-                    ) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADA', ?)
+                    ) VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDIENTE', ?)
                 ");
 
                 // Generar número de recepción si no viene
                 $numRecepcion = $data['numero_recepcion'] ?? 'REC-' . date('Ymd-His');
 
-                // Determinar si es TOTAL o PARCIAL
+                // Determinar si es TOTAL o PARCIAL (esto se guarda como referencia inicial)
                 $totalOrdenadoOC = 0;
                 $totalRecibidoAhora = 0;
                 foreach ($data['detalles'] as $det) {
@@ -126,6 +132,57 @@ try {
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ");
 
+                foreach ($data['detalles'] as $idx => $det) {
+                    $cantRecibida = (float) $det['cantidad_recibida'];
+                    $cantAceptada = (float) ($det['cantidad_aceptada'] ?? $cantRecibida);
+
+                    $stmtDet->execute([
+                        $id_recepcion,
+                        $det['id_detalle_oc'],
+                        $idx + 1,
+                        $det['id_producto'],
+                        $det['id_tipo_inventario'],
+                        $det['codigo_producto'],
+                        $det['descripcion_producto'],
+                        $det['cantidad_ordenada'],
+                        $cantRecibida,
+                        $cantAceptada,
+                        $det['cantidad_rechazada'] ?? 0,
+                        $det['numero_lote'] ?? null,
+                        $det['fecha_vencimiento'] ?? null,
+                        $det['estado_calidad'] ?? 'APROBADO'
+                    ]);
+                }
+
+                $db->commit();
+                ob_clean();
+                echo json_encode(['success' => true, 'message' => 'Recepción registrada (Pendiente de Validación)', 'id' => $id_recepcion]);
+
+            } catch (Exception $e) {
+                $db->rollBack();
+                throw $e;
+            }
+
+        } elseif ($action === 'procesar') {
+            $id_recepcion = $data['id_recepcion'];
+            if (!$id_recepcion)
+                throw new Exception("ID de recepción requerido");
+
+            $db->beginTransaction();
+            try {
+                // 1. Obtener la recepción y sus detalles
+                $stmt = $db->prepare("SELECT * FROM recepciones_compra WHERE id_recepcion = ? AND estado = 'PENDIENTE'");
+                $stmt->execute([$id_recepcion]);
+                $recepcion = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$recepcion)
+                    throw new Exception("Recepción no encontrada o ya procesada");
+
+                $stmtDet = $db->prepare("SELECT * FROM recepciones_compra_detalle WHERE id_recepcion = ?");
+                $stmtDet->execute([$id_recepcion]);
+                $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+
+                // Sentencias preparadas para actualizaciones
                 $stmtUpdateOCDet = $db->prepare("
                     UPDATE ordenes_compra_detalle 
                     SET cantidad_recibida = cantidad_recibida + ?,
@@ -154,31 +211,21 @@ try {
                     }
                 }
 
-                foreach ($data['detalles'] as $idx => $det) {
+                foreach ($detalles as $det) {
                     $cantRecibida = (float) $det['cantidad_recibida'];
-                    $cantAceptada = (float) ($det['cantidad_aceptada'] ?? $cantRecibida);
 
-                    $stmtDet->execute([
-                        $id_recepcion,
-                        $det['id_detalle_oc'],
-                        $idx + 1,
-                        $det['id_producto'],
-                        $det['id_tipo_inventario'],
-                        $det['codigo_producto'],
-                        $det['descripcion_producto'],
-                        $det['cantidad_ordenada'],
-                        $cantRecibida,
-                        $cantAceptada,
-                        $det['cantidad_rechazada'] ?? 0,
-                        $det['numero_lote'] ?? null,
-                        $det['fecha_vencimiento'] ?? null,
-                        $det['estado_calidad'] ?? 'APROBADO'
-                    ]);
-
-                    // Actualizar detalle OC
-                    $stmtUpdateOCDet->execute([$cantRecibida, $cantRecibida, $det['id_detalle_oc']]);
+                    // Actualizar detalle OC (siempre que exista el vínculo)
+                    if (!empty($det['id_detalle_oc'])) {
+                        $stmtUpdateOCDet->execute([$cantRecibida, $cantRecibida, $det['id_detalle_oc']]);
+                    }
 
                     // --- INTEGRACIÓN CON INVENTARIO ---
+
+                    // VALIDACIÓN CRÍTICA: Si no hay id_producto, no podemos actualizar stock ni kardex
+                    if (empty($det['id_producto'])) {
+                        error_log("Aviso: Saltando actualización de inventario para ítem " . $det['codigo_producto'] . " por falta de id_producto.");
+                        continue;
+                    }
 
                     // 1. Obtener precio unitario (priorizando costo internado si existe)
                     $stmtOCP = $db->prepare("
@@ -222,7 +269,7 @@ try {
                         $det['id_producto'],
                         $det['id_tipo_inventario'],
                         $codMov,
-                        $numRecepcion,
+                        $recepcion['numero_recepcion'],
                         $id_recepcion,
                         $cantRecibida,
                         $precioUnitOC,
@@ -240,16 +287,58 @@ try {
                     SELECT SUM(cantidad_ordenada) as tot_ord, SUM(cantidad_recibida) as tot_rec 
                     FROM ordenes_compra_detalle WHERE id_orden_compra = ?
                 ");
-                $stmtCheckOC->execute([$data['id_orden_compra']]);
+                $stmtCheckOC->execute([$recepcion['id_orden_compra']]);
                 $progreso = $stmtCheckOC->fetch(PDO::FETCH_ASSOC);
 
                 $nuevoEstadoOC = ($progreso['tot_rec'] >= $progreso['tot_ord']) ? 'RECIBIDA' : 'RECIBIDA_PARCIAL';
                 $db->prepare("UPDATE ordenes_compra SET estado = ? WHERE id_orden_compra = ?")
-                    ->execute([$nuevoEstadoOC, $data['id_orden_compra']]);
+                    ->execute([$nuevoEstadoOC, $recepcion['id_orden_compra']]);
+
+                // 5. Finalizar Recepción
+                $db->prepare("UPDATE recepciones_compra SET 
+                    estado = 'CONFIRMADA', 
+                    procesado_por = ?, 
+                    fecha_procesado = NOW(),
+                    inventario_actualizado = 1,
+                    fecha_actualizacion_inventario = NOW()
+                    WHERE id_recepcion = ?")
+                    ->execute([$_SESSION['user_id'] ?? 1, $id_recepcion]);
 
                 $db->commit();
                 ob_clean();
-                echo json_encode(['success' => true, 'message' => 'Recepción registrada e inventario actualizado', 'id' => $id_recepcion]);
+                echo json_encode(['success' => true, 'message' => 'Ingreso a inventario procesado correctamente']);
+
+            } catch (Exception $e) {
+                $db->rollBack();
+                throw $e;
+            }
+        } elseif ($action === 'delete') {
+            $id_recepcion = $data['id_recepcion'];
+            if (!$id_recepcion)
+                throw new Exception("ID de recepción requerido");
+
+            $db->beginTransaction();
+            try {
+                // Verificar que esté PENDIENTE antes de borrar
+                $stmt = $db->prepare("SELECT estado FROM recepciones_compra WHERE id_recepcion = ?");
+                $stmt->execute([$id_recepcion]);
+                $estado = $stmt->fetchColumn();
+
+                if ($estado !== 'PENDIENTE') {
+                    throw new Exception("Solo se pueden anular recepciones en estado PENDIENTE");
+                }
+
+                // 1. Borrar detalles
+                $stmtDelDet = $db->prepare("DELETE FROM recepciones_compra_detalle WHERE id_recepcion = ?");
+                $stmtDelDet->execute([$id_recepcion]);
+
+                // 2. Borrar cabecera
+                $stmtDelCab = $db->prepare("DELETE FROM recepciones_compra WHERE id_recepcion = ?");
+                $stmtDelCab->execute([$id_recepcion]);
+
+                $db->commit();
+                ob_clean();
+                echo json_encode(['success' => true, 'message' => 'Recepción anulada correctamente']);
 
             } catch (Exception $e) {
                 $db->rollBack();

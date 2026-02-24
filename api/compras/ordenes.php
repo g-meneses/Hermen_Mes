@@ -36,10 +36,12 @@ try {
             $fecha_fin = $_GET['fecha_fin'] ?? null;
 
             $sql = "
-                SELECT oc.*, p.razon_social as proveedor_nombre, u.nombre_completo as comprador_nombre
+                SELECT oc.*, p.razon_social as proveedor_nombre, u.nombre_completo as comprador_nombre,
+                    (SELECT SUM(d.cantidad_ordenada) FROM ordenes_compra_detalle d WHERE d.id_orden_compra = oc.id_orden_compra) as total_ordenado,
+                    (SELECT SUM(d.cantidad_recibida) FROM ordenes_compra_detalle d WHERE d.id_orden_compra = oc.id_orden_compra) as total_recibido
                 FROM ordenes_compra oc
                 JOIN proveedores p ON oc.id_proveedor = p.id_proveedor
-                JOIN usuarios u ON oc.id_comprador = u.id_usuario
+                LEFT JOIN usuarios u ON oc.id_comprador = u.id_usuario
                 WHERE 1=1
             ";
             $params = [];
@@ -75,10 +77,11 @@ try {
             $stmt = $db->prepare("
                 SELECT oc.*, p.razon_social as proveedor_nombre, 
                        p.nit as proveedor_nit, p.direccion as proveedor_direccion,
+                       p.regimen_tributario,
                        u.nombre_completo as comprador_nombre
                 FROM ordenes_compra oc
                 JOIN proveedores p ON oc.id_proveedor = p.id_proveedor
-                JOIN usuarios u ON oc.id_comprador = u.id_usuario
+                LEFT JOIN usuarios u ON oc.id_comprador = u.id_usuario
                 WHERE oc.id_orden_compra = ?
             ");
             $stmt->execute([$id]);
@@ -91,6 +94,11 @@ try {
             $stmtDet = $db->prepare("SELECT * FROM ordenes_compra_detalle WHERE id_orden_compra = ?");
             $stmtDet->execute([$id]);
             $orden['detalles'] = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+
+            // Gastos Adicionales
+            $stmtGastos = $db->prepare("SELECT * FROM ordenes_compra_gastos WHERE id_orden_compra = ?");
+            $stmtGastos->execute([$id]);
+            $orden['gastos'] = $stmtGastos->fetchAll(PDO::FETCH_ASSOC);
 
             ob_clean();
             echo json_encode(['success' => true, 'orden' => $orden]);
@@ -193,6 +201,28 @@ try {
                     ]);
                 }
 
+                // Gastos Adicionales
+                if (!empty($data['gastos'])) {
+                    $stmtGasto = $db->prepare("
+                        INSERT INTO ordenes_compra_gastos (
+                            id_orden_compra, tipo_gasto, descripcion, monto, 
+                            moneda, fecha_gasto, numero_factura_gasto, creado_por
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    foreach ($data['gastos'] as $gasto) {
+                        $stmtGasto->execute([
+                            $id_orden,
+                            $gasto['tipo_gasto'],
+                            $gasto['descripcion'] ?? null,
+                            $gasto['monto'],
+                            $gasto['moneda'] ?? 'BOB',
+                            $gasto['fecha_gasto'] ?? date('Y-m-d'),
+                            $gasto['numero_factura_gasto'] ?? null,
+                            $_SESSION['user_id'] ?? 1
+                        ]);
+                    }
+                }
+
                 // Si viene de solicitud, marcar solicitud
                 if (!empty($data['id_solicitud'])) {
                     $db->prepare("UPDATE solicitudes_compra SET estado = 'APROBADA', convertida_oc = 1 WHERE id_solicitud = ?")
@@ -271,6 +301,30 @@ try {
                         $subtotal,
                         $det['especificaciones'] ?? null
                     ]);
+                }
+
+                // Eliminar gastos existentes y reinsertar
+                $db->prepare("DELETE FROM ordenes_compra_gastos WHERE id_orden_compra = ?")->execute([$id_orden]);
+
+                if (!empty($data['gastos'])) {
+                    $stmtGasto = $db->prepare("
+                        INSERT INTO ordenes_compra_gastos (
+                            id_orden_compra, tipo_gasto, descripcion, monto, 
+                            moneda, fecha_gasto, numero_factura_gasto, creado_por
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    foreach ($data['gastos'] as $gasto) {
+                        $stmtGasto->execute([
+                            $id_orden,
+                            $gasto['tipo_gasto'],
+                            $gasto['descripcion'] ?? null,
+                            $gasto['monto'],
+                            $gasto['moneda'] ?? 'BOB',
+                            $gasto['fecha_gasto'] ?? date('Y-m-d'),
+                            $gasto['numero_factura_gasto'] ?? null,
+                            $_SESSION['user_id'] ?? 1
+                        ]);
+                    }
                 }
 
                 $db->commit();

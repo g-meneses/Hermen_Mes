@@ -242,11 +242,16 @@ include '../../includes/header.php';
                                     </select>
                                 </div>
                                 <div class="space-y-1.5">
-                                    <label
-                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proveedor</label>
+                                    <div class="flex items-center justify-between">
+                                        <label
+                                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Proveedor</label>
+                                        <span id="badge_regimen"
+                                            class="hidden text-[9px] font-black uppercase bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full shadow-sm">Directo
+                                            / Sin Factura</span>
+                                    </div>
                                     <select id="id_proveedor"
                                         class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                                        required>
+                                        onchange="actualizarBadgeRegimen()" required>
                                         <option value="">Seleccione proveedor...</option>
                                     </select>
                                 </div>
@@ -327,6 +332,41 @@ include '../../includes/header.php';
                                 </div>
                             </div>
 
+                            <!-- Gastos Adicionales -->
+                            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-6">
+                                <div class="p-4 bg-slate-50 border-b border-slate-100">
+                                    <h4
+                                        class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-sm">payments</span>
+                                        Gastos Adicionales (Fletes, Estibajes, Varios)
+                                    </h4>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left border-collapse table-premium" id="tablaGastos">
+                                        <thead>
+                                            <tr>
+                                                <th width="25%">Tipo de Gasto</th>
+                                                <th width="40%">Descripción / Nota</th>
+                                                <th width="15%" class="text-center">Moneda</th>
+                                                <th width="15%" class="text-right">Monto</th>
+                                                <th width="5%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="bodyGastos">
+                                            <!-- Dinámico -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="p-4 border-t border-slate-50 bg-slate-50/30">
+                                    <button type="button"
+                                        class="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-white px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95"
+                                        onclick="agregarGasto()">
+                                        <span class="material-symbols-outlined text-sm">add_circle</span>
+                                        AÑADIR GASTO ASOCIADO
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="mt-8">
                                 <div class="flex flex-col md:flex-row gap-6 items-start">
                                     <!-- Notas a la izquierda -->
@@ -392,14 +432,86 @@ include '../../includes/header.php';
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let itemsDetalle = [];
+    let itemsGastos = [];
+    let solicitudesAprobadas = [];
+    let listaProveedores = [];
+    let totalGeneral = 0;
+    let preciosVisibles = true;
+    let ordenEnEdicion = null;
+
+    function agregarGasto() {
+        itemsGastos.push({
+            tipo_gasto: 'FLETE',
+            descripcion: '',
+            moneda: 'BOB',
+            monto: 0
+        });
+        renderGastos();
+    }
+
+    function renderGastos() {
+        const tbody = document.getElementById('bodyGastos');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        itemsGastos.forEach((gasto, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <select class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                        onchange="actualizarGasto(${index}, 'tipo_gasto', this.value)">
+                        <option value="FLETE" ${gasto.tipo_gasto === 'FLETE' ? 'selected' : ''}>🚚 Flete / Transporte</option>
+                        <option value="ESTIBAJE" ${gasto.tipo_gasto === 'ESTIBAJE' ? 'selected' : ''}>💪 Estibaje / Carga</option>
+                        <option value="COMISION" ${gasto.tipo_gasto === 'COMISION' ? 'selected' : ''}>💰 Comisión</option>
+                        <option value="SEGURO" ${gasto.tipo_gasto === 'SEGURO' ? 'selected' : ''}>🛡️ Seguro</option>
+                        <option value="OTROS" ${gasto.tipo_gasto === 'OTROS' ? 'selected' : ''}>⚙️ Otros</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                        value="${gasto.descripcion || ''}" 
+                        onchange="actualizarGasto(${index}, 'descripcion', this.value)"
+                        placeholder="Ej: Transporte desde puerto a planta">
+                </td>
+                <td>
+                    <select class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-center focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                        onchange="actualizarGasto(${index}, 'moneda', this.value)">
+                        <option value="BOB" ${gasto.moneda === 'BOB' ? 'selected' : ''}>BOB</option>
+                        <option value="USD" ${gasto.moneda === 'USD' ? 'selected' : ''}>USD</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="number" class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-right font-mono font-bold text-indigo-600 focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                        value="${gasto.monto || 0}" min="0" step="0.01"
+                        onchange="actualizarGasto(${index}, 'monto', parseFloat(this.value))">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors" onclick="eliminarGasto(${index})">
+                        <span class="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // No afectamos el total de la OC porque estos gastos pueden ser directos
+        // Pero los guardamos para el costeo final
+    }
+
+    function actualizarGasto(index, field, value) {
+        itemsGastos[index][field] = value;
+    }
+
+    function eliminarGasto(index) {
+        itemsGastos.splice(index, 1);
+        renderGastos();
+    }
 
     document.addEventListener('DOMContentLoaded', function () {
         cargarProveedores();
         cargarOrdenes();
     });
 
-    // Variable global para almacenar solicitudes aprobadas
-    let solicitudesAprobadas = [];
 
     // Cargar solicitudes aprobadas disponibles
     function cargarSolicitudesAprobadas() {
@@ -458,8 +570,6 @@ include '../../includes/header.php';
         });
     }
 
-    let listaProveedores = [];
-    let totalGeneral = 0;
 
     function cargarProveedores() {
         return fetch('../../api/proveedores.php?action=list&activo=1')
@@ -492,8 +602,23 @@ include '../../includes/header.php';
         });
 
         filtrados.forEach(p => {
-            select.innerHTML += `<option value="${p.id_proveedor}" ${p.id_proveedor == currentVal ? 'selected' : ''}>${p.razon_social}</option>`;
+            select.innerHTML += `<option value="${p.id_proveedor}" ${p.id_proveedor == currentVal ? 'selected' : ''} data-regimen="${p.regimen_tributario || ''}">${p.razon_social}</option>`;
         });
+
+        actualizarBadgeRegimen();
+    }
+
+    function actualizarBadgeRegimen() {
+        const select = document.getElementById('id_proveedor');
+        const badge = document.getElementById('badge_regimen');
+        if (!select || !badge) return;
+
+        const opt = select.options[select.selectedIndex];
+        if (opt && opt.dataset.regimen === 'DIRECTO_SIN_FACTURA') {
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
     }
 
     function cargarOrdenes() {
@@ -554,7 +679,10 @@ include '../../includes/header.php';
                         <button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" onclick="verOrden(${oc.id_orden_compra})" title="Ver detalle">
                             <span class="material-symbols-outlined text-lg">visibility</span>
                         </button>
-                        <button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" onclick="imprimirOrden(${oc.id_orden_compra})" title="Imprimir PDF">
+                        <button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-blue-600 transition-colors" onclick="imprimirOrden(${oc.id_orden_compra})" title="Imprimir (ES)">
+                            <span class="material-symbols-outlined text-lg">print</span>
+                        </button>
+                        <button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-rose-600 transition-colors" onclick="imprimirOrdenEN(${oc.id_orden_compra})" title="Print (EN)">
                             <span class="material-symbols-outlined text-lg">print</span>
                         </button>
                     `;
@@ -606,7 +734,9 @@ include '../../includes/header.php';
         document.getElementById('id_solicitud_origen').value = '';
         document.getElementById('numero_solicitud_ref').value = '';
         itemsDetalle = [];
+        itemsGastos = [];
         renderDetalles();
+        renderGastos();
 
         // Restaurar UI para nueva orden
         document.getElementById('tituloModal').innerHTML = `
@@ -661,8 +791,6 @@ include '../../includes/header.php';
         renderDetalles();
     }
 
-    // Variable para controlar visibilidad de precios
-    let preciosVisibles = true;
 
     function togglePrecios() {
         preciosVisibles = !preciosVisibles;
@@ -675,46 +803,73 @@ include '../../includes/header.php';
         const tbody = document.getElementById('bodyDetalles');
         tbody.innerHTML = '';
         let total = 0;
+        const esDraft = !ordenEnEdicion || (document.getElementById('tituloModal').innerText.includes('Editar') && !document.querySelectorAll('.btn-cambio-estado').length);
+        // Simplificación: si ordenEnEdicion es null es nueva. Si es verOrden, se controla por el flag esEditable que ya existe en verOrden
 
         itemsDetalle.forEach((item, index) => {
             const subtotal = parseFloat(item.cantidad || 0) * parseFloat(item.precio_unitario || 0);
             item.total = subtotal;
 
             const tr = document.createElement('tr');
+            const esCompleta = item.estado_recepcion === 'COMPLETA';
+            if (esCompleta) tr.classList.add('bg-emerald-50/50');
+
             tr.innerHTML = `
                 <td class="text-center font-mono text-xs text-slate-400">${index + 1}</td>
                 <td>
-                    <input type="text" 
-                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                        value="${item.descripcion_producto || ''}" 
-                        onchange="actualizarItem(${index}, 'descripcion_producto', this.value)"
-                        placeholder="Descripción del producto">
+                    ${!ordenEnEdicion ?
+                    `<input type="text" 
+                            class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                            value="${item.descripcion_producto || ''}" 
+                            onchange="actualizarItem(${index}, 'descripcion_producto', this.value)"
+                            placeholder="Descripción del producto">` :
+                    `<div class="flex flex-col"><span class="font-bold text-slate-700">${item.descripcion_producto}</span><span class="text-[10px] text-slate-400 font-mono">${item.codigo_producto || ''}</span></div>`
+                }
                 </td>
                 <td>
-                    <input type="number" 
-                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-center font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                        value="${item.cantidad}" min="0.01" step="0.01"
-                        onchange="actualizarItem(${index}, 'cantidad', parseFloat(this.value))">
+                    ${!ordenEnEdicion ?
+                    `<input type="number" 
+                            class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-center font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                            value="${item.cantidad}" min="0.01" step="0.01"
+                            onchange="actualizarItem(${index}, 'cantidad', parseFloat(this.value))">` :
+                    `<div class="text-center font-bold text-slate-700">${item.cantidad}</div>`
+                }
+                </td>
+                <td class="text-center col-recibido hidden">
+                    <span class="font-bold text-emerald-600">${item.cantidad_recibida || 0}</span>
+                </td>
+                <td class="text-center col-pendiente hidden">
+                    <span class="font-bold ${(item.cantidad - (item.cantidad_recibida || 0)) > 0 ? 'text-amber-600' : 'text-slate-400'}">
+                        ${Math.max(0, item.cantidad - (item.cantidad_recibida || 0)).toFixed(2)}
+                    </span>
                 </td>
                 <td>
-                    <input type="text" 
-                        class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm text-center text-slate-500 font-medium"
-                        value="${item.unidad_medida}" 
-                        onchange="actualizarItem(${index}, 'unidad_medida', this.value)">
+                    ${!ordenEnEdicion ?
+                    `<input type="text" 
+                            class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm text-center text-slate-500 font-medium"
+                            value="${item.unidad_medida}" 
+                            onchange="actualizarItem(${index}, 'unidad_medida', this.value)">` :
+                    `<div class="text-center text-xs font-medium text-slate-500">${item.unidad_medida}</div>`
+                }
                 </td>
                 <td class="precio-col${preciosVisibles ? '' : ' hidden'}">
-                    <input type="number" 
-                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-right font-mono font-bold text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                        value="${item.precio_unitario || 0}" min="0" step="0.01"
-                        onchange="actualizarItem(${index}, 'precio_unitario', parseFloat(this.value))">
+                    ${!ordenEnEdicion ?
+                    `<input type="number" 
+                            class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-right font-mono font-bold text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                            value="${item.precio_unitario || 0}" min="0" step="0.01"
+                            onchange="actualizarItem(${index}, 'precio_unitario', parseFloat(this.value))">` :
+                    `<div class="text-right font-mono text-slate-600">${parseFloat(item.precio_unitario).toFixed(2)}</div>`
+                }
                 </td>
-                <td class="precio-col text-right${preciosVisibles ? '' : ' hidden'}">
+                <td class="precio-col text-right${preciosVisibles ? '' : ' hidden'} font-mono font-bold text-slate-700">
                     ${subtotal.toFixed(2)}
                 </td>
                 <td class="text-center">
-                    <button type="button" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors" onclick="eliminarFila(${index})">
-                        <span class="material-symbols-outlined text-lg">delete</span>
-                    </button>
+                    ${!ordenEnEdicion ?
+                    `<button type="button" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors" onclick="eliminarFila(${index})">
+                            <span class="material-symbols-outlined text-lg">delete</span>
+                        </button>` : ''
+                }
                 </td>
             `;
             tbody.appendChild(tr);
@@ -722,9 +877,7 @@ include '../../includes/header.php';
         });
 
         totalGeneral = total;
-        document.getElementById('totalOrdenCell').textContent = total.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        const subtotalEl = document.getElementById('subtotal_display');
-        if (subtotalEl) subtotalEl.textContent = total.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('totalOrdenCell').textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function actualizarItem(index, field, value) {
@@ -770,7 +923,8 @@ include '../../includes/header.php';
             detalles: itemsDetalle.map(item => ({
                 ...item,
                 id_tipo_inventario: item.id_tipo_inventario || 1
-            }))
+            })),
+            gastos: itemsGastos
         };
 
         if (data.detalles.length === 0 || !data.id_proveedor) {
@@ -801,8 +955,10 @@ include '../../includes/header.php';
         window.open(`orden_pdf.php?id=${id}`, '_blank');
     }
 
-    // Variable para almacenar el ID de orden en edición
-    let ordenEnEdicion = null;
+    function imprimirOrdenEN(id) {
+        window.open(`orden_pdf.php?id=${id}&lang=en`, '_blank');
+    }
+
 
     function verOrden(id) {
         // Cargar datos de la orden desde la API
@@ -839,18 +995,36 @@ include '../../includes/header.php';
 
                 // Cargar detalles en itemsDetalle
                 itemsDetalle = (orden.detalles || []).map(det => ({
-                    id_detalle: det.id_detalle,
+                    id_detalle: det.id_detalle_oc,
                     id_producto: det.id_producto,
                     codigo_producto: det.codigo_producto || '',
                     descripcion_producto: det.descripcion_producto,
                     cantidad: parseFloat(det.cantidad_ordenada) || 1,
+                    cantidad_recibida: parseFloat(det.cantidad_recibida) || 0,
                     unidad_medida: det.unidad_medida || 'Unidad',
                     precio_unitario: parseFloat(det.precio_unitario) || 0,
                     total: parseFloat(det.total_linea) || 0,
-                    id_tipo_inventario: det.id_tipo_inventario || 1
+                    id_tipo_inventario: det.id_tipo_inventario || 1,
+                    estado_recepcion: det.estado_recepcion
                 }));
 
+                // Mostrar columnas de balance si no es borrador
+                const colsB = document.querySelectorAll('.col-recibido, .col-pendiente');
+                colsB.forEach(el => {
+                    if (!esEditable) el.classList.remove('hidden');
+                    else el.classList.add('hidden');
+                });
+
                 renderDetalles();
+
+                // Cargar gastos en itemsGastos
+                itemsGastos = (orden.gastos || []).map(g => ({
+                    tipo_gasto: g.tipo_gasto,
+                    descripcion: g.descripcion,
+                    moneda: g.moneda,
+                    monto: parseFloat(g.monto)
+                }));
+                renderGastos();
 
                 // Habilitar/deshabilitar campos según estado
                 const campos = ['id_proveedor', 'fecha_entrega', 'condicion_pago', 'observaciones_orden'];

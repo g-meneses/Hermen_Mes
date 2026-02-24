@@ -33,9 +33,80 @@ $stmt = $db->prepare("
 $stmt->execute([$id]);
 $orden = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$orden) {
-    die('Orden no encontrada');
-}
+// Configuración de Idioma
+$lang = $_GET['lang'] ?? 'es';
+$l = [
+    'es' => [
+        'titulo' => 'ORDEN DE COMPRA',
+        'numero' => 'Número:',
+        'fecha' => 'Fecha:',
+        'entrega_est' => 'Entrega Est.:',
+        'proveedor' => 'PROVEEDOR',
+        'nit' => 'NIT:',
+        'direccion' => 'Dirección:',
+        'telefono' => 'Tel:',
+        'datos_orden' => 'DATOS DE LA ORDEN',
+        'condicion_pago' => 'Condición de Pago:',
+        'moneda' => 'Moneda:',
+        'emitido_por' => 'Emitido por:',
+        'ref_solicitud' => 'Ref. Solicitud:',
+        'tabla_productos' => 'DETALLE DE PRODUCTOS',
+        'col_item' => '#',
+        'col_codigo' => 'Código',
+        'col_descripcion' => 'Descripción',
+        'col_cantidad' => 'Cantidad',
+        'col_unidad' => 'Unidad',
+        'col_pu' => 'P. Unit.',
+        'col_subtotal' => 'Subtotal',
+        'subtotal' => 'Subtotal:',
+        'descuento' => 'Descuento:',
+        'total' => 'TOTAL:',
+        'observaciones' => 'Observaciones / Instrucciones',
+        'firma_elaborado' => 'Elaborado por',
+        'firma_autorizado' => 'Autorizado por',
+        'firma_gerencia' => 'Gerencia',
+        'firma_recibido' => 'Recibido por',
+        'firma_proveedor' => 'Proveedor',
+        'btn_imprimir' => 'Imprimir / PDF',
+        'btn_cerrar' => 'Cerrar'
+    ],
+    'en' => [
+        'titulo' => 'PURCHASE ORDER (PO)',
+        'numero' => 'Order No:',
+        'fecha' => 'Date:',
+        'entrega_est' => 'Est. Delivery:',
+        'proveedor' => 'VENDOR / SUPPLIER',
+        'nit' => 'Tax ID:',
+        'direccion' => 'Address:',
+        'telefono' => 'Phone:',
+        'datos_orden' => 'ORDER INFORMATION',
+        'condicion_pago' => 'Payment Terms:',
+        'moneda' => 'Currency:',
+        'emitido_por' => 'Issued by:',
+        'ref_solicitud' => 'Ref. Request:',
+        'tabla_productos' => 'PRODUCTS DETAIL',
+        'col_item' => '#',
+        'col_codigo' => 'Code',
+        'col_descripcion' => 'Description',
+        'col_cantidad' => 'Quantity',
+        'col_unidad' => 'Unit',
+        'col_pu' => 'Unit Price',
+        'col_subtotal' => 'Amount',
+        'subtotal' => 'Subtotal:',
+        'descuento' => 'Discount:',
+        'total' => 'GRAND TOTAL:',
+        'observaciones' => 'Comments / Instructions',
+        'firma_elaborado' => 'Prepared by',
+        'firma_autorizado' => 'Authorized by',
+        'firma_gerencia' => 'Management',
+        'firma_recibido' => 'Accepted by',
+        'firma_proveedor' => 'Vendor Signature',
+        'btn_imprimir' => 'Print / PDF',
+        'btn_cerrar' => 'Close'
+    ]
+];
+
+$txt = $l[$lang] ?? $l['es'];
 
 // Obtener detalles
 $stmtDet = $db->prepare("SELECT * FROM ordenes_compra_detalle WHERE id_orden_compra = ?");
@@ -52,11 +123,11 @@ $empresa = [
 ];
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="<?= $lang ?>">
 
 <head>
     <meta charset="UTF-8">
-    <title>Orden de Compra -
+    <title><?= $txt['titulo'] ?> -
         <?= htmlspecialchars($orden['numero_orden']) ?>
     </title>
     <style>
@@ -333,10 +404,10 @@ $empresa = [
     <!-- Botones de acción (no se imprimen) -->
     <div class="actions no-print">
         <button class="btn btn-print" onclick="window.print()">
-            <i class="fas fa-print"></i> Imprimir / PDF
+            <i class="fas fa-print"></i> <?= $txt['btn_imprimir'] ?>
         </button>
         <button class="btn btn-close" onclick="window.close()">
-            <i class="fas fa-times"></i> Cerrar
+            <i class="fas fa-times"></i> <?= $txt['btn_cerrar'] ?>
         </button>
     </div>
 
@@ -359,15 +430,15 @@ $empresa = [
                 </p>
             </div>
             <div class="doc-info">
-                <h2>ORDEN DE COMPRA</h2>
+                <h2><?= $txt['titulo'] ?></h2>
                 <div class="numero">
                     <?= htmlspecialchars($orden['numero_orden']) ?>
                 </div>
-                <div class="fecha">Fecha:
+                <div class="fecha"><?= $txt['fecha'] ?>
                     <?= date('d/m/Y', strtotime($orden['fecha_orden'])) ?>
                 </div>
                 <?php if ($orden['fecha_entrega_estimada']): ?>
-                    <div class="fecha">Entrega Est.:
+                    <div class="fecha"><?= $txt['entrega_est'] ?>
                         <?= date('d/m/Y', strtotime($orden['fecha_entrega_estimada'])) ?>
                     </div>
                 <?php endif; ?>
@@ -377,37 +448,37 @@ $empresa = [
         <!-- Información de Proveedor y Comprador -->
         <div class="info-grid">
             <div class="info-box">
-                <h3>📦 PROVEEDOR</h3>
+                <h3>📦 <?= $txt['proveedor'] ?></h3>
                 <p><strong>
                         <?= htmlspecialchars($orden['proveedor_nombre']) ?>
                     </strong></p>
-                <p>NIT:
+                <p><?= $txt['nit'] ?>
                     <?= htmlspecialchars($orden['proveedor_nit']) ?>
                 </p>
                 <?php if ($orden['proveedor_direccion']): ?>
-                    <p>Dirección:
+                    <p><?= $txt['direccion'] ?>
                         <?= htmlspecialchars($orden['proveedor_direccion']) ?>
                     </p>
                 <?php endif; ?>
                 <?php if ($orden['proveedor_telefono']): ?>
-                    <p>Tel:
+                    <p><?= $txt['telefono'] ?>
                         <?= htmlspecialchars($orden['proveedor_telefono']) ?>
                     </p>
                 <?php endif; ?>
             </div>
             <div class="info-box">
-                <h3>📋 DATOS DE LA ORDEN</h3>
-                <p><strong>Condición de Pago:</strong>
+                <h3>📋 <?= $txt['datos_orden'] ?></h3>
+                <p><strong><?= $txt['condicion_pago'] ?></strong>
                     <?= htmlspecialchars($orden['condicion_pago'] ?? 'CONTADO') ?>
                 </p>
-                <p><strong>Moneda:</strong>
+                <p><strong><?= $txt['moneda'] ?></strong>
                     <?= htmlspecialchars($orden['moneda'] ?? 'BOB') ?>
                 </p>
-                <p><strong>Emitido por:</strong>
+                <p><strong><?= $txt['emitido_por'] ?></strong>
                     <?= htmlspecialchars($orden['comprador_nombre']) ?>
                 </p>
                 <?php if ($orden['numero_solicitud']): ?>
-                    <p><strong>Ref. Solicitud:</strong>
+                    <p><strong><?= $txt['ref_solicitud'] ?></strong>
                         <?= htmlspecialchars($orden['numero_solicitud']) ?>
                     </p>
                 <?php endif; ?>
@@ -416,17 +487,17 @@ $empresa = [
 
         <!-- Tabla de productos -->
         <div class="section">
-            <div class="section-title">DETALLE DE PRODUCTOS</div>
+            <div class="section-title"><?= $txt['tabla_productos'] ?></div>
             <table>
                 <thead>
                     <tr>
-                        <th width="5%" class="text-center">#</th>
-                        <th width="10%">Código</th>
-                        <th>Descripción</th>
-                        <th width="10%" class="text-center">Cantidad</th>
-                        <th width="10%" class="text-center">Unidad</th>
-                        <th width="12%" class="text-right">P. Unit.</th>
-                        <th width="12%" class="text-right">Subtotal</th>
+                        <th width="5%" class="text-center"><?= $txt['col_item'] ?></th>
+                        <th width="10%"><?= $txt['col_codigo'] ?></th>
+                        <th><?= $txt['col_descripcion'] ?></th>
+                        <th width="10%" class="text-center"><?= $txt['col_cantidad'] ?></th>
+                        <th width="10%" class="text-center"><?= $txt['col_unidad'] ?></th>
+                        <th width="12%" class="text-right"><?= $txt['col_pu'] ?></th>
+                        <th width="12%" class="text-right"><?= $txt['col_subtotal'] ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -463,22 +534,22 @@ $empresa = [
         <div class="totales">
             <div class="totales-box">
                 <div class="totales-row">
-                    <span>Subtotal:</span>
-                    <span>BOB
+                    <span><?= $txt['subtotal'] ?></span>
+                    <span><?= htmlspecialchars($orden['moneda'] ?? 'BOB') ?>
                         <?= number_format($orden['subtotal'] ?? $orden['total'], 2) ?>
                     </span>
                 </div>
                 <?php if (($orden['descuento_general'] ?? 0) > 0): ?>
                     <div class="totales-row">
-                        <span>Descuento:</span>
-                        <span>-BOB
+                        <span><?= $txt['descuento'] ?></span>
+                        <span>-<?= htmlspecialchars($orden['moneda'] ?? 'BOB') ?>
                             <?= number_format($orden['descuento_general'], 2) ?>
                         </span>
                     </div>
                 <?php endif; ?>
                 <div class="totales-row total">
-                    <span>TOTAL:</span>
-                    <span>BOB
+                    <span><?= $txt['total'] ?></span>
+                    <span><?= htmlspecialchars($orden['moneda'] ?? 'BOB') ?>
                         <?= number_format($orden['total'], 2) ?>
                     </span>
                 </div>
@@ -488,7 +559,7 @@ $empresa = [
         <!-- Observaciones -->
         <?php if (!empty($orden['observaciones'])): ?>
             <div class="observaciones">
-                <h4>📝 Observaciones / Instrucciones</h4>
+                <h4>📝 <?= $txt['observaciones'] ?></h4>
                 <p>
                     <?= nl2br(htmlspecialchars($orden['observaciones'])) ?>
                 </p>
@@ -499,20 +570,20 @@ $empresa = [
         <div class="firmas">
             <div class="firma-box">
                 <div class="firma-linea">
-                    <strong>Elaborado por</strong><br>
+                    <strong><?= $txt['firma_elaborado'] ?></strong><br>
                     <?= htmlspecialchars($orden['comprador_nombre']) ?>
                 </div>
             </div>
             <div class="firma-box">
                 <div class="firma-linea">
-                    <strong>Autorizado por</strong><br>
-                    Gerencia
+                    <strong><?= $txt['firma_autorizado'] ?></strong><br>
+                    <?= $txt['firma_gerencia'] ?>
                 </div>
             </div>
             <div class="firma-box">
                 <div class="firma-linea">
-                    <strong>Recibido por</strong><br>
-                    Proveedor
+                    <strong><?= $txt['firma_recibido'] ?></strong><br>
+                    <?= $txt['firma_proveedor'] ?>
                 </div>
             </div>
         </div>

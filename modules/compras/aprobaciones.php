@@ -297,15 +297,21 @@ include '../../includes/header.php';
                     <span class="px-2.5 py-1 rounded-lg text-[10px] font-bold ${prioClass}">${p.prioridad}</span>
                 </td>
                 <td class="py-4 px-6">
-                    <div class="flex justify-center gap-2">
-                        <button onclick="verDetalle('${p.tipo}', ${p.id})" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Ver Detalle">
-                            <span class="material-symbols-outlined text-[18px]">visibility</span>
+                    <div class="flex justify-center gap-1">
+                        <button onclick="verDetalle('${p.tipo}', ${p.id})" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Ver Detalle">
+                            <span class="material-symbols-outlined text-[16px]">visibility</span>
                         </button>
-                        <button onclick="abrirAccion('${p.tipo}', ${p.id}, 'APROBADO')" class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Aprobar">
-                            <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                        <button onclick="window.open('${p.tipo === 'SOLICITUD' ? 'solicitud_pdf.php' : 'orden_pdf.php'}?id=${p.id}', '_blank')" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center shadow-sm" title="PDF (ES)">
+                            <span class="material-symbols-outlined text-[16px]">print</span>
                         </button>
-                        <button onclick="abrirAccion('${p.tipo}', ${p.id}, 'RECHAZADO')" class="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Rechazar">
-                            <span class="material-symbols-outlined text-[18px]">cancel</span>
+                        <button onclick="window.open('${p.tipo === 'SOLICITUD' ? 'solicitud_pdf.php' : 'orden_pdf.php'}?id=${p.id}&lang=en', '_blank')" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center shadow-sm" title="PDF (EN)">
+                            <span class="material-symbols-outlined text-[16px]">print</span>
+                        </button>
+                        <button onclick="abrirAccion('${p.tipo}', ${p.id}, 'APROBADO')" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Aprobar">
+                            <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                        </button>
+                        <button onclick="abrirAccion('${p.tipo}', ${p.id}, 'RECHAZADO')" class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white transition-all flex items-center justify-center shadow-sm" title="Rechazar">
+                            <span class="material-symbols-outlined text-[16px]">cancel</span>
                         </button>
                     </div>
                 </td>

@@ -39,7 +39,7 @@ try {
         $comprasMes = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
 
         // Recepciones Pendientes
-        $stmt = $db->query("SELECT COUNT(*) as count FROM ordenes_compra WHERE estado IN ('EMITIDA', 'CONFIRMADA', 'PARCIAL')");
+        $stmt = $db->query("SELECT COUNT(*) as count FROM ordenes_compra WHERE estado IN ('EMITIDA', 'ENVIADA', 'CONFIRMADA', 'RECIBIDA_PARCIAL')");
         $recepcionesPend = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
         // 2. Gráfico Compras últimos 6 meses

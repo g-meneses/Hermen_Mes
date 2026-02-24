@@ -85,6 +85,16 @@ include '../../includes/header.php';
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
+                                <label>Régimen Tributario</label>
+                                <select class="form-control" id="regimen_tributario">
+                                    <option value="GENERAL">General (Con Factura)</option>
+                                    <option value="SIMPLIFICADO">Simplificado</option>
+                                    <option value="DIRECTO_SIN_FACTURA">Directo (Sin Factura)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
                                 <label>Categoría</label>
                                 <select class="form-control" id="categoria_proveedor">
                                     <option value="MATERIAS_PRIMAS">Materias Primas</option>
@@ -206,6 +216,7 @@ include '../../includes/header.php';
                     document.getElementById('telefono').value = p.telefono;
                     document.getElementById('email').value = p.email;
                     document.getElementById('limite_credito').value = p.limite_credito;
+                    document.getElementById('regimen_tributario').value = p.regimen_tributario || 'GENERAL';
                     document.getElementById('es_preferente').checked = p.es_preferente == 1;
 
                     document.getElementById('tituloModal').textContent = 'Editar Proveedor';
@@ -227,6 +238,7 @@ include '../../includes/header.php';
             telefono: document.getElementById('telefono').value,
             email: document.getElementById('email').value,
             limite_credito: document.getElementById('limite_credito').value,
+            regimen_tributario: document.getElementById('regimen_tributario').value,
             es_preferente: document.getElementById('es_preferente').checked ? 1 : 0
         };
 

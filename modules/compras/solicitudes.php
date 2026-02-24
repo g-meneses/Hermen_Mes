@@ -670,8 +670,11 @@ include '../../includes/header.php';
                                 <button onclick="editarSolicitud(${sol.id_solicitud})" class="p-1 hover:bg-slate-100 text-slate-500 rounded transition-colors" title="Ver Detalle">
                                     <span class="material-symbols-outlined text-lg">visibility</span>
                                 </button>
-                                <button onclick="imprimirSolicitud(${sol.id_solicitud})" class="p-1 hover:bg-slate-100 text-slate-500 rounded transition-colors" title="Imprimir">
-                                    <span class="material-symbols-outlined text-lg">print</span>
+                                <button onclick="imprimirSolicitud(${sol.id_solicitud})" class="p-1 hover:bg-slate-100 text-slate-500 rounded transition-colors" title="Imprimir (ES)">
+                                    <span class="material-symbols-outlined text-lg text-blue-500">print</span>
+                                </button>
+                                <button onclick="imprimirSolicitudEN(${sol.id_solicitud})" class="p-1 hover:bg-slate-100 text-slate-500 rounded transition-colors" title="Print (EN)">
+                                    <span class="material-symbols-outlined text-lg text-rose-500">print</span>
                                 </button>
                             </div>
                         </td>
@@ -1032,6 +1035,10 @@ include '../../includes/header.php';
 
     function imprimirSolicitud(id) {
         window.open(`solicitud_pdf.php?id=${id}`, '_blank');
+    }
+
+    function imprimirSolicitudEN(id) {
+        window.open(`solicitud_pdf.php?id=${id}&lang=en`, '_blank');
     }
 </script>
 

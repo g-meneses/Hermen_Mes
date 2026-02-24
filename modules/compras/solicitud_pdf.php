@@ -35,6 +35,71 @@ if (!$solicitud) {
     die('Solicitud no encontrada');
 }
 
+// Configuración de Idioma
+$lang = $_GET['lang'] ?? 'es';
+$l = [
+    'es' => [
+        'titulo' => 'SOLICITUD DE COMPRA',
+        'numero' => 'Número:',
+        'fecha' => 'Fecha:',
+        'solicitante' => 'SOLICITANTE',
+        'nombre' => 'Nombre:',
+        'centro_costo' => 'Centro de Costo:',
+        'tipo_inventario' => 'Tipo Inventario:',
+        'detalles_req' => 'DETALLES DEL REQUERIMIENTO',
+        'prioridad' => 'Prioridad:',
+        'tipo_compra' => 'Tipo Compra:',
+        'estado' => 'Estado:',
+        'tabla_productos' => 'DETALLE DE PRODUCTOS REQUERIDOS',
+        'col_item' => '#',
+        'col_codigo' => 'Código',
+        'col_descripcion' => 'Descripción del Producto',
+        'col_stock' => 'Stock Act.',
+        'col_cantidad' => 'Cantidad',
+        'col_unidad' => 'Unidad',
+        'justificacion' => 'Justificación / Motivo del Pedido',
+        'observaciones' => 'Observaciones de Control',
+        'firma_solicitante' => 'SOLICITANTE',
+        'firma_jefe' => 'Jefe de Área',
+        'firma_autorizacion' => 'Autorización',
+        'firma_adquisiciones' => 'Adquisiciones',
+        'firma_recepcion' => 'Recepción',
+        'btn_imprimir' => 'Imprimir Solicitud',
+        'btn_cerrar' => 'Cerrar'
+    ],
+    'en' => [
+        'titulo' => 'REQUEST FOR QUOTATION (RFQ)',
+        'numero' => 'Number:',
+        'fecha' => 'Date:',
+        'solicitante' => 'REQUESTER',
+        'nombre' => 'Name:',
+        'centro_costo' => 'Cost Center:',
+        'tipo_inventario' => 'Inventory Type:',
+        'detalles_req' => 'REQUIREMENT DETAILS',
+        'prioridad' => 'Priority:',
+        'tipo_compra' => 'Purchase Type:',
+        'estado' => 'Status:',
+        'tabla_productos' => 'REQUIRED PRODUCTS DETAIL',
+        'col_item' => '#',
+        'col_codigo' => 'Code',
+        'col_descripcion' => 'Product Description',
+        'col_stock' => 'Curr. Stock',
+        'col_cantidad' => 'Quantity',
+        'col_unidad' => 'Unit',
+        'justificacion' => 'Justification / Purpose of Order',
+        'observaciones' => 'Control Observations',
+        'firma_solicitante' => 'REQUESTER',
+        'firma_jefe' => 'Department Head',
+        'firma_autorizacion' => 'Authorization',
+        'firma_adquisiciones' => 'Procurement',
+        'firma_recepcion' => 'Reception',
+        'btn_imprimir' => 'Print RFQ',
+        'btn_cerrar' => 'Close'
+    ]
+];
+
+$txt = $l[$lang] ?? $l['es'];
+
 // Obtener detalles con stock actual del producto
 $stmtDet = $db->prepare("
     SELECT d.*, i.stock_actual 
@@ -59,7 +124,7 @@ $empresa = [
 
 <head>
     <meta charset="UTF-8">
-    <title>Solicitud de Compra -
+<title><?= $txt['titulo'] ?> -
         <?= htmlspecialchars($solicitud['numero_solicitud']) ?>
     </title>
     <style>
@@ -356,10 +421,10 @@ $empresa = [
 <body>
     <div class="actions no-print">
         <button class="btn btn-print" onclick="window.print()">
-            Imprimir Solicitud
+            <?= $txt['btn_imprimir'] ?>
         </button>
         <button class="btn btn-close" onclick="window.close()">
-            Cerrar
+            <?= $txt['btn_cerrar'] ?>
         </button>
     </div>
 
@@ -382,11 +447,11 @@ $empresa = [
                 </p>
             </div>
             <div class="doc-info">
-                <h2>SOLICITUD DE COMPRA</h2>
+                <h2><?= $txt['titulo'] ?></h2>
                 <div class="numero">
                     <?= htmlspecialchars($solicitud['numero_solicitud']) ?>
                 </div>
-                <div class="fecha">Fecha:
+                <div class="fecha"><?= $txt['fecha'] ?>
                     <?= date('d/m/Y H:i', strtotime($solicitud['fecha_solicitud'])) ?>
                 </div>
             </div>
@@ -394,44 +459,44 @@ $empresa = [
 
         <div class="info-grid">
             <div class="info-box">
-                <h3>👤 SOLICITANTE</h3>
-                <p><strong>Nombre:</strong>
+                <h3>👤 <?= $txt['solicitante'] ?></h3>
+                <p><strong><?= $txt['nombre'] ?></strong>
                     <?= htmlspecialchars($solicitud['solicitante_nombre'] ?? 'Sistema') ?>
                 </p>
-                <p><strong>Centro de Costo:</strong>
+                <p><strong><?= $txt['centro_costo'] ?></strong>
                     <?= htmlspecialchars($solicitud['centro_costo'] ?? 'General') ?>
                 </p>
-                <p><strong>Tipo Inventario:</strong>
+                <p><strong><?= $txt['tipo_inventario'] ?></strong>
                     <?= htmlspecialchars($solicitud['tipo_inventario_nombre'] ?? 'N/A') ?>
                 </p>
             </div>
             <div class="info-box">
-                <h3>📋 DETALLES DEL REQUERIMIENTO</h3>
-                <p><strong>Prioridad:</strong>
+                <h3>📋 <?= $txt['detalles_req'] ?></h3>
+                <p><strong><?= $txt['prioridad'] ?></strong>
                     <span class="badge badge-<?= strtolower($solicitud['prioridad']) ?>">
                         <?= htmlspecialchars($solicitud['prioridad']) ?>
                     </span>
                 </p>
-                <p><strong>Tipo Compra:</strong>
+                <p><strong><?= $txt['tipo_compra'] ?></strong>
                     <?= htmlspecialchars($solicitud['tipo_compra'] ?? 'REPOSICIÓN') ?>
                 </p>
-                <p><strong>Estado:</strong>
+                <p><strong><?= $txt['estado'] ?></strong>
                     <?= htmlspecialchars($solicitud['estado']) ?>
                 </p>
             </div>
         </div>
 
         <div class="section">
-            <div class="section-title">DETALLE DE PRODUCTOS REQUERIDOS</div>
+            <div class="section-title"><?= $txt['tabla_productos'] ?></div>
             <table>
                 <thead>
                     <tr>
-                        <th width="5%" class="text-center">#</th>
-                        <th width="15%">Código</th>
-                        <th>Descripción del Producto</th>
-                        <th width="15%" class="text-center">Stock Act.</th>
-                        <th width="15%" class="text-center">Cantidad</th>
-                        <th width="12%" class="text-center">Unidad</th>
+                        <th width="5%" class="text-center"><?= $txt['col_item'] ?></th>
+                        <th width="15%"><?= $txt['col_codigo'] ?></th>
+                        <th><?= $txt['col_descripcion'] ?></th>
+                        <th width="15%" class="text-center"><?= $txt['col_stock'] ?></th>
+                        <th width="15%" class="text-center"><?= $txt['col_cantidad'] ?></th>
+                        <th width="12%" class="text-center"><?= $txt['col_unidad'] ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -464,7 +529,7 @@ $empresa = [
 
         <?php if (!empty($solicitud['motivo'])): ?>
             <div class="motivo-box">
-                <h4>📝 Justificación / Motivo del Pedido</h4>
+                <h4>📝 <?= $txt['justificacion'] ?></h4>
                 <p class="motivo-text">
                     <?= nl2br(htmlspecialchars($solicitud['motivo'])) ?>
                 </p>
@@ -473,7 +538,7 @@ $empresa = [
 
         <?php if (!empty($solicitud['observaciones'])): ?>
             <div class="motivo-box" style="margin-top: 10px; border-left: 4px solid #f59e0b;">
-                <h4 style="color: #b45309;">Observaciones de Control</h4>
+                <h4 style="color: #b45309;"><?= $txt['observaciones'] ?></h4>
                 <p>
                     <?= nl2br(htmlspecialchars($solicitud['observaciones'])) ?>
                 </p>
@@ -483,7 +548,7 @@ $empresa = [
         <div class="firmas">
             <div class="firma-box">
                 <div class="firma-linea">
-                    <strong>SOLICITANTE</strong>
+                    <strong><?= $txt['firma_solicitante'] ?></strong>
                     <span>
                         <?= htmlspecialchars($solicitud['solicitante_nombre'] ?? 'Firma') ?>
                     </span>
@@ -491,14 +556,14 @@ $empresa = [
             </div>
             <div class="firma-box">
                 <div class="firma-linea">
-                    <strong>Jefe de Área</strong>
-                    <span>Autorización</span>
+                    <strong><?= $txt['firma_jefe'] ?></strong>
+                    <span><?= $txt['firma_autorizacion'] ?></span>
                 </div>
             </div>
             <div class="firma-box">
                 <div class="firma-linea">
-                    <strong>Adquisiciones</strong>
-                    <span>Recepción</span>
+                    <strong><?= $txt['firma_adquisiciones'] ?></strong>
+                    <span><?= $txt['firma_recepcion'] ?></span>
                 </div>
             </div>
         </div>

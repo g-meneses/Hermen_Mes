@@ -133,10 +133,28 @@ try {
                         'Taiwán',
                         'India',
                         'Turquía',
-                        'México'
+                        'México',
+                        'Otros'
                     ];
                     ob_clean();
                     echo json_encode(['success' => true, 'paises' => $paises]);
+                    break;
+
+                case 'siguiente_codigo':
+                    $stmt = $db->query("SELECT codigo FROM proveedores WHERE codigo LIKE 'PROV-%'");
+                    $codigos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                    $maxNum = 0;
+                    foreach ($codigos as $c) {
+                        if (preg_match('/^PROV-(\d+)$/', $c['codigo'], $matches)) {
+                            $num = (int) $matches[1];
+                            if ($num > $maxNum) {
+                                $maxNum = $num;
+                            }
+                        }
+                    }
+                    $nextCode = 'PROV-' . str_pad($maxNum + 1, 3, '0', STR_PAD_LEFT);
+                    ob_clean();
+                    echo json_encode(['success' => true, 'codigo' => $nextCode]);
                     break;
 
                 default:

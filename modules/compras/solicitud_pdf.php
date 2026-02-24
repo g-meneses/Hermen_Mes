@@ -54,7 +54,6 @@ $l = [
         'col_item' => '#',
         'col_codigo' => 'Código',
         'col_descripcion' => 'Descripción del Producto',
-        'col_stock' => 'Stock Act.',
         'col_cantidad' => 'Cantidad',
         'col_unidad' => 'Unidad',
         'justificacion' => 'Justificación / Motivo del Pedido',
@@ -83,7 +82,6 @@ $l = [
         'col_item' => '#',
         'col_codigo' => 'Code',
         'col_descripcion' => 'Product Description',
-        'col_stock' => 'Curr. Stock',
         'col_cantidad' => 'Quantity',
         'col_unidad' => 'Unit',
         'justificacion' => 'Justification / Purpose of Order',
@@ -124,7 +122,7 @@ $empresa = [
 
 <head>
     <meta charset="UTF-8">
-<title><?= $txt['titulo'] ?> -
+    <title><?= $txt['titulo'] ?> -
         <?= htmlspecialchars($solicitud['numero_solicitud']) ?>
     </title>
     <style>
@@ -494,9 +492,8 @@ $empresa = [
                         <th width="5%" class="text-center"><?= $txt['col_item'] ?></th>
                         <th width="15%"><?= $txt['col_codigo'] ?></th>
                         <th><?= $txt['col_descripcion'] ?></th>
-                        <th width="15%" class="text-center"><?= $txt['col_stock'] ?></th>
                         <th width="15%" class="text-center"><?= $txt['col_cantidad'] ?></th>
-                        <th width="12%" class="text-center"><?= $txt['col_unidad'] ?></th>
+                        <th width="15%" class="text-center"><?= $txt['col_unidad'] ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -510,10 +507,6 @@ $empresa = [
                             </td>
                             <td>
                                 <?= htmlspecialchars($det['descripcion_producto']) ?>
-                            </td>
-                            <td class="text-center"
-                                style="color: <?= ($det['stock_actual'] <= 0) ? '#e11d48' : '#475569' ?>;">
-                                <?= number_format($det['stock_actual'] ?? 0, 2) ?>
                             </td>
                             <td class="text-center" style="font-weight: bold;">
                                 <?= number_format($det['cantidad_solicitada'], 2) ?>

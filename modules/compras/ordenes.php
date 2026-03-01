@@ -271,21 +271,32 @@ include '../../includes/header.php';
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                                 <div class="space-y-1.5">
                                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fecha
-                                        Entrega
-                                        Estimada</label>
+                                        Entrega Estimada</label>
                                     <input type="date" id="fecha_entrega"
                                         class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm">
                                 </div>
                                 <div class="space-y-1.5">
                                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Lugar
-                                        de
-                                        Entrega / Puerto</label>
+                                        de Entrega / Puerto</label>
                                     <input type="text" id="lugar_entrega"
                                         class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm"
                                         placeholder="Bodega Central / Arica / Iquique">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Moneda</label>
+                                    <select id="moneda"
+                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all" onchange="toggleTipoCambio()">
+                                        <option value="BOB">🇧🇴 Bolivianos (BOB)</option>
+                                        <option value="USD">💵 Dólares (USD)</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5 hidden" id="container_tipo_cambio">
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tipo Cambio</label>
+                                    <input type="number" id="tipo_cambio" step="0.01" min="1" value="6.96"
+                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm">
                                 </div>
                             </div>
 
@@ -383,28 +394,17 @@ include '../../includes/header.php';
 
                                     <!-- Totales a la derecha -->
                                     <div
-                                        class="w-full md:w-80 bg-slate-900 rounded-3xl p-6 text-white shadow-xl shadow-slate-200">
-                                        <div class="space-y-4">
-                                            <div class="flex justify-between items-center opacity-60">
-                                                <span class="text-xs font-bold uppercase tracking-wider">Subtotal</span>
-                                                <span class="font-mono" id="subtotal_display">0.00</span>
-                                            </div>
-                                            <div class="flex justify-between items-center opacity-60">
+                                        class="w-full md:w-80 bg-slate-900 rounded-3xl p-6 text-white shadow-xl shadow-slate-200 flex items-center justify-center">
+                                        <div class="flex justify-between items-end">
+                                            <div>
                                                 <span
-                                                    class="text-xs font-bold uppercase tracking-wider">Descuentos</span>
-                                                <span class="font-mono">0.00</span>
+                                                    class="text-[10px] font-bold uppercase tracking-widest text-primary-400 block mb-1">Total
+                                                    Orden</span>
+                                                <span class="text-3xl font-bold tracking-tighter"
+                                                    id="totalOrdenCell">0.00</span>
                                             </div>
-                                            <div class="h-px bg-white/10 my-2"></div>
-                                            <div class="flex justify-between items-end">
-                                                <div>
-                                                    <span
-                                                        class="text-[10px] font-bold uppercase tracking-widest text-primary-400 block mb-1">Total
-                                                        Orden</span>
-                                                    <span class="text-3xl font-bold tracking-tighter"
-                                                        id="totalOrdenCell">0.00</span>
-                                                </div>
-                                                <span class="text-sm font-bold opacity-40 mb-1 ml-2">BOB</span>
-                                            </div>
+                                            <span class="text-sm font-bold opacity-40 mb-1 ml-2"
+                                                id="monedaLabel">BOB</span>
                                         </div>
                                     </div>
                                 </div>
@@ -438,6 +438,19 @@ include '../../includes/header.php';
     let totalGeneral = 0;
     let preciosVisibles = true;
     let ordenEnEdicion = null;
+
+    function toggleTipoCambio() {
+        const moneda = document.getElementById('moneda').value;
+        const container = document.getElementById('container_tipo_cambio');
+        const label = document.getElementById('monedaLabel');
+        if (moneda === 'USD') {
+            container.classList.remove('hidden');
+            if (label) label.textContent = 'USD';
+        } else {
+            container.classList.add('hidden');
+            if (label) label.textContent = 'BOB';
+        }
+    }
 
     function agregarGasto() {
         itemsGastos.push({
@@ -730,6 +743,9 @@ include '../../includes/header.php';
         ordenEnEdicion = null;
 
         document.getElementById('formOrden').reset();
+        if (document.getElementById('moneda')) document.getElementById('moneda').value = 'BOB';
+        if (document.getElementById('tipo_cambio')) document.getElementById('tipo_cambio').value = '6.96';
+        if (typeof toggleTipoCambio === 'function') toggleTipoCambio();
         document.getElementById('id_proveedor').value = '';
         document.getElementById('id_solicitud_origen').value = '';
         document.getElementById('numero_solicitud_ref').value = '';
@@ -918,6 +934,8 @@ include '../../includes/header.php';
             fecha_entrega_estimada: document.getElementById('fecha_entrega').value,
             lugar_entrega: document.getElementById('lugar_entrega').value,
             condicion_pago: document.getElementById('condicion_pago').value,
+            moneda: document.getElementById('moneda') ? document.getElementById('moneda').value : 'BOB',
+            tipo_cambio: document.getElementById('tipo_cambio') ? document.getElementById('tipo_cambio').value : '6.96',
             observaciones: document.getElementById('observaciones_orden').value,
             total: totalGeneral,
             detalles: itemsDetalle.map(item => ({
@@ -989,6 +1007,9 @@ include '../../includes/header.php';
                 document.getElementById('fecha_entrega').value = orden.fecha_entrega_estimada ? orden.fecha_entrega_estimada.split(' ')[0] : '';
                 document.getElementById('lugar_entrega').value = orden.lugar_entrega || '';
                 document.getElementById('condicion_pago').value = orden.condicion_pago || 'CONTADO';
+                if (document.getElementById('moneda')) document.getElementById('moneda').value = orden.moneda || 'BOB';
+                if (document.getElementById('tipo_cambio')) document.getElementById('tipo_cambio').value = orden.tipo_cambio || '6.96';
+                if (typeof toggleTipoCambio === 'function') toggleTipoCambio();
                 document.getElementById('observaciones_orden').value = orden.observaciones || '';
                 document.getElementById('id_solicitud_origen').value = orden.id_solicitud || '';
                 document.getElementById('numero_solicitud_ref').value = orden.numero_solicitud || '';

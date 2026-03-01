@@ -165,6 +165,8 @@ try {
 
         } elseif ($action === 'procesar') {
             $id_recepcion = $data['id_recepcion'];
+            $condicion_fiscal = $data['condicion_fiscal'] ?? null;
+
             if (!$id_recepcion)
                 throw new Exception("ID de recepción requerido");
 
@@ -227,13 +229,31 @@ try {
                         continue;
                     }
 
-                    // 1. Obtener precio unitario (priorizando costo internado si existe)
+                    // 1. Obtener precio unitario, considerando moneda si no hay internación
                     $stmtOCP = $db->prepare("
-                        SELECT COALESCE(precio_unitario_internacion, precio_unitario) as costo_real 
-                        FROM ordenes_compra_detalle WHERE id_detalle_oc = ?
+                        SELECT od.precio_unitario_internacion, od.precio_unitario, oc.moneda, oc.tipo_cambio
+                        FROM ordenes_compra_detalle od
+                        JOIN ordenes_compra oc ON od.id_orden_compra = oc.id_orden_compra
+                        WHERE od.id_detalle_oc = ?
                     ");
                     $stmtOCP->execute([$det['id_detalle_oc']]);
-                    $precioUnitOC = $stmtOCP->fetchColumn();
+                    $ocData = $stmtOCP->fetch(PDO::FETCH_ASSOC);
+
+                    if (!is_null($ocData['precio_unitario_internacion'])) {
+                        $precioUnitOC = (float) $ocData['precio_unitario_internacion'];
+                    } else {
+                        $precioUnitOC = (float) $ocData['precio_unitario'];
+                        // Si no se liquidó la internación y la compra es en USD, convertir a BOB al tipo de cambio de la orden
+                        if (($ocData['moneda'] ?? 'BOB') === 'USD') {
+                            $tipoCambio = (float) ($ocData['tipo_cambio'] ?? 6.96);
+                            $precioUnitOC = $precioUnitOC * $tipoCambio;
+                        }
+                    }
+
+                    // Aplicar descuento de 13% (IVA) contable si es compra formal CON FACTURA
+                    if ($condicion_fiscal === 'CON_FACTURA') {
+                        $precioUnitOC = $precioUnitOC * 0.87;
+                    }
 
                     // 2. Obtener datos actuales de inventario
                     $stmtInv = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ? FOR UPDATE");
@@ -295,14 +315,21 @@ try {
                     ->execute([$nuevoEstadoOC, $recepcion['id_orden_compra']]);
 
                 // 5. Finalizar Recepción
+                $notaAdicional = $condicion_fiscal ? "\nValidación Administrativa: " . ($condicion_fiscal === 'CON_FACTURA' ? 'Con Factura Legal' : 'Sin Factura (Recibo)') : '';
+
                 $db->prepare("UPDATE recepciones_compra SET 
                     estado = 'CONFIRMADA', 
                     procesado_por = ?, 
                     fecha_procesado = NOW(),
                     inventario_actualizado = 1,
-                    fecha_actualizacion_inventario = NOW()
+                    fecha_actualizacion_inventario = NOW(),
+                    observaciones = CONCAT(IFNULL(observaciones,''), ?)
                     WHERE id_recepcion = ?")
-                    ->execute([$_SESSION['user_id'] ?? 1, $id_recepcion]);
+                    ->execute([$_SESSION['user_id'] ?? 1, $notaAdicional, $id_recepcion]);
+
+                if ($condicion_fiscal === 'SIN_FACTURA') {
+                    $db->prepare("UPDATE recepciones_compra SET numero_factura = 'SIN FACTURA' WHERE id_recepcion = ?")->execute([$id_recepcion]);
+                }
 
                 $db->commit();
                 ob_clean();

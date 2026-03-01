@@ -245,6 +245,19 @@ document.addEventListener('DOMContentLoaded', cargarDatos);
 
 async function cargarDatos() {
     await Promise.all([cargarKPIs(), cargarCategorias(), cargarUnidades(), cargarProveedores(), cargarTodosProductos()]);
+
+    // Refrescar la vista actual de productos
+    if (subcategoriaSeleccionada) {
+        if (subcategoriaSeleccionada.id_subcategoria === -1) {
+            await cargarProductosCategoria(categoriaSeleccionada.id_categoria);
+        } else if (subcategoriaSeleccionada.id_subcategoria === 0) {
+            await cargarProductosSinSubcategoria(categoriaSeleccionada.id_categoria);
+        } else {
+            await cargarProductosSubcategoria(subcategoriaSeleccionada.id_subcategoria);
+        }
+    } else if (categoriaSeleccionada) {
+        await cargarProductosCategoria(categoriaSeleccionada.id_categoria);
+    }
 }
 
 // ========== FUNCIONES DE FORMATO ==========
@@ -712,40 +725,51 @@ async function guardarItem() {
         return;
     }
 
-    const data = {
-        action: id ? 'update' : 'create',
-        id_inventario: id || null,
-        id_tipo_inventario: TIPO_ID,
-        codigo: codigoFinal,
-        nombre: document.getElementById('itemNombre').value,
-        id_categoria: document.getElementById('itemCategoria').value,
-        id_subcategoria: document.getElementById('itemSubcategoria').value || null,
-        id_unidad: document.getElementById('itemUnidad').value,
-        stock_actual: document.getElementById('itemStockActual').value || 0,
-        stock_minimo: document.getElementById('itemStockMinimo').value || 0,
-        costo_unitario: document.getElementById('itemCosto').value || 0,
-        descripcion: document.getElementById('itemDescripcion').value
-    };
+    Swal.fire({
+        title: '¿Desea guardar los cambios?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, guardar',
+        cancelButtonText: 'Cancelar'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            const data = {
+                action: id ? 'update' : 'create',
+                id_inventario: id || null,
+                id_tipo_inventario: TIPO_ID,
+                codigo: codigoFinal,
+                nombre: document.getElementById('itemNombre').value,
+                id_categoria: document.getElementById('itemCategoria').value,
+                id_subcategoria: document.getElementById('itemSubcategoria').value || null,
+                id_unidad: document.getElementById('itemUnidad').value,
+                stock_actual: document.getElementById('itemStockActual').value || 0,
+                stock_minimo: document.getElementById('itemStockMinimo').value || 0,
+                costo_unitario: document.getElementById('itemCosto').value || 0,
+                descripcion: document.getElementById('itemDescripcion').value
+            };
 
-    try {
-        const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        const d = await r.json();
-        if (d.success) {
-            Swal.fire('¡Éxito!', d.message, 'success').then(() => {
-                cerrarModal('modalItem');
-                cargarDatos();
-            });
-        } else {
-            Swal.fire('Error', d.message, 'error');
+            try {
+                const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const d = await r.json();
+                if (d.success) {
+                    Swal.fire('¡Éxito!', d.message, 'success').then(() => {
+                        window.location.reload();
+                    });
+                } else {
+                    Swal.fire('Error', d.message, 'error');
+                }
+            } catch (e) {
+                console.error('Error:', e);
+                Swal.fire('Error', 'Error al guardar', 'error');
+            }
         }
-    } catch (e) {
-        console.error('Error:', e);
-        Swal.fire('Error', 'Error al guardar', 'error');
-    }
+    });
 }
 
 // ========== MODAL INGRESO ==========

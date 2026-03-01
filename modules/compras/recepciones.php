@@ -221,7 +221,7 @@ include '../../includes/header.php';
             <div class="modal-body p-6">
                 <!-- Header Info Validation -->
                 <div
-                    class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                    class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
                     <div>
                         <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Nº Recepción</p>
                         <p class="font-bold text-emerald-800" id="val_numero"></p>
@@ -236,8 +236,18 @@ include '../../includes/header.php';
                         <p class="font-bold text-emerald-800" id="val_proveedor"></p>
                     </div>
                     <div>
-                        <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Monto Factura</p>
-                        <p class="font-bold text-emerald-800" id="val_factura"></p>
+                        <p class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Fis. Reportado</p>
+                        <p class="font-bold text-emerald-800 mt-1" id="val_factura"></p>
+                    </div>
+                    <div>
+                        <label
+                            class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest block mb-1">Validación
+                            Fiscal</label>
+                        <select id="val_condicion_fiscal"
+                            class="w-full text-xs font-bold bg-white border border-emerald-200 text-emerald-800 rounded px-2 py-1 outline-none focus:border-emerald-500 transition-colors">
+                            <option value="CON_FACTURA">Con Factura Legal</option>
+                            <option value="SIN_FACTURA">Sin Factura (Recibo)</option>
+                        </select>
                     </div>
                 </div>
 
@@ -431,7 +441,13 @@ include '../../includes/header.php';
                 document.getElementById('val_numero').textContent = rec.numero_recepcion;
                 document.getElementById('val_orden').textContent = rec.numero_orden;
                 document.getElementById('val_proveedor').textContent = rec.razon_social;
-                document.getElementById('val_factura').textContent = rec.numero_factura ? `Fact: ${rec.numero_factura}` : 'Sin Factura';
+                document.getElementById('val_factura').textContent = rec.numero_factura ? `Fact: ${rec.numero_factura}` : 'Ninguno';
+
+                if (rec.numero_factura) {
+                    document.getElementById('val_condicion_fiscal').value = 'CON_FACTURA';
+                } else {
+                    document.getElementById('val_condicion_fiscal').value = 'SIN_FACTURA';
+                }
 
                 const tbody = document.getElementById('val_body');
                 tbody.innerHTML = '';
@@ -441,7 +457,7 @@ include '../../includes/header.php';
                     const cantAcumRaw = parseFloat(det.cant_acumulada_oc || 0); // Esto ya incluye lo recibido previamente
                     const cantEsta = parseFloat(det.cantidad_recibida);
                     const precioOC = parseFloat(det.precio_oc || 0);
-                    
+
                     const saldo = cantOrd - (cantAcumRaw + cantEsta);
                     const sinInventario = !det.id_producto;
 
@@ -501,16 +517,23 @@ include '../../includes/header.php';
                     didOpen: () => { Swal.showLoading(); }
                 });
 
+                const validacionFiscal = document.getElementById('val_condicion_fiscal').value;
+
                 fetch('../../api/compras/recepciones.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'procesar', id_recepcion: id })
+                    body: JSON.stringify({ action: 'procesar', id_recepcion: id, condicion_fiscal: validacionFiscal })
                 })
                     .then(res => res.json())
                     .then(res => {
                         if (res.success) {
-                            Swal.fire('Éxito', res.message, 'success');
-                            cargarRecepciones();
+                            Swal.fire({
+                                title: 'Éxito',
+                                text: res.message,
+                                icon: 'success'
+                            }).then(() => {
+                                window.location.reload();
+                            });
                         } else {
                             Swal.fire('Error', res.message, 'error');
                         }

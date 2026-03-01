@@ -875,14 +875,14 @@ include '../../includes/header.php';
                     document.getElementById('centro_costo').value = sol.centro_costo;
                     document.getElementById('id_tipo_inventario').value = sol.id_tipo_inventario;
 
-                    // Configurar Modo Solo Lectura
-                    currentIsReadOnly = (sol.estado !== 'PENDIENTE');
+                    // Configurar Modo Solo Lectura (permitir edición si es PENDIENTE o APROBADA)
+                    currentIsReadOnly = (sol.estado !== 'PENDIENTE' && sol.estado !== 'APROBADA');
                     toggleFormReadOnly(currentIsReadOnly);
 
                     // Cargar categorías y productos del tipo seleccionado antes de renderizar detalles
                     if (sol.id_tipo_inventario) {
-                        // Deshabilitar botón de guardar si no es PENDIENTE
-                        if (sol.estado !== 'PENDIENTE') {
+                        // Deshabilitar botón de guardar si no es PENDIENTE ni APROBADA
+                        if (sol.estado !== 'PENDIENTE' && sol.estado !== 'APROBADA') {
                             document.getElementById('btnGuardarSolicitud').style.display = 'none';
                         } else {
                             document.getElementById('btnGuardarSolicitud').style.display = 'block';
@@ -923,7 +923,7 @@ include '../../includes/header.php';
                         });
                     } else {
                         // Si no tiene tipo de inventario (raro pero posible)
-                        if (sol.estado !== 'PENDIENTE') {
+                        if (sol.estado !== 'PENDIENTE' && sol.estado !== 'APROBADA') {
                             document.getElementById('btnGuardarSolicitud').style.display = 'none';
                         } else {
                             document.getElementById('btnGuardarSolicitud').style.display = 'block';

@@ -30,6 +30,9 @@ require_once '../../includes/permisos_inventario.php';
 
 <!--<link rel="stylesheet" href="css/inventario_tipo.css"> -->
 
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
     :root {
         --tipo-color:

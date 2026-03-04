@@ -480,9 +480,11 @@ include '../../includes/header.php';
                             </div>
                         </td>
                         <td class="py-3 px-4 text-center font-bold text-slate-600">
-                            ${det.moneda_oc === 'USD'
-                            ? `<span class="block text-blue-700">${precioOC.toFixed(2)} <span class="text-[10px] font-mono">USD</span></span><span class="text-[9px] text-slate-400">TC: ${parseFloat(det.tc_oc || 1).toFixed(2)}</span>`
-                            : `Bs. ${precioOC.toFixed(2)}`
+                            ${det.precio_internacion && parseFloat(det.precio_internacion) > 0
+                            ? `<span class="block text-indigo-700 font-black">${parseFloat(det.precio_internacion).toFixed(4)} <span class="text-[10px] font-mono font-normal">BOB</span></span><span class="text-[9px] text-slate-400 italic">Costo Internado ✓</span>`
+                            : det.moneda_oc === 'USD'
+                                ? `<span class="block text-blue-700">${precioOC.toFixed(2)} <span class="text-[10px] font-mono">USD</span></span><span class="text-[9px] text-slate-400">TC: ${parseFloat(det.tc_oc || 1).toFixed(2)}</span>`
+                                : `Bs. ${precioOC.toFixed(2)}`
                         }
                         </td>
                         <td class="py-3 px-4 text-center text-slate-500">${cantOrd} ${det.unidad_oc || ''}</td>

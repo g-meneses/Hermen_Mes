@@ -57,7 +57,9 @@ try {
 
             // Detalles con contexto de la OC (Precios y Cantidades Acumuladas)
             $stmtDet = $db->prepare("
-                SELECT rd.*, od.precio_unitario as precio_oc, od.cantidad_recibida as cant_acumulada_oc,
+                SELECT rd.*, od.precio_unitario as precio_oc,
+                       od.precio_unitario_internacion as precio_internacion,
+                       od.cantidad_recibida as cant_acumulada_oc,
                        od.unidad_medida as unidad_oc, oc.moneda as moneda_oc, oc.tipo_cambio as tc_oc
                 FROM recepciones_compra_detalle rd
                 LEFT JOIN ordenes_compra_detalle od ON rd.id_detalle_oc = od.id_detalle_oc

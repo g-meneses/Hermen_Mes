@@ -479,12 +479,7 @@ include '../../includes/header.php';
                                 ` : ''}
                             </div>
                         </td>
-                        <td class="py-3 px-4 text-center font-bold text-slate-600">
-                            ${det.moneda_oc === 'USD'
-                            ? `<span class="block text-blue-700">${precioOC.toFixed(2)} <span class="text-[10px] font-mono">USD</span></span><span class="text-[9px] text-slate-400">TC: ${parseFloat(det.tc_oc || 1).toFixed(2)}</span>`
-                            : `Bs. ${precioOC.toFixed(2)}`
-                        }
-                        </td>
+                        <td class="py-3 px-4 text-center font-bold text-slate-600">Bs. ${precioOC.toFixed(2)}</td>
                         <td class="py-3 px-4 text-center text-slate-500">${cantOrd} ${det.unidad_oc || ''}</td>
                         <td class="py-3 px-4 text-center text-slate-500">${cantAcumRaw}</td>
                         <td class="py-3 px-4 text-center font-bold bg-emerald-50 text-emerald-700">${cantEsta}</td>
@@ -647,15 +642,10 @@ include '../../includes/header.php';
                                     Requiere Internación
                                     <span class="material-symbols-outlined text-xs">lock</span>
                                 </button>` :
-                            `<div class="flex gap-2">
-                                    <button type="button" onclick="window.open('hoja_recepcion_pdf.php?id=${o.id_orden_compra}', '_blank'); event.stopPropagation();" class="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-all" title="Imprimir formato para llenado físico en almacén">
-                                        <span class="material-symbols-outlined text-xs">print</span> Físico
-                                    </button>
-                                    <button class="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-600 group-hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-all">
-                                        Recibir Ahora
-                                        <span class="material-symbols-outlined text-xs">arrow_forward</span>
-                                    </button>
-                                </div>`}
+                            `<button class="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-600 group-hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-all">
+                                    Recibir Ahora
+                                    <span class="material-symbols-outlined text-xs">arrow_forward</span>
+                                </button>`}
                             </div>
                         </div>
                     `;

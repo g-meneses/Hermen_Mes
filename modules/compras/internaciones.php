@@ -109,7 +109,19 @@ include '../../includes/header.php';
                                 <div class="flex items-center gap-2 text-slate-500">
                                     <span
                                         class="material-symbols-outlined text-sm text-primary">currency_exchange</span>
-                                    <span>Valor FOB: <b id="labelTotalFOB" class="text-slate-900">0.00</b> BOB</span>
+                                    <span>Valor FOB: <b id="labelTotalFOB" class="text-slate-900">0.00</b> <span
+                                            id="labelMonedaFOB">BOB</span></span>
+                                </div>
+                                <div id="divTCFOB"
+                                    class="flex items-center gap-2 text-slate-500 hidden focus-within:text-primary">
+                                    <span class="material-symbols-outlined text-sm">payments</span>
+                                    <label
+                                        class="whitespace-nowrap font-bold text-[10px] uppercase tracking-widest text-primary">TC
+                                        Aplicado:</label>
+                                    <input type="number" id="inputTCFOB"
+                                        class="w-20 border-b-2 border-slate-300 bg-transparent text-slate-900 font-bold focus:outline-none focus:border-primary px-1 text-center"
+                                        value="1.00" step="0.01" onchange="recalcular()"
+                                        title="Presione enter u oculta para recalcular">
                                 </div>
                             </div>
                         </div>
@@ -256,16 +268,23 @@ include '../../includes/header.php';
 
                 <!-- Tabla de Recalculo de Items -->
                 <div class="glass-card rounded-3xl p-6 shadow-sm">
-                    <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-6">
-                        <span class="material-symbols-outlined text-blue-500">inventory_2</span> Recálculo de Costo
-                        Unitario
-                    </h3>
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-blue-500">inventory_2</span> Ajuste Packing List
+                            y Recálculo de Costo
+                        </h3>
+                        <button onclick="guardarPackingList()" id="btnGuardarPacking"
+                            class="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-all shadow-lg shadow-blue-500/20 hidden">
+                            Guardar Packing List
+                        </button>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="w-full table-premium" id="tablaItemsRecalculo">
                             <thead>
                                 <tr>
                                     <th class="text-left w-1/3 text-lg">Producto</th>
-                                    <th class="text-center">Cant.</th>
+                                    <th class="text-center w-24">Cant. OC</th>
+                                    <th class="text-center text-primary w-28 text-lg">Cant. Packing</th>
                                     <th class="text-right">Costo FOB</th>
                                     <th class="text-right">Factor</th>
                                     <th class="text-right text-primary">Costo Internado</th>
@@ -279,6 +298,52 @@ include '../../includes/header.php';
                     </div>
                 </div>
             </div>
+
+            <!-- Panel de Historial de Liquidaciones Pasadas -->
+            <div class="mt-8">
+                <div class="glass-card rounded-[2rem] p-8 shadow-sm">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-slate-400">history</span> Historial de
+                                Importaciones Liquidadas
+                            </h3>
+                            <p class="text-xs text-slate-500 font-medium">Registro de Órdenes de Compra con prorrateo de
+                                costos aplicado.</p>
+                        </div>
+                        <button onclick="cargarHistorialLiquidaciones()"
+                            class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors"
+                            title="Actualizar Historial">
+                            <span class="material-symbols-outlined">refresh</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full table-premium" id="tablaHistorial">
+                            <thead>
+                                <tr>
+                                    <th class="text-left">Nº Importación</th>
+                                    <th class="text-left">Proveedor</th>
+                                    <th class="text-center">Fecha Liquidación</th>
+                                    <th class="text-right">Valor FOB Original</th>
+                                    <th class="text-right">Gastos Acumulados</th>
+                                    <th class="text-right">Costo Total Internado</th>
+                                    <th class="text-center text-primary">Factor Promedio</th>
+                                    <th class="text-center">Estado de Recepción</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <!-- Cargado vía JS -->
+                                <tr>
+                                    <td colspan="8" class="text-center py-6 text-slate-400 text-sm">Cargando
+                                        historial...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
@@ -317,8 +382,25 @@ include '../../includes/header.php';
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="space-y-1.5">
+                        <label
+                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Moneda</label>
+                        <select id="g_moneda" class="input-premium font-bold" onchange="toggleTCGasto()">
+                            <option value="BOB">BOB</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1.5" id="divTCGasto" style="display:none;">
+                        <label
+                            class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1 text-primary">Tipo
+                            de Cambio</label>
+                        <input type="number" id="g_tc" class="input-premium font-bold text-primary" step="0.01"
+                            value="6.96">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
                         <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Monto
-                            (BOB)</label>
+                            (Original)</label>
                         <input type="number" id="g_monto" class="input-premium font-bold text-slate-800" step="0.01">
                     </div>
                     <div class="space-y-1.5">
@@ -344,7 +426,86 @@ include '../../includes/header.php';
     let itemsActuales = [];
     let gastosActuales = [];
 
-    document.addEventListener('DOMContentLoaded', listarOrdenes);
+    document.addEventListener('DOMContentLoaded', () => {
+        listarOrdenes();
+        cargarHistorialLiquidaciones();
+    });
+
+    function cargarHistorialLiquidaciones() {
+        fetch('../../api/compras/internaciones.php?action=list_history')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.querySelector('#tablaHistorial tbody');
+                tbody.innerHTML = '';
+
+                if (!data.historial || data.historial.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-400 font-medium text-sm">No hay importaciones liquidadas registradas aún.</td></tr>';
+                    return;
+                }
+                data.historial.forEach(h => {
+                    // Estados de Recepción Simplificados
+                    let estadoRec = '';
+                    if (h.estado === 'RECIBIDA_PARCIAL') estadoRec = '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold">📦 PARCIAL</span>';
+                    else if (h.estado === 'RECIBIDA') estadoRec = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">✅ COMPLETA</span>';
+                    else estadoRec = '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold">🕒 PEND. RECEPCIÓN</span>';
+
+                    const factorProm = (parseFloat(h.total_internado) / parseFloat(h.fob_total_bob)).toFixed(4);
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition-colors cursor-pointer group';
+                    tr.onclick = () => verDetalleLiquidada(h.id_orden_compra); // Para futura función de vista detallada
+
+                    tr.innerHTML = `
+<td>
+    <span class="block font-black text-slate-800 text-xs">${h.numero_orden}</span>
+</td>
+<td>
+    <span class="block text-slate-600 font-medium text-xs max-w-[150px] truncate"
+        title="${h.nombre_proveedor}">${h.nombre_proveedor}</span>
+</td>
+<td class="text-center">
+    <span class="text-xs text-slate-500">${h.fecha_ultima_liq || h.fecha_orden.split(' ')[0]}</span>
+</td>
+<td class="text-right">
+    <span class="font-mono text-slate-700 text-xs font-bold">${parseFloat(h.fob_total_bob).toLocaleString(undefined, {
+                        minimumFractionDigits: 2
+                    })} <span class="text-[9px] text-slate-400">BOB</span></span>
+</td>
+<td class="text-right">
+    <span class="font-mono text-amber-600 text-xs font-bold">+ ${parseFloat(h.gastos_totales).toLocaleString(undefined,
+                        { minimumFractionDigits: 2 })} <span class="text-[9px] text-amber-500/50">BOB</span></span>
+</td>
+<td class="text-right">
+    <span class="font-mono text-slate-900 text-sm font-black">${parseFloat(h.total_internado).toLocaleString(undefined,
+                            { minimumFractionDigits: 2 })} <span class="text-[9px] text-slate-400">BOB</span></span>
+</td>
+<td class="text-center">
+    <span
+        class="font-mono text-primary group-hover:bg-primary group-hover:text-white px-2 py-0.5 rounded transition-colors text-xs font-bold">x
+        ${factorProm}</span>
+</td>
+<td class="text-center">
+    ${estadoRec}
+</td>
+`;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(err => console.error('Error cargando historial:', err));
+    }
+
+    // Placeholder para futura funcionalidad
+    function verDetalleLiquidada(idOC) {
+        Swal.fire({
+            title: 'Detalle de Liquidación',
+            text: 'Visualización de detalles históricos en desarrollo.',
+            icon: 'info',
+            toast: true,
+            position: 'top-end',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }
 
     function listarOrdenes() {
         console.log('Listando órdenes...');
@@ -353,19 +514,21 @@ include '../../includes/header.php';
             .then(data => {
                 const select = document.getElementById('selectorOrdenes');
                 const badge = document.getElementById('recuentoOrdenes');
-                
+
                 select.innerHTML = '<option value="">-- Seleccione una importación --</option>';
-                
+
                 if (!data.ordenes || data.ordenes.length === 0) {
                     badge.innerText = '0';
                     return;
                 }
-                
+
                 badge.innerText = data.ordenes.length;
                 data.ordenes.forEach(o => {
                     const opt = document.createElement('option');
                     opt.value = o.id_orden_compra;
-                    opt.textContent = `${o.numero_orden} - ${o.nombre_proveedor} (${(o.fecha_orden || '').split(' ')[0]})`;
+                    const esLiquidada = parseFloat(o.items_liquidados || 0) >= parseFloat(o.total_items || 1);
+                    const tagEst = esLiquidada ? '✓ LIQUIDADA' : '⏳ PENDIENTE DE LIQUIDACIÓN';
+                    opt.textContent = `${o.numero_orden} - ${o.nombre_proveedor} [${tagEst}]`;
                     if (ordenActual && ordenActual.id_orden_compra == o.id_orden_compra) opt.selected = true;
                     select.appendChild(opt);
                 });
@@ -390,7 +553,18 @@ include '../../includes/header.php';
                 document.getElementById('labelOC').innerText = ordenActual.numero_orden;
                 document.getElementById('labelProveedor').innerText = ordenActual.nombre_proveedor || 'Proveedor';
                 document.getElementById('labelFecha').innerText = (ordenActual.fecha_orden || '').split(' ')[0];
-                document.getElementById('labelTotalFOB').innerText = parseFloat(ordenActual.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                document.getElementById('labelTotalFOB').innerText = parseFloat(ordenActual.total || 0).toLocaleString(undefined, {
+                    minimumFractionDigits: 2
+                });
+                document.getElementById('labelMonedaFOB').innerText = ordenActual.moneda || 'BOB';
+
+                if (ordenActual.moneda === 'USD') {
+                    document.getElementById('divTCFOB').classList.remove('hidden');
+                    document.getElementById('inputTCFOB').value = ordenActual.tipo_cambio || 6.96;
+                } else {
+                    document.getElementById('divTCFOB').classList.add('hidden');
+                    document.getElementById('inputTCFOB').value = 1.0;
+                }
 
                 listarOrdenes(); // Refrescar selección visual
                 renderGastos();
@@ -407,23 +581,25 @@ include '../../includes/header.php';
         tbody.innerHTML = '';
         let total = 0;
         gastosActuales.forEach(g => {
-            total += parseFloat(g.monto);
+            const montoBob = (g.monto_bob && parseFloat(g.monto_bob) > 0) ? parseFloat(g.monto_bob) : parseFloat(g.monto);
+            total += montoBob;
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="py-3 px-2">
-                    <span class="block font-bold text-slate-700 text-xs">${g.tipo_gasto}</span>
-                    <span class="text-[10px] text-slate-400">${g.descripcion}</span>
-                </td>
-                <td class="py-3 px-2 text-right">
-                    <span class="block font-mono font-bold text-slate-800 text-xs">${parseFloat(g.monto).toFixed(2)}</span>
-                    <span class="text-[10px] text-slate-400">Fact: ${g.numero_factura_gasto || 'S/N'}</span>
-                </td>
-                <td class="text-center">
-                    <button onclick="eliminarGasto(${g.id_gasto})" class="text-slate-300 hover:text-red-500 transition-colors">
-                        <span class="material-symbols-outlined text-sm">close</span>
-                    </button>
-                </td>
-            `;
+<td class="py-3 px-2">
+    <span class="block font-bold text-slate-700 text-xs">${g.tipo_gasto}</span>
+    <span class="text-[10px] text-slate-400">${g.descripcion}</span>
+</td>
+<td class="py-3 px-2 text-right">
+    <span class="block font-mono font-bold text-slate-800 text-xs">${montoBob.toFixed(2)}</span>
+    <span class="text-[10px] text-slate-400">${g.moneda === 'USD' ? `(${parseFloat(g.monto).toFixed(2)} USD x
+        ${parseFloat(g.tipo_cambio || 1).toFixed(2)}) ` : ''}Fact: ${g.numero_factura_gasto || 'S/N'}</span>
+</td>
+<td class="text-center">
+    <button onclick="eliminarGasto(${g.id_gasto})" class="text-slate-300 hover:text-red-500 transition-colors">
+        <span class="material-symbols-outlined text-sm">close</span>
+    </button>
+</td>
+`;
             tbody.appendChild(tr);
         });
         document.getElementById('totalGastosMonto').innerText = total.toLocaleString(undefined, { minimumFractionDigits: 2 });
@@ -431,13 +607,25 @@ include '../../includes/header.php';
     }
 
     function recalcular() {
-        const totalFob = parseFloat(ordenActual.total);
-        const totalGastos = gastosActuales.reduce((acc, g) => acc + parseFloat(g.monto), 0);
-        const totalInternacion = totalFob + totalGastos;
-        const factor = totalFob > 0 ? totalInternacion / totalFob : 1;
+        // Redefinir FobOriginal basado en las cantidades actuales (Packing o OC)
+        let fFobOriginal = 0;
+        itemsActuales.forEach(item => {
+            const cant = parseFloat(item.cantidad_embarcada) || parseFloat(item.cantidad_ordenada);
+            fFobOriginal += cant * parseFloat(item.precio_unitario);
+        });
 
-        document.getElementById('factFob').innerText = totalFob.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('factTotal').innerText = totalInternacion.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        const tcInternacion = parseFloat(document.getElementById('inputTCFOB').value) || 1;
+        const totalFobBOB = fFobOriginal * tcInternacion;
+
+        const totalGastos = gastosActuales.reduce((acc, g) => acc + ((g.monto_bob && parseFloat(g.monto_bob) > 0) ?
+            parseFloat(g.monto_bob) : parseFloat(g.monto)), 0);
+        const totalInternacion = totalFobBOB + totalGastos;
+        const factor = totalFobBOB > 0 ? totalInternacion / totalFobBOB : 1;
+
+        document.getElementById('factFob').innerText = totalFobBOB.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('factTotal').innerText = totalInternacion.toLocaleString(undefined, {
+            minimumFractionDigits: 2
+        });
         document.getElementById('factorProrrateo').innerText = factor.toFixed(4);
 
         // Actualizar Stats Top
@@ -449,26 +637,41 @@ include '../../includes/header.php';
         const tbody = document.querySelector('#tablaItemsRecalculo tbody');
         tbody.innerHTML = '';
         itemsActuales.forEach(item => {
-            const costoFob = parseFloat(item.precio_unitario);
-            const costoInternado = costoFob * factor;
-            const diffPorc = ((costoInternado / costoFob) - 1) * 100;
+            const cantidadActiva = parseFloat(item.cantidad_embarcada) || parseFloat(item.cantidad_ordenada);
+            const costoFobOriginal = parseFloat(item.precio_unitario);
+            const costoFobBOB = costoFobOriginal * tcInternacion;
+            const costoInternado = costoFobBOB * factor;
+            const diffPorc = ((costoInternado / costoFobBOB) - 1) * 100;
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>
-                    <span class="block font-bold text-slate-800 text-sm">${item.descripcion_producto}</span>
-                    <span class="text-[10px] font-mono text-slate-400 uppercase">${item.codigo_producto}</span>
-                </td>
-                <td class="text-center text-slate-600 font-medium">${item.cantidad_ordenada}</td>
-                <td class="text-right font-mono text-slate-600">${costoFob.toFixed(2)}</td>
-                <td class="text-right font-mono text-slate-400 italic">x ${factor.toFixed(4)}</td>
-                <td class="text-right">
-                    <span class="block font-mono font-bold text-primary text-md">${costoInternado.toFixed(4)}</span>
-                </td>
-                <td class="text-right">
-                    <span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-black">+ ${diffPorc.toFixed(1)}%</span>
-                </td>
-            `;
+<td>
+    <span class="block font-bold text-slate-800 text-sm">${item.descripcion_producto}</span>
+    <span class="text-[10px] font-mono text-slate-400 uppercase">${item.codigo_producto}</span>
+</td>
+<td class="text-center text-slate-500 font-medium">
+    <span class="line-through opacity-50 text-xs">${parseFloat(item.cantidad_ordenada).toFixed(2)}</span>
+</td>
+<td class="text-center">
+    <input type="number"
+        class="w-full text-center bg-blue-50/50 border border-blue-100 rounded-lg py-1 font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+        value="${cantidadActiva.toFixed(2)}" step="0.01"
+        onchange="cambiarCantidadPaquete(${item.id_detalle_oc}, this.value)">
+</td>
+<td class="text-right">
+    <span class="block font-mono text-slate-600">${costoFobBOB.toFixed(2)}</span>
+    ${ordenActual.moneda === 'USD' ? `<span class="text-[9px] text-slate-400">(${costoFobOriginal.toFixed(2)}
+        USD)</span>` : ''}
+</td>
+<td class="text-right font-mono text-slate-400 italic">x ${factor.toFixed(4)}</td>
+<td class="text-right">
+    <span class="block font-mono font-bold text-primary text-md">${costoInternado.toFixed(4)}</span>
+</td>
+<td class="text-right">
+    <span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-black">+
+        ${diffPorc.toFixed(1)}%</span>
+</td>
+`;
             tbody.appendChild(tr);
 
             // Guardar para finalizar
@@ -476,30 +679,99 @@ include '../../includes/header.php';
         });
     }
 
-    function abrirModalGasto() { $('#modalGasto').modal('show'); }
+    function cambiarCantidadPaquete(idDetalle, valor) {
+        const item = itemsActuales.find(i => i.id_detalle_oc == idDetalle);
+        if (item) {
+            item.cantidad_embarcada = parseFloat(valor);
+            document.getElementById('btnGuardarPacking').classList.remove('hidden');
+            recalcular();
+        }
+    }
+
+    function guardarPackingList() {
+        Swal.fire({
+            title: '¿Confirmar Packing List?',
+            text: "Al guardar, este será el nuevo total de referencia para el cálculo de costos y la recepción en almacén. Verifique que las cantidades coinciden con el Documento de Embarque definitivo.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#2563eb',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Sí, guardar cantidades',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const btn = document.getElementById('btnGuardarPacking');
+                btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm">sync</span> Guardando...';
+                btn.disabled = true;
+
+                const payload = {
+                    action: 'guardar_packing',
+                    items: itemsActuales.map(i => ({
+                        id_detalle_oc: i.id_detalle_oc,
+                        cantidad_embarcada: parseFloat(i.cantidad_embarcada) || parseFloat(i.cantidad_ordenada)
+                    }))
+                };
+
+                fetch('../../api/compras/internaciones.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: 'Cantidades actualizadas sobre el Packing List.',
+                                showConfirmButton: false,
+                                timer: 3000
+                            });
+                            btn.classList.add('hidden');
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    })
+                    .finally(() => {
+                        btn.innerHTML = 'Guardar Packing List';
+                        btn.disabled = false;
+                    });
+            }
+        });
+    }
+
+    function toggleTCGasto() {
+        const moneda = document.getElementById('g_moneda').value;
+        document.getElementById('divTCGasto').style.display = moneda === 'USD' ? 'block' : 'none';
+
+        // Si cambia a USD y no hay TC, sugerir el de la orden
+        if (moneda === 'USD' && !document.getElementById('g_tc').value) {
+            document.getElementById('g_tc').value = document.getElementById('inputTCFOB').value || 6.96;
+        }
+    }
+
+    function abrirModalGasto() {
+        document.getElementById('g_moneda').value = 'BOB';
+        document.getElementById('g_monto').value = '';
+        document.getElementById('g_tc').value = document.getElementById('inputTCFOB').value || 6.96;
+        toggleTCGasto();
+        $('#modalGasto').modal('show');
+    }
 
     function guardarGasto() {
         const monto = document.getElementById('g_monto').value;
-        if (!monto || monto <= 0) {
-            Swal.fire('Error', 'Ingrese un monto válido', 'warning');
-            return;
-        }
-
+        if (!monto || monto <= 0) { Swal.fire('Error', 'Ingrese un monto válido', 'warning'); return; } const
+            moneda = document.getElementById('g_moneda').value; const tc = parseFloat(document.getElementById('g_tc').value) || 1;
         const data = {
-            action: 'add_gasto',
-            id_orden_compra: ordenActual.id_orden_compra,
-            tipo_gasto: document.getElementById('g_tipo').value,
-            descripcion: document.getElementById('g_desc').value,
-            monto: monto,
-            factura: document.getElementById('g_fact').value
-        };
-
-        fetch('../../api/compras/internaciones.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        })
-            .then(res => res.json())
+            action: 'add_gasto', id_orden_compra: ordenActual.id_orden_compra, tipo_gasto:
+                document.getElementById('g_tipo').value, descripcion: document.getElementById('g_desc').value, monto: monto, moneda:
+                moneda, tipo_cambio: tc, monto_bob: moneda === 'USD' ? monto * tc : monto, factura:
+                document.getElementById('g_fact').value
+        }; fetch('../../api/compras/internaciones.php', {
+            method: 'POST', headers:
+                { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+        }).then(res => res.json())
             .then(res => {
                 if (res.success) {
                     $('#modalGasto').modal('hide');
@@ -564,12 +836,17 @@ include '../../includes/header.php';
             cancelButtonText: 'Revisar'
         }).then((result) => {
             if (result.isConfirmed) {
+                // El factor ya engloba todo pasado a BOB, por lo tanto multiplicamos el TC
+                // para que el costo internado final se exprese obligatoriamente en moneda base (BOB).
+                const tcInternacion = parseFloat(document.getElementById('inputTCFOB').value) || 1;
+
                 const payload = {
                     action: 'finalizar_liquidacion',
                     id_orden_compra: ordenActual.id_orden_compra,
                     items: itemsActuales.map(i => ({
                         id_detalle_oc: i.id_detalle_oc,
-                        costo_internacion: (parseFloat(i.precio_unitario) * factor).toFixed(4)
+                        // Convertir a BOB y multiplicar por el factor de prorrateo
+                        costo_internacion: (parseFloat(i.precio_unitario) * tcInternacion * factor).toFixed(4)
                     }))
                 };
 

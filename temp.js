@@ -1,18 +1,4 @@
-<?php
-// modules/compras/recepciones.php
-require_once '../../config/database.php';
 
-if (!isLoggedIn()) {
-    header('Location: ../../login.php');
-    exit();
-}
-$pageTitle = "Recepciones de Compra";
-include '../../includes/header.php';
-?>
-
-<!-- Tailwind y Fuentes -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
-<script>
     tailwind.config = {
         darkMode: "class",
         theme: {
@@ -479,12 +465,7 @@ include '../../includes/header.php';
                                 ` : ''}
                             </div>
                         </td>
-                        <td class="py-3 px-4 text-center font-bold text-slate-600">
-                            ${det.moneda_oc === 'USD'
-                            ? `<span class="block text-blue-700">${precioOC.toFixed(2)} <span class="text-[10px] font-mono">USD</span></span><span class="text-[9px] text-slate-400">TC: ${parseFloat(det.tc_oc || 1).toFixed(2)}</span>`
-                            : `Bs. ${precioOC.toFixed(2)}`
-                        }
-                        </td>
+                        <td class="py-3 px-4 text-center font-bold text-slate-600">Bs. ${precioOC.toFixed(2)}</td>
                         <td class="py-3 px-4 text-center text-slate-500">${cantOrd} ${det.unidad_oc || ''}</td>
                         <td class="py-3 px-4 text-center text-slate-500">${cantAcumRaw}</td>
                         <td class="py-3 px-4 text-center font-bold bg-emerald-50 text-emerald-700">${cantEsta}</td>
@@ -604,19 +585,18 @@ include '../../includes/header.php';
                 panel.classList.remove('hidden');
                 grid.innerHTML = '';
 
-                pendientes.forEach(o => {
-                    const totalOrdenado = parseFloat(o.total_ordenado) || 1;
-                    const totalRecibido = parseFloat(o.total_recibido) || 0;
-                    const porcentaje = Math.min(100, Math.round((totalRecibido / totalOrdenado) * 100));
-                    const esImportacionNoLiquidada = o.tipo_compra === 'IMPORTACION' && parseFloat(o.items_liquidados || 0) < parseFloat(o.total_items || 1);
+                const totalOrdenado = parseFloat(o.total_ordenado) || 1;
+                const totalRecibido = parseFloat(o.total_recibido) || 0;
+                const porcentaje = Math.min(100, Math.round((totalRecibido / totalOrdenado) * 100));
+                const esImportacionNoLiquidada = o.tipo_compra === 'IMPORTACION' && parseFloat(o.items_liquidados || 0) < parseFloat(o.total_items || 1);
 
-                    const card = document.createElement('div');
-                    card.className = `premium-card transition-all ${esImportacionNoLiquidada ? 'opacity-75 grayscale-[30%]' : 'hover:border-emerald-200 cursor-pointer group hover:shadow-md'}`;
-                    if (!esImportacionNoLiquidada) {
-                        card.onclick = () => recibirOC(o.id_orden_compra);
-                    }
+                const card = document.createElement('div');
+                card.className = `premium-card transition-all ${esImportacionNoLiquidada ? 'opacity-75 grayscale-[30%]' : 'hover:border-emerald-200 cursor-pointer group hover:shadow-md'}`;
+                if (!esImportacionNoLiquidada) {
+                    card.onclick = () => recibirOC(o.id_orden_compra);
+                }
 
-                    card.innerHTML = `
+                card.innerHTML = `
                         <div class="flex flex-col h-full">
                             <div class="flex justify-between items-start mb-3">
                                 <div>
@@ -643,25 +623,20 @@ include '../../includes/header.php';
                             <div class="flex items-center justify-between mt-4">
                                 <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">${o.fecha_orden.split(' ')[0]}</span>
                                 ${esImportacionNoLiquidada ?
-                            `<button disabled class="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-400 px-3 py-1.5 rounded-lg bg-slate-50 cursor-not-allowed">
+                        `<button disabled class="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-400 px-3 py-1.5 rounded-lg bg-slate-50 cursor-not-allowed">
                                     Requiere Internación
                                     <span class="material-symbols-outlined text-xs">lock</span>
                                 </button>` :
-                            `<div class="flex gap-2">
-                                    <button type="button" onclick="window.open('hoja_recepcion_pdf.php?id=${o.id_orden_compra}', '_blank'); event.stopPropagation();" class="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-600 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-all" title="Imprimir formato para llenado físico en almacén">
-                                        <span class="material-symbols-outlined text-xs">print</span> Físico
-                                    </button>
-                                    <button class="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-600 group-hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-all">
-                                        Recibir Ahora
-                                        <span class="material-symbols-outlined text-xs">arrow_forward</span>
-                                    </button>
-                                </div>`}
+                        `<button class="flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-600 group-hover:bg-emerald-50 px-3 py-1.5 rounded-lg transition-all">
+                                    Recibir Ahora
+                                    <span class="material-symbols-outlined text-xs">arrow_forward</span>
+                                </button>`}
                             </div>
                         </div>
                     `;
-                    grid.appendChild(card);
-                });
+                grid.appendChild(card);
             });
+    });
     }
 
     function recibirOC(id) {
@@ -951,6 +926,3 @@ include '../../includes/header.php';
         if (!id) id = currentIdRecepcion;
         window.open(`recepcion_pdf.php?id=${id}`, '_blank');
     }
-</script>
-
-<?php include '../../includes/footer.php'; ?>

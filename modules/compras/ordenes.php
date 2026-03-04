@@ -140,6 +140,16 @@ include '../../includes/header.php';
     <!-- Filtros -->
     <div class="premium-card mb-4">
         <div class="flex flex-wrap gap-4">
+            <div class="flex-1 min-w-[150px]">
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Tipo de Compra</label>
+                <select id="filtroTipoCompra"
+                    class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white"
+                    onchange="cargarOrdenes()">
+                    <option value="todos">Todos</option>
+                    <option value="LOCAL">🛒 Locales</option>
+                    <option value="IMPORTACION">🚢 Importación</option>
+                </select>
+            </div>
             <div class="flex-1 min-w-[200px]">
                 <label
                     class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Estado</label>
@@ -286,15 +296,18 @@ include '../../includes/header.php';
                                         placeholder="Bodega Central / Arica / Iquique">
                                 </div>
                                 <div class="space-y-1.5">
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Moneda</label>
+                                    <label
+                                        class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Moneda</label>
                                     <select id="moneda"
-                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all" onchange="toggleTipoCambio()">
+                                        class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                                        onchange="toggleTipoCambio()">
                                         <option value="BOB">🇧🇴 Bolivianos (BOB)</option>
                                         <option value="USD">💵 Dólares (USD)</option>
                                     </select>
                                 </div>
                                 <div class="space-y-1.5 hidden" id="container_tipo_cambio">
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tipo Cambio</label>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tipo
+                                        Cambio</label>
                                     <input type="number" id="tipo_cambio" step="0.01" min="1" value="6.96"
                                         class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm">
                                 </div>
@@ -438,6 +451,7 @@ include '../../includes/header.php';
     let totalGeneral = 0;
     let preciosVisibles = true;
     let ordenEnEdicion = null;
+    let esOrdenEditable = true;
 
     function toggleTipoCambio() {
         const moneda = document.getElementById('moneda').value;
@@ -637,8 +651,9 @@ include '../../includes/header.php';
     function cargarOrdenes() {
         const estado = document.getElementById('filtroEstado').value;
         const proveedor = document.getElementById('filtroProveedor').value;
+        const tipoCompra = document.getElementById('filtroTipoCompra') ? document.getElementById('filtroTipoCompra').value : 'todos';
 
-        let url = `../../api/compras/ordenes.php?action=list&estado=${estado}`;
+        let url = `../../api/compras/ordenes.php?action=list&estado=${estado}&tipo_compra=${tipoCompra}`;
         if (proveedor) url += `&id_proveedor=${proveedor}`;
 
         fetch(url)
@@ -741,6 +756,7 @@ include '../../includes/header.php';
     async function abrirModalOrden() {
         // Reset para nueva orden
         ordenEnEdicion = null;
+        esOrdenEditable = true;
 
         document.getElementById('formOrden').reset();
         if (document.getElementById('moneda')) document.getElementById('moneda').value = 'BOB';
@@ -833,7 +849,7 @@ include '../../includes/header.php';
             tr.innerHTML = `
                 <td class="text-center font-mono text-xs text-slate-400">${index + 1}</td>
                 <td>
-                    ${!ordenEnEdicion ?
+                    ${esOrdenEditable ?
                     `<input type="text" 
                             class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
                             value="${item.descripcion_producto || ''}" 
@@ -843,7 +859,7 @@ include '../../includes/header.php';
                 }
                 </td>
                 <td>
-                    ${!ordenEnEdicion ?
+                    ${esOrdenEditable ?
                     `<input type="number" 
                             class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-center font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
                             value="${item.cantidad}" min="0.01" step="0.01"
@@ -860,7 +876,7 @@ include '../../includes/header.php';
                     </span>
                 </td>
                 <td>
-                    ${!ordenEnEdicion ?
+                    ${esOrdenEditable ?
                     `<input type="text" 
                             class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm text-center text-slate-500 font-medium"
                             value="${item.unidad_medida}" 
@@ -869,7 +885,7 @@ include '../../includes/header.php';
                 }
                 </td>
                 <td class="precio-col${preciosVisibles ? '' : ' hidden'}">
-                    ${!ordenEnEdicion ?
+                    ${esOrdenEditable ?
                     `<input type="number" 
                             class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-right font-mono font-bold text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
                             value="${item.precio_unitario || 0}" min="0" step="0.01"
@@ -881,7 +897,7 @@ include '../../includes/header.php';
                     ${subtotal.toFixed(2)}
                 </td>
                 <td class="text-center">
-                    ${!ordenEnEdicion ?
+                    ${esOrdenEditable ?
                     `<button type="button" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors" onclick="eliminarFila(${index})">
                             <span class="material-symbols-outlined text-lg">delete</span>
                         </button>` : ''
@@ -993,6 +1009,7 @@ include '../../includes/header.php';
 
                 // Determinar si es editable (solo en BORRADOR)
                 const esEditable = orden.estado === 'BORRADOR';
+                esOrdenEditable = esEditable;
 
                 // Actualizar título del modal
                 document.getElementById('tituloModal').innerHTML = esEditable

@@ -32,13 +32,16 @@ try {
         if ($action === 'list') {
             $estado = $_GET['estado'] ?? 'todos';
             $proveedor = $_GET['id_proveedor'] ?? null;
+            $tipo_compra = $_GET['tipo_compra'] ?? null;
             $fecha_inicio = $_GET['fecha_inicio'] ?? null;
             $fecha_fin = $_GET['fecha_fin'] ?? null;
 
             $sql = "
                 SELECT oc.*, p.razon_social as proveedor_nombre, u.nombre_completo as comprador_nombre,
                     (SELECT SUM(d.cantidad_ordenada) FROM ordenes_compra_detalle d WHERE d.id_orden_compra = oc.id_orden_compra) as total_ordenado,
-                    (SELECT SUM(d.cantidad_recibida) FROM ordenes_compra_detalle d WHERE d.id_orden_compra = oc.id_orden_compra) as total_recibido
+                    (SELECT SUM(d.cantidad_recibida) FROM ordenes_compra_detalle d WHERE d.id_orden_compra = oc.id_orden_compra) as total_recibido,
+                    (SELECT COUNT(*) FROM ordenes_compra_detalle d2 WHERE d2.id_orden_compra = oc.id_orden_compra AND d2.precio_unitario_internacion IS NOT NULL) as items_liquidados,
+                    (SELECT COUNT(*) FROM ordenes_compra_detalle d3 WHERE d3.id_orden_compra = oc.id_orden_compra) as total_items
                 FROM ordenes_compra oc
                 JOIN proveedores p ON oc.id_proveedor = p.id_proveedor
                 LEFT JOIN usuarios u ON oc.id_comprador = u.id_usuario
@@ -53,6 +56,10 @@ try {
             if ($proveedor) {
                 $sql .= " AND oc.id_proveedor = ?";
                 $params[] = $proveedor;
+            }
+            if ($tipo_compra && $tipo_compra !== 'todos') {
+                $sql .= " AND oc.tipo_compra = ?";
+                $params[] = $tipo_compra;
             }
             if ($fecha_inicio && $fecha_fin) {
                 $sql .= " AND oc.fecha_orden BETWEEN ? AND ?";

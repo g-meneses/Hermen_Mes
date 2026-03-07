@@ -118,6 +118,11 @@ include '../../includes/header.php';
     .precio-col.hidden {
         display: none !important;
     }
+
+    /* Forzar alertas de SweetAlert por encima de modales de Bootstrap/Tailwind */
+    .swal2-container {
+        z-index: 99999 !important;
+    }
 </style>
 
 <div class="container-fluid font-display py-4">
@@ -128,6 +133,12 @@ include '../../includes/header.php';
             <p class="text-sm text-slate-500">Gestión de órdenes de compra a proveedores</p>
         </div>
         <div class="flex space-x-2">
+            <button
+                class="flex items-center space-x-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 font-bold px-4 py-2 rounded-lg transition-all active:scale-95 shadow-sm border border-emerald-200"
+                onclick="abrirModalSolicitudesAprobadas()">
+                <span class="material-symbols-outlined text-lg">fact_check</span>
+                <span class="text-sm">Solicitudes Aprobadas</span>
+            </button>
             <button
                 class="flex items-center space-x-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-all active:scale-95 shadow-sm"
                 onclick="abrirModalOrden()">
@@ -141,7 +152,8 @@ include '../../includes/header.php';
     <div class="premium-card mb-4">
         <div class="flex flex-wrap gap-4">
             <div class="flex-1 min-w-[150px]">
-                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Tipo de Compra</label>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Tipo de
+                    Compra</label>
                 <select id="filtroTipoCompra"
                     class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm transition-all focus:ring-2 focus:ring-primary/20 focus:border-primary focus:bg-white"
                     onchange="cargarOrdenes()">
@@ -431,6 +443,7 @@ include '../../includes/header.php';
                     <span class="material-symbols-outlined text-[20px]">close</span>
                     Cancelar
                 </button>
+
                 <button type="button" id="btnGuardarOrden"
                     class="px-8 py-2.5 rounded-xl bg-primary hover:bg-blue-600 text-white font-bold transition-all active:scale-95 shadow-lg shadow-primary/20 flex items-center gap-2"
                     onclick="guardarOrden()">
@@ -442,6 +455,51 @@ include '../../includes/header.php';
     </div>
 </div>
 
+<!-- Modal Solicitudes Aprobadas Listas para OC -->
+<div class="modal fade" id="modalSolicitudesAprobadas" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 1000px;">
+        <div class="modal-content xlarge">
+            <div class="premium-modal-header !bg-emerald-900">
+                <h3 class="text-white flex items-center gap-3 font-bold text-xl">
+                    <span class="material-symbols-outlined">fact_check</span>
+                    Solicitudes Aprobadas Pendientes de Órden
+                </h3>
+                <button type="button" class="text-white/70 hover:text-white transition-colors" data-dismiss="modal">
+                    <span class="material-symbols-outlined text-2xl">close</span>
+                </button>
+            </div>
+            <div class="modal-body modal-body-scroll p-6 bg-slate-50">
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                    <table class="w-full text-left" id="tablaSolicitudesAprobadasModal">
+                        <thead>
+                            <tr
+                                class="bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-widest border-b border-slate-200">
+                                <th class="py-4 px-6">Solicitud</th>
+                                <th class="py-4 px-6">Fecha</th>
+                                <th class="py-4 px-6">Solicitante</th>
+                                <th class="py-4 px-6 text-center">Items</th>
+                                <th class="py-4 px-6 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            <!-- JS cargará esto dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="p-6 bg-white border-t border-slate-100 flex justify-end">
+                <button type="button"
+                    class="px-6 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors"
+                    data-dismiss="modal" onclick="cerrarModalManual('modalSolicitudesAprobadas')">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let itemsDetalle = [];
@@ -546,6 +604,8 @@ include '../../includes/header.php';
             .then(res => res.json())
             .then(data => {
                 solicitudesAprobadas = data.solicitudes || [];
+
+                // Actualizar el select del modal de Orden (ya existía)
                 const select = document.getElementById('id_solicitud_origen');
                 select.innerHTML = '<option value="">-- Sin solicitud (Orden Manual) --</option>';
 
@@ -554,8 +614,94 @@ include '../../includes/header.php';
                         ${s.numero_solicitud} - ${s.solicitante_nombre} (${s.detalles?.length || 0} items)
                     </option>`;
                 });
+
+                // Llenar la tabla del modal de "Ver Solicitudes Aprobadas"
+                renderTablaSolicitudesAprobadas();
             })
             .catch(err => console.error('Error cargando solicitudes:', err));
+    }
+
+    function abrirModalSolicitudesAprobadas() {
+        console.log("Intentando abrir modal de Aprobadas...");
+
+        // Ocultar modal de orden si está abierto para evitar conflictos de backdrop
+        if ($('#modalOrden').hasClass('show')) {
+            $('#modalOrden').modal('hide');
+        }
+
+        // Mover modal al body para evitar z-index trap
+        const modalEl = document.getElementById('modalSolicitudesAprobadas');
+        if (modalEl && modalEl.parentNode !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+
+        // Cargar y luego abrir
+        cargarSolicitudesAprobadas().then(() => {
+            setTimeout(() => {
+                try {
+                    console.log("Llamando a jQuery modal('show')");
+                    $('#modalSolicitudesAprobadas').modal('show');
+
+                    // Fallback CSS forzoso por si Bootstrap falla
+                    if (modalEl) {
+                        modalEl.style.display = 'block';
+                        modalEl.style.opacity = '1';
+                        modalEl.style.background = 'rgba(0,0,0,0.5)';
+                        modalEl.style.zIndex = '9999';
+                        modalEl.classList.add('show');
+                    }
+                } catch (e) {
+                    console.error("Error al abrir modal con jQuery:", e);
+                }
+            }, 300);
+        });
+    }
+
+    function cerrarModalManual(id) {
+        const modalEl = document.getElementById(id);
+        if (modalEl) {
+            modalEl.style.display = 'none';
+            modalEl.classList.remove('show');
+        }
+        $('#' + id).modal('hide');
+    }
+
+    function renderTablaSolicitudesAprobadas() {
+        const tbody = document.querySelector('#tablaSolicitudesAprobadasModal tbody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        if (solicitudesAprobadas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-12 text-center text-slate-400 font-medium">No hay solicitudes aprobadas pendientes de generar orden.</td></tr>';
+            return;
+        }
+
+        solicitudesAprobadas.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="py-4 px-6 font-bold text-slate-800">${s.numero_solicitud}</td>
+                <td class="py-4 px-6 text-slate-500 text-sm">${s.fecha_solicitud}</td>
+                <td class="py-4 px-6 text-slate-600 font-medium">${s.solicitante_nombre}</td>
+                <td class="py-4 px-6 text-center font-bold text-blue-600">${s.detalles?.length || 0}</td>
+                <td class="py-4 px-6 text-center">
+                    <button onclick="generarOrdenDesdeModal(${s.id_solicitud})" class="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg shadow hover:bg-blue-600 transition-all">
+                        Generar O.C.
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function generarOrdenDesdeModal(idSolicitud) {
+        $('#modalSolicitudesAprobadas').modal('hide');
+        abrirModalOrden();
+        // Usar setTimeout pequeño para dar tiempo a renderizar el modal de Orden
+        setTimeout(() => {
+            const select = document.getElementById('id_solicitud_origen');
+            select.value = idSolicitud;
+            cargarDesdeSolicitud(idSolicitud);
+        }, 300);
     }
 
     // Cargar productos desde una solicitud aprobada
@@ -860,7 +1006,7 @@ include '../../includes/header.php';
                 </td>
                 <td>
                     ${esOrdenEditable ?
-                    `<input type="number" 
+                    `<input type="number" tabindex="1" onclick="this.select()"
                             class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-center font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
                             value="${item.cantidad}" min="0.01" step="0.01"
                             onchange="actualizarItem(${index}, 'cantidad', parseFloat(this.value))">` :
@@ -886,7 +1032,7 @@ include '../../includes/header.php';
                 </td>
                 <td class="precio-col${preciosVisibles ? '' : ' hidden'}">
                     ${esOrdenEditable ?
-                    `<input type="number" 
+                    `<input type="number" tabindex="1" onclick="this.select()"
                             class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-right font-mono font-bold text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
                             value="${item.precio_unitario || 0}" min="0" step="0.01"
                             onchange="actualizarItem(${index}, 'precio_unitario', parseFloat(this.value))">` :
@@ -898,7 +1044,7 @@ include '../../includes/header.php';
                 </td>
                 <td class="text-center">
                     ${esOrdenEditable ?
-                    `<button type="button" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors" onclick="eliminarFila(${index})">
+                    `<button type="button" tabindex="-1" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors" onclick="eliminarFila(${index})">
                             <span class="material-symbols-outlined text-lg">delete</span>
                         </button>` : ''
                 }

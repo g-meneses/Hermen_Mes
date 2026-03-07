@@ -588,6 +588,8 @@ include '../../includes/header.php';
 
             return cumpleFiltro;
         });
+
+        renderDetalles();
     }
 
     function limpiarFiltros() {
@@ -757,6 +759,14 @@ include '../../includes/header.php';
             let productosOptions = '<option value="">-- Seleccionar producto --</option>';
             productosOptions += '<option value="CUSTOM">✏️ Descripción personalizada</option>';
 
+            // Asegurar que si el ítem actual está seleccionado pero filtrado, siga apareciendo en el select
+            if (item.id_producto && item.id_producto !== 'CUSTOM' && !productosFiltrados.some(p => p.id_inventario == item.id_producto)) {
+                const prod = productosDisponibles.find(p => p.id_inventario == item.id_producto);
+                if (prod) {
+                    productosOptions += `<option value="${prod.id_inventario}" selected>${prod.codigo} - ${prod.nombre}</option>`;
+                }
+            }
+
             productosFiltrados.forEach(prod => {
                 const selected = item.id_producto == prod.id_inventario ? 'selected' : '';
                 productosOptions += `<option value="${prod.id_inventario}" ${selected}>${prod.codigo} - ${prod.nombre}</option>`;
@@ -801,7 +811,8 @@ include '../../includes/header.php';
                     <input type="number" step="0.01" value="${item.cantidad_solicitada}" 
                     class="w-24 bg-slate-50 border-slate-200 rounded-xl py-2 px-3 text-sm text-center font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     onchange="actualizarItem(${index}, 'cantidad_solicitada', this.value)"
-                    ${currentIsReadOnly ? 'disabled' : ''}>
+                    ${currentIsReadOnly ? 'disabled' : 'tabindex="1"'}
+                    onclick="this.select()">
                 </div>
             </td>
             <td>
@@ -811,7 +822,7 @@ include '../../includes/header.php';
                             <span class="material-symbols-outlined">lock</span>
                         </span>` :
                     `<button type="button" class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center shadow-sm" 
-                         onclick="eliminarFila(${index})" title="Eliminar línea">
+                         onclick="eliminarFila(${index})" title="Eliminar línea" tabindex="-1">
                             <span class="material-symbols-outlined text-lg">delete</span>
                         </button>`
                 }
@@ -833,6 +844,26 @@ include '../../includes/header.php';
             itemsDetalle[index].unidad_medida = 'Unidad';
             itemsDetalle[index].stock_actual = 0;
         } else if (productoId) {
+            // Verificar duplicados
+            const duplicado = itemsDetalle.some((item, i) => i !== index && item.id_producto == productoId);
+            if (duplicado) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'warning',
+                    title: 'Este producto ya está en la solicitud.',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+                // Resetear selección en caso de duplicado
+                itemsDetalle[index].id_producto = null;
+                itemsDetalle[index].descripcion_producto = '';
+                itemsDetalle[index].unidad_medida = 'Unidad';
+                itemsDetalle[index].stock_actual = 0;
+                renderDetalles();
+                return;
+            }
+
             // Buscar el producto seleccionado
             const producto = productosFiltrados.find(p => p.id_inventario == productoId);
             if (producto) {

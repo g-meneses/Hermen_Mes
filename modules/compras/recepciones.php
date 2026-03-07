@@ -133,7 +133,7 @@ include '../../includes/header.php';
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <div class="modal-body p-6" style="max-height: 80vh; overflow-y: auto;">
+            <div class="modal-body modal-body-scroll p-6">
                 <form id="formRecepcion">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                         <div class="space-y-1.5">
@@ -197,7 +197,7 @@ include '../../includes/header.php';
                     </div>
                 </form>
             </div>
-            <div class="modal-footer bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3">
+            <div class="modal-footer bg-slate-50 border-t border-slate-100 p-4 flex justify-end gap-3 flex-shrink-0">
                 <button type="button"
                     class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium transition-colors"
                     data-dismiss="modal">Cancelar</button>
@@ -266,9 +266,16 @@ include '../../includes/header.php';
                                 <th class="py-3 px-4 text-center">Cant. Acumulada</th>
                                 <th class="py-3 px-4 text-center bg-emerald-50 text-emerald-700">Esta Recepción</th>
                                 <th class="py-3 px-4 text-center">Saldo</th>
+                                <th class="py-3 px-4 text-left border-l border-slate-200">Total Ítem (BOB)</th>
                             </tr>
                         </thead>
                         <tbody id="val_body" class="divide-y divide-slate-50"></tbody>
+                        <tfoot class="bg-emerald-50 text-emerald-900 border-t-2 border-emerald-200">
+                            <tr>
+                                <td colspan="6" class="py-3 px-4 text-right font-bold uppercase tracking-widest text-[11px]">Valor Total Recepción:</td>
+                                <td class="py-3 px-4 text-left font-black text-emerald-700 font-mono text-base" id="val_gran_total">0.00</td>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
 
@@ -455,6 +462,8 @@ include '../../includes/header.php';
 
                 const tbody = document.getElementById('val_body');
                 tbody.innerHTML = '';
+                
+                let granTotalRecepcion = 0;
 
                 rec.detalles.forEach(det => {
                     const cantOrd = parseFloat(det.cantidad_ordenada);
@@ -495,9 +504,15 @@ include '../../includes/header.php';
                                 ${saldo <= 0 ? 'COMPLETO' : saldo.toFixed(2) + ' PEND.'}
                             </span>
                         </td>
+                        <td class="py-3 px-4 text-left font-bold text-slate-700 border-l border-slate-100 font-mono">
+                            ${(cantEsta * precioOC).toFixed(2)}
+                        </td>
                     `;
                     tbody.appendChild(tr);
+                    granTotalRecepcion += (cantEsta * precioOC);
                 });
+                
+                document.getElementById('val_gran_total').textContent = granTotalRecepcion.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 // Configurar botón de confirmación
                 document.getElementById('btnConfirmarValidacion').onclick = () => validarRecepcionFinal(id);

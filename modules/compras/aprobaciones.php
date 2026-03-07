@@ -424,13 +424,31 @@ include '../../includes/header.php';
                         <tbody class="divide-y divide-slate-100">
                 `;
 
+                const isEditable = (doc.estado === 'PENDIENTE' || doc.estado === 'EN_APROBACION');
+                window.cantidadesEditables = [];
+
                 doc.detalles.forEach(d => {
+                    const idLine = d.id_detalle || d.id_detalle_oc;
+                    const cantidadActual = parseFloat(d.cantidad_solicitada || d.cantidad_ordenada || d.cantidad);
+
+                    if (isEditable) {
+                        window.cantidadesEditables.push({ id_detalle: idLine, cantidad: cantidadActual });
+                    }
+
                     html += `
                         <tr>
                             <td class="py-3 px-4 font-medium text-slate-700">${d.descripcion_producto}</td>
                             <td class="py-3 px-4 text-center font-mono font-bold text-slate-500">${parseFloat(d.stock_solicitud || 0).toLocaleString(undefined, { minimumFractionDigits: 1 })}</td>
                             <td class="py-3 px-4 text-center font-mono font-bold ${parseFloat(d.stock_actual || 0) <= 0 ? 'text-rose-500' : 'text-blue-500'}">${parseFloat(d.stock_actual || 0).toLocaleString(undefined, { minimumFractionDigits: 1 })}</td>
-                            <td class="py-3 px-4 text-center font-bold text-slate-900">${parseFloat(d.cantidad_solicitada || d.cantidad).toLocaleString(undefined, { minimumFractionDigits: 0 })}</td>
+                            <td class="py-3 px-4 text-center font-bold text-slate-900">
+                                ${isEditable ? `
+                                    <input type="number" step="0.01" class="w-24 bg-blue-50/50 border-blue-200 rounded-lg py-1 px-2 text-sm text-center font-bold text-primary focus:ring-primary focus:border-primary"
+                                           value="${cantidadActual.toFixed(2)}"
+                                           onchange="actualizarCantidadMemoria(${idLine}, this.value)">
+                                ` : `
+                                    ${cantidadActual.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                                `}
+                            </td>
                             <td class="py-3 px-4 text-center text-slate-400 font-medium">${d.unidad_medida}</td>
                         </tr>
                     `;
@@ -439,10 +457,77 @@ include '../../includes/header.php';
                 html += `</tbody></table>`;
 
                 document.getElementById('detail-body').innerHTML = html;
+
+                // Configurar footer modal
+                const footerHtml = isEditable ? `
+                    <button id="btnGuardarCant" onclick="guardarCantidadesEditadas('${tipo}', ${id})" class="px-8 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-md transition-all flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">save</span> Guardar Cambios
+                    </button>
+                    <button onclick="$('#modalVerDetalle').modal('hide')" class="px-6 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200">Cerrar</button>
+                ` : `
+                    <button onclick="$('#modalVerDetalle').modal('hide')" class="px-8 py-2 bg-slate-800 text-white rounded-xl font-bold">Cerrar Vista</button>
+                `;
+
+                // Inject footer tools manually since there isn't a dedicated div id
+                const modalWrapper = document.getElementById('modalVerDetalle').querySelector('.modal-content');
+                let footerDiv = modalWrapper.querySelector('.modal-footer-custom');
+                if (!footerDiv) {
+                    footerDiv = document.createElement('div');
+                    footerDiv.className = 'p-6 bg-white border-t flex justify-end gap-3 modal-footer-custom';
+                    modalWrapper.appendChild(footerDiv);
+                    // Hide original footer
+                    const originalFooter = modalWrapper.querySelectorAll('.p-6.bg-white.border-t.flex.justify-end')[0];
+                    if (originalFooter && originalFooter !== footerDiv) originalFooter.style.display = 'none';
+                }
+                footerDiv.innerHTML = footerHtml;
+
                 $('#modalVerDetalle').modal('show');
             }
         } catch (e) {
-            Swal.fire('Error', 'No se pudo cargar el detalle', 'error');
+            Swal.fire('Error', 'No se pudo cargar el detalle: ' + e.message, 'error');
+        }
+    }
+
+    function actualizarCantidadMemoria(idDetalle, value) {
+        const item = window.cantidadesEditables.find(i => i.id_detalle == idDetalle);
+        if (item) {
+            item.cantidad = parseFloat(value);
+        }
+    }
+
+    async function guardarCantidadesEditadas(tipo, id) {
+        const btn = document.getElementById('btnGuardarCant');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm">sync</span> Guardando...';
+
+        try {
+            const res = await fetch('../../api/compras/aprobaciones.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'update_quantities',
+                    tipo_documento: tipo === 'SOLICITUD' ? 'SOLICITUD' : 'ORDEN',
+                    id_documento: id,
+                    items: window.cantidadesEditables
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                Swal.fire({
+                    toast: true, position: 'top-end', icon: 'success',
+                    title: 'Se guardaron las cantidades actualizadas',
+                    showConfirmButton: false, timer: 3000
+                });
+                $('#modalVerDetalle').modal('hide');
+                cargarPendientes(); // Refresh data just in case
+            } else {
+                throw new Error(data.message);
+            }
+        } catch (e) {
+            Swal.fire('Error', e.message, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined text-sm">save</span> Guardar Cambios';
         }
     }
 

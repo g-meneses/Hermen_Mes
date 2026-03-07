@@ -121,6 +121,32 @@ try {
                 $db->rollBack();
                 throw $e;
             }
+        } elseif ($action === 'update_quantities') {
+            $id = $data['id_documento'];
+            $tipo = $data['tipo_documento']; // SOLICITUD o ORDEN
+            $items = $data['items']; // Array of { id_detalle, cantidad }
+
+            $db->beginTransaction();
+            try {
+                if ($tipo === 'SOLICITUD') {
+                    $stmt = $db->prepare("UPDATE solicitudes_compra_detalle SET cantidad_solicitada = ? WHERE id_detalle = ? AND id_solicitud = ?");
+                    foreach ($items as $item) {
+                        $stmt->execute([$item['cantidad'], $item['id_detalle'], $id]);
+                    }
+                } elseif ($tipo === 'ORDEN') {
+                    $stmt = $db->prepare("UPDATE ordenes_compra_detalle SET cantidad_ordenada = ? WHERE id_detalle_oc = ? AND id_orden_compra = ?");
+                    foreach ($items as $item) {
+                        $stmt->execute([$item['cantidad'], $item['id_detalle'], $id]);
+                    }
+                }
+
+                $db->commit();
+                ob_clean();
+                echo json_encode(['success' => true, 'message' => 'Cantidades actualizadas correctamente']);
+            } catch (Exception $e) {
+                $db->rollBack();
+                throw $e;
+            }
         }
     }
 

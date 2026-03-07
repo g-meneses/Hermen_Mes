@@ -127,7 +127,11 @@ include '../../includes/header.php';
                         </div>
 
                         <div class="flex items-center gap-4">
-                            <button onclick="finalizarLiquidacion()"
+                            <div id="badgeLiquidadaFinalizada"
+                                class="hidden bg-emerald-50 text-emerald-600 px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 border border-emerald-200">
+                                <span class="material-symbols-outlined">verified</span> LIQUIDACIÓN FINALIZADA
+                            </div>
+                            <button id="btnFinalizarLiquidacion" onclick="finalizarLiquidacion()"
                                 class="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-2xl font-black text-sm flex items-center gap-3 transition-all active:scale-95 shadow-2xl shadow-slate-900/20 group">
                                 <span
                                     class="material-symbols-outlined group-hover:rotate-12 transition-transform">task_alt</span>
@@ -182,7 +186,7 @@ include '../../includes/header.php';
                                 <p class="text-[10px] text-slate-400 font-medium">Vincule facturas de flete, seguros y
                                     aduana</p>
                             </div>
-                            <button onclick="abrirModalGasto()"
+                            <button id="btnAbrirModalGasto" onclick="abrirModalGasto()"
                                 class="bg-primary hover:bg-primary/90 text-white text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-xl transition-all shadow-lg shadow-primary/20">
                                 + Añadir Gasto
                             </button>
@@ -420,11 +424,129 @@ include '../../includes/header.php';
     </div>
 </div>
 
+<!-- Modal Detalle Liquidación -->
+<div class="modal fade" id="modalDetalleLiquidada" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document" style="max-width: 1200px;">
+        <div class="modal-content xlarge">
+            <div class="premium-modal-header !bg-slate-900 text-white">
+                <h3 class="font-bold flex items-center gap-2 text-xl">
+                    <span class="material-symbols-outlined text-primary">inventory</span>
+                    Detalle de Liquidación: <span id="det_numero_orden" class="text-white ml-2"></span>
+                </h3>
+                <button type="button" class="text-white/50 hover:text-white transition-colors" data-dismiss="modal">
+                    <span class="material-symbols-outlined text-2xl">close</span>
+                </button>
+            </div>
+            <div class="modal-body modal-body-scroll p-6 bg-slate-50">
+                <!-- Info Header -->
+                <div
+                    class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Proveedor</p>
+                        <p class="font-bold text-slate-800" id="det_proveedor"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Fecha Importación
+                        </p>
+                        <p class="font-medium text-slate-600" id="det_fecha"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Valor FOB Total
+                        </p>
+                        <p class="font-mono font-bold text-slate-700 text-lg" id="det_fob"></p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Costo Total
+                            Internado</p>
+                        <p class="font-mono font-black text-primary text-xl" id="det_total_internado"></p>
+                    </div>
+                </div>
+
+                <!-- Secciones (Gastos e Items) -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Gastos -->
+                    <div class="lg:col-span-1 glass-card rounded-3xl p-6 shadow-sm h-fit">
+                        <h4 class="font-bold text-slate-800 flex items-center gap-2 mb-4">
+                            <span
+                                class="material-symbols-outlined text-amber-500 font-variation-fill">receipt_long</span>
+                            Gastos Adicionales
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs">
+                                <thead>
+                                    <tr class="text-left text-slate-400 border-b border-slate-100">
+                                        <th class="py-2 font-bold uppercase tracking-widest text-[9px]">Concepto</th>
+                                        <th class="py-2 text-right font-bold uppercase tracking-widest text-[9px]">Monto
+                                            (BOB)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="det_gastos_body" class="divide-y divide-slate-50"></tbody>
+                            </table>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-200 flex justify-between items-center">
+                            <span class="font-black text-slate-500 text-[10px] uppercase tracking-wider">Total
+                                Gastos:</span>
+                            <span class="font-mono font-black text-slate-800 text-base" id="det_gastos_total"></span>
+                        </div>
+                    </div>
+
+                    <!-- Items -->
+                    <div class="lg:col-span-2 glass-card rounded-3xl p-6 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-bold text-slate-800 flex items-center gap-2">
+                                <span
+                                    class="material-symbols-outlined text-blue-500 font-variation-fill">inventory_2</span>
+                                Costo Unitario Prorrateado
+                            </h4>
+                            <div
+                                class="bg-blue-50 px-4 py-2 rounded-xl border border-blue-100 text-right flex items-center gap-3">
+                                <span
+                                    class="text-[10px] font-bold text-blue-500 uppercase tracking-widest">Factor</span>
+                                <span class="font-mono font-black text-blue-700 text-lg" id="det_factor"></span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead
+                                    class="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-widest">
+                                    <tr>
+                                        <th class="py-3 px-4 text-left rounded-l-xl">Producto</th>
+                                        <th class="py-3 px-4 text-center">Cant.</th>
+                                        <th class="py-3 px-4 text-right">FOB Unit.</th>
+                                        <th
+                                            class="py-3 px-4 text-right text-primary font-black border-l border-slate-200 rounded-r-xl">
+                                            Costo Internado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="det_items_body" class="divide-y divide-slate-50"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-t border-slate-100 p-6 flex justify-end gap-3">
+                <button type="button" onclick="imprimirLiquidacion()"
+                    class="px-6 py-3 rounded-xl bg-slate-900 text-white font-bold hover:bg-black transition-colors shadow-lg shadow-slate-900/20 active:scale-95 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">print</span>
+                    Imprimir Liquidación
+                </button>
+                <button type="button"
+                    class="px-6 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors active:scale-95 flex items-center gap-2"
+                    data-dismiss="modal">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                    Cerrar Vista Detalle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let ordenActual = null;
     let itemsActuales = [];
     let gastosActuales = [];
+    let currentLiquidacionId = null;
 
     document.addEventListener('DOMContentLoaded', () => {
         listarOrdenes();
@@ -494,17 +616,101 @@ include '../../includes/header.php';
             .catch(err => console.error('Error cargando historial:', err));
     }
 
-    // Placeholder para futura funcionalidad
     function verDetalleLiquidada(idOC) {
+        currentLiquidacionId = idOC;
         Swal.fire({
-            title: 'Detalle de Liquidación',
-            text: 'Visualización de detalles históricos en desarrollo.',
-            icon: 'info',
-            toast: true,
-            position: 'top-end',
-            timer: 2000,
-            showConfirmButton: false
+            title: 'Cargando detalle...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
         });
+
+        fetch(`../../api/compras/internaciones.php?action=get_details&id_orden_compra=${idOC}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.message);
+
+                Swal.close();
+
+                const orden = data.orden;
+                const gastos = data.gastos || [];
+                const items = data.items || [];
+
+                document.getElementById('det_numero_orden').innerText = orden.numero_orden;
+                document.getElementById('det_proveedor').innerText = orden.nombre_proveedor || 'N/A';
+                document.getElementById('det_fecha').innerText = (orden.fecha_orden || '').split(' ')[0];
+
+                const tcInternacion = orden.moneda === 'USD' ? (parseFloat(orden.tipo_cambio) || 6.96) : 1;
+
+                // Calcular FOB Total
+                let fobTotalBob = 0;
+                items.forEach(item => {
+                    const cant = parseFloat(item.cantidad_embarcada) || parseFloat(item.cantidad_ordenada);
+                    fobTotalBob += (cant * parseFloat(item.precio_unitario)) * tcInternacion;
+                });
+
+                document.getElementById('det_fob').innerText = fobTotalBob.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' BOB';
+
+                // Mostrar gastos
+                const tbodyGastos = document.getElementById('det_gastos_body');
+                tbodyGastos.innerHTML = '';
+                let totalGastos = 0;
+                gastos.forEach(g => {
+                    const montoBob = (g.monto_bob && parseFloat(g.monto_bob) > 0) ? parseFloat(g.monto_bob) : parseFloat(g.monto);
+                    totalGastos += montoBob;
+                    tbodyGastos.innerHTML += `
+                        <tr>
+                            <td class="py-3 pr-2">
+                                <span class="block font-bold text-slate-700 text-[11px]">${g.tipo_gasto}</span>
+                                <span class="text-[9px] text-slate-400 block truncate max-w-[150px]" title="${g.descripcion}">${g.descripcion}</span>
+                            </td>
+                            <td class="py-3 text-right font-mono font-bold text-slate-800 text-xs">${montoBob.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('det_gastos_total').innerText = totalGastos.toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+                const totalInternado = fobTotalBob + totalGastos;
+                document.getElementById('det_total_internado').innerText = totalInternado.toLocaleString('en-US', { minimumFractionDigits: 2 }) + ' BOB';
+
+                const factor = fobTotalBob > 0 ? (totalInternado / fobTotalBob) : 1;
+                document.getElementById('det_factor').innerText = 'x ' + factor.toFixed(4);
+
+                // Mostrar items
+                const tbodyItems = document.getElementById('det_items_body');
+                tbodyItems.innerHTML = '';
+                items.forEach(item => {
+                    const cant = parseFloat(item.cantidad_embarcada) || parseFloat(item.cantidad_ordenada);
+                    const fobUnitBob = parseFloat(item.precio_unitario) * tcInternacion;
+                    const costoInternado = parseFloat(item.precio_unitario_internacion) || (fobUnitBob * factor);
+
+                    tbodyItems.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="py-3 px-4">
+                                <span class="block font-bold text-slate-700 text-xs">${item.descripcion_producto}</span>
+                                <span class="text-[9px] font-mono text-slate-400">${item.codigo_producto}</span>
+                            </td>
+                            <td class="py-3 px-4 text-center text-slate-600 font-medium">${cant.toFixed(2)}</td>
+                            <td class="py-3 px-4 text-right font-mono text-slate-500">${fobUnitBob.toFixed(2)}</td>
+                            <td class="py-3 px-4 text-right font-mono font-black text-primary border-l border-slate-100 text-[15px] bg-slate-50/50">${costoInternado.toFixed(4)}</td>
+                        </tr>
+                    `;
+                });
+
+                $('#modalDetalleLiquidada').modal('show');
+            })
+            .catch(err => {
+                Swal.close();
+                console.error('Error:', err);
+                Swal.fire('Error', 'No se pudo cargar el detalle: ' + err.message, 'error');
+            });
+    }
+
+    function imprimirLiquidacion() {
+        if (currentLiquidacionId) {
+            window.open(`../../modules/compras/liquidacion_pdf.php?id=${currentLiquidacionId}`, '_blank');
+        } else {
+            Swal.fire('Error', 'No hay ninguna liquidación seleccionada.', 'error');
+        }
     }
 
     function listarOrdenes() {
@@ -546,6 +752,21 @@ include '../../includes/header.php';
                 ordenActual = data.orden;
                 itemsActuales = data.items || [];
                 gastosActuales = data.gastos || [];
+
+                const estaLiquidada = itemsActuales.some(i => parseFloat(i.precio_unitario_internacion) > 0);
+                window.ordenActualLiquidada = estaLiquidada;
+
+                if (estaLiquidada) {
+                    document.getElementById('btnFinalizarLiquidacion').classList.add('hidden');
+                    document.getElementById('badgeLiquidadaFinalizada').classList.remove('hidden');
+                    document.getElementById('btnAbrirModalGasto').classList.add('hidden');
+                    if (document.getElementById('inputTCFOB')) document.getElementById('inputTCFOB').disabled = true;
+                } else {
+                    document.getElementById('btnFinalizarLiquidacion').classList.remove('hidden');
+                    document.getElementById('badgeLiquidadaFinalizada').classList.add('hidden');
+                    document.getElementById('btnAbrirModalGasto').classList.remove('hidden');
+                    if (document.getElementById('inputTCFOB')) document.getElementById('inputTCFOB').disabled = false;
+                }
 
                 document.getElementById('vacioState').classList.add('hidden');
                 document.getElementById('detalleInternacion').classList.remove('hidden');
@@ -595,9 +816,11 @@ include '../../includes/header.php';
         ${parseFloat(g.tipo_cambio || 1).toFixed(2)}) ` : ''}Fact: ${g.numero_factura_gasto || 'S/N'}</span>
 </td>
 <td class="text-center">
+    ${window.ordenActualLiquidada ? '' : `
     <button onclick="eliminarGasto(${g.id_gasto})" class="text-slate-300 hover:text-red-500 transition-colors">
         <span class="material-symbols-outlined text-sm">close</span>
     </button>
+    `}
 </td>
 `;
             tbody.appendChild(tr);
@@ -653,10 +876,14 @@ include '../../includes/header.php';
     <span class="line-through opacity-50 text-xs">${parseFloat(item.cantidad_ordenada).toFixed(2)}</span>
 </td>
 <td class="text-center">
+    ${window.ordenActualLiquidada ? `
+    <span class="block font-bold text-primary text-lg">${cantidadActiva.toFixed(2)}</span>
+    ` : `
     <input type="number"
         class="w-full text-center bg-blue-50/50 border border-blue-100 rounded-lg py-1 font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
         value="${cantidadActiva.toFixed(2)}" step="0.01"
         onchange="cambiarCantidadPaquete(${item.id_detalle_oc}, this.value)">
+    `}
 </td>
 <td class="text-right">
     <span class="block font-mono text-slate-600">${costoFobBOB.toFixed(2)}</span>

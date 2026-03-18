@@ -1732,7 +1732,7 @@ require_once '../../includes/header.php';
 
                         <optgroup label="➕ INGRESOS">
                             <option value="INGRESO">📥 Todos los ingresos</option>
-                            <option value="COMPRA">🛒 Compras</option>
+                            <!-- <option value="COMPRA">🛒 Compras</option> eliminada por automatizacion -->
                             <option value="DEVOLUCION_PRODUCCION">↩️ Devolución Producción</option>
                             <option value="AJUSTE_POSITIVO">⚙️ Ajuste Positivo</option>
                             <option value="INGRESO_INICIAL">📦 Ingreso Inicial</option>

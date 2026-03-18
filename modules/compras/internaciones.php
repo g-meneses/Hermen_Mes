@@ -74,15 +74,7 @@ include '../../includes/header.php';
     <div class="w-full">
         <!-- Main Workspace Full Width -->
         <div class="w-full">
-            <div id="vacioState"
-                class="glass-card rounded-3xl p-12 text-center border-dashed border-2 flex flex-col items-center justify-center space-y-4">
-                <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
-                    <span class="material-symbols-outlined text-4xl">folder_open</span>
-                </div>
-                <h3 class="text-lg font-semibold text-slate-700">Seleccione una orden para liquidar</h3>
-                <p class="text-sm text-slate-400 max-w-xs">Elija una importación de la lista izquierda para comenzar el
-                    registro de gastos y prorrateo.</p>
-            </div>
+
 
             <div id="detalleInternacion" class="hidden space-y-6 animate__animated animate__fadeIn">
                 <!-- Header de Orden Seleccionada -->
@@ -127,6 +119,11 @@ include '../../includes/header.php';
                         </div>
 
                         <div class="flex items-center gap-4">
+                            <button id="btnVolverListado" onclick="cerrarOrdenSeleccionada()"
+                                class="hidden bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-4 rounded-2xl font-bold text-sm items-center gap-2 transition-all active:scale-95 shadow-sm">
+                                <span class="material-symbols-outlined text-lg">arrow_back</span>
+                                VOLVER
+                            </button>
                             <div id="badgeLiquidadaFinalizada"
                                 class="hidden bg-emerald-50 text-emerald-600 px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 border border-emerald-200">
                                 <span class="material-symbols-outlined">verified</span> LIQUIDACIÓN FINALIZADA
@@ -157,7 +154,7 @@ include '../../includes/header.php';
                             <span class="material-symbols-outlined text-blue-600">calculate</span>
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase">Factor Prorrateo</p>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase">Factor Logístico</p>
                             <p class="text-lg font-black text-slate-800" id="statFactor">1.0000</p>
                         </div>
                     </div>
@@ -227,22 +224,25 @@ include '../../includes/header.php';
 
                             <div class="space-y-6 relative z-10">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-xs opacity-60 uppercase font-bold tracking-widest">Valor
-                                        FOB</span>
+                                    <span class="text-xs opacity-60 uppercase font-bold tracking-widest">Valor FOB</span>
                                     <span id="factFob" class="text-lg font-mono font-bold text-white/90">0.00</span>
                                 </div>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-xs opacity-60 uppercase font-bold tracking-widest">Sumatoria
-                                        Gastos</span>
-                                    <span id="factGastos" class="text-lg font-mono font-bold text-amber-400">+
-                                        0.00</span>
+                                    <span class="text-xs opacity-60 uppercase font-bold tracking-widest" title="Gastos logísticos comunes (Logística, Seguros, Puerto)">Gastos Logísticos</span>
+                                    <span id="factGastos" class="text-lg font-mono font-bold text-amber-400">+ 0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs opacity-60 uppercase font-bold tracking-widest" title="Suma de Gravámenes Arancelarios directos">Total GA</span>
+                                    <span id="factGA" class="text-lg font-mono font-bold text-orange-400">+ 0.00</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs opacity-60 uppercase font-bold tracking-widest" title="Suma de Otros gastos directos introducidos en tabla">Otros Directos</span>
+                                    <span id="factOtros" class="text-lg font-mono font-bold text-orange-400">+ 0.00</span>
                                 </div>
                                 <div class="h-px bg-white/10 my-4"></div>
                                 <div class="flex justify-between items-center">
-                                    <span class="text-xs font-black text-primary uppercase tracking-widest">Total
-                                        Liquidación</span>
-                                    <span id="factTotal"
-                                        class="text-3xl font-black font-mono tracking-tighter shadow-sm">0.00</span>
+                                    <span class="text-xs font-black text-primary uppercase tracking-widest">Total Liquidación</span>
+                                    <span id="factTotal" class="text-3xl font-black font-mono tracking-tighter shadow-sm">0.00</span>
                                 </div>
                             </div>
                         </div>
@@ -286,17 +286,66 @@ include '../../includes/header.php';
                         <table class="w-full table-premium" id="tablaItemsRecalculo">
                             <thead>
                                 <tr>
-                                    <th class="text-left w-1/3 text-lg">Producto</th>
-                                    <th class="text-center w-24">Cant. OC</th>
-                                    <th class="text-center text-primary w-28 text-lg">Cant. Packing</th>
-                                    <th class="text-right">Costo FOB</th>
-                                    <th class="text-right">Factor</th>
-                                    <th class="text-right text-primary">Costo Internado</th>
-                                    <th class="text-right font-bold text-emerald-600">Diferencia %</th>
+                                    <th class="text-left w-1/4 text-[13px] font-bold">Producto</th>
+                                    <th class="text-center w-16 text-[13px] font-bold">Cant. OC</th>
+                                    <th class="text-center text-primary w-20 text-[13px] font-black">Cant. Packing</th>
+                                    <th class="text-right text-[12px] font-bold">Precio FOB USD</th>
+                                    <th class="text-right text-[12px] font-bold">Ítem FOB USD</th>
+                                    <th class="text-right text-orange-600 w-20 text-[12px] font-bold">GA Real (BOB)</th>
+                                    <th class="text-right text-orange-600 w-20 text-[12px] font-bold">Otros Dir. (BOB)</th>
+                                    <th class="text-right text-[12px] font-bold text-slate-400">Factor Log.</th>
+                                    <th class="text-right text-primary text-[12px] font-bold">Costo Internado</th>
+                                    <th class="text-right font-bold text-indigo-600 text-[12px] border-l border-slate-200">Total Internado</th>
+                                    <th class="text-right font-bold text-emerald-600 text-[10px]">Dif. %</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
                                 <!-- Cargado via JS -->
+                            </tbody>
+                            <tfoot class="bg-slate-50 border-t-2 border-slate-200" id="tfootItemsRecalculo">
+                                <!-- Totales inyectados vía JS -->
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel de Importaciones Pendientes de Liquidación -->
+            <div id="panelPendientes" class="mt-8 transition-all duration-500">
+                <div class="glass-card rounded-[2rem] p-8 shadow-sm border border-amber-100">
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <h3 class="text-2xl font-black text-slate-800 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-amber-500">pending_actions</span>
+                                Importaciones Pendientes de Liquidación
+                            </h3>
+                            <p class="text-xs text-slate-500 font-medium">Órdenes de Compra internacionales que aún
+                                requieren nacionalización e ingreso de gastos.</p>
+                        </div>
+                        <button onclick="cargarPendientesLiquidacion()"
+                            class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 transition-colors"
+                            title="Actualizar Pendientes">
+                            <span class="material-symbols-outlined">refresh</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full table-premium" id="tablaPendientes">
+                            <thead>
+                                <tr>
+                                    <th class="text-left w-24">Nº Importación</th>
+                                    <th class="text-left">Proveedor</th>
+                                    <th class="text-center">Fecha Orden</th>
+                                    <th class="text-right">Total OC</th>
+                                    <th class="text-center">Estado Prorrateo</th>
+                                    <th class="text-center w-24">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                <tr>
+                                    <td colspan="6" class="text-center py-6 text-slate-400 text-sm">Cargando
+                                        pendientes...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -304,7 +353,7 @@ include '../../includes/header.php';
             </div>
 
             <!-- Panel de Historial de Liquidaciones Pasadas -->
-            <div class="mt-8">
+            <div id="panelHistorial" class="mt-8 transition-all duration-500">
                 <div class="glass-card rounded-[2rem] p-8 shadow-sm">
                     <div class="flex items-center justify-between mb-8">
                         <div>
@@ -334,12 +383,13 @@ include '../../includes/header.php';
                                     <th class="text-right">Costo Total Internado</th>
                                     <th class="text-center text-primary">Factor Promedio</th>
                                     <th class="text-center">Estado de Recepción</th>
+                                    <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-50">
                                 <!-- Cargado vía JS -->
                                 <tr>
-                                    <td colspan="8" class="text-center py-6 text-slate-400 text-sm">Cargando
+                                    <td colspan="9" class="text-center py-6 text-slate-400 text-sm">Cargando
                                         historial...</td>
                                 </tr>
                             </tbody>
@@ -550,8 +600,69 @@ include '../../includes/header.php';
 
     document.addEventListener('DOMContentLoaded', () => {
         listarOrdenes();
+        cargarPendientesLiquidacion();
         cargarHistorialLiquidaciones();
     });
+
+    function cargarPendientesLiquidacion() {
+        fetch('../../api/compras/internaciones.php?action=list_pending')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.querySelector('#tablaPendientes tbody');
+                const ordenesPendientes = data.ordenes.filter(o => parseFloat(o.items_liquidados || 0) < parseFloat(o.total_items || 1));
+
+                if (ordenesPendientes.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-slate-400 font-medium text-sm">No hay importaciones pendientes de liquidación.</td></tr>';
+                    return;
+                }
+
+                ordenesPendientes.forEach(o => {
+                    const estadoHtml = '<span class="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold border border-amber-200">⏳ PENDIENTE</span>';
+
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50 transition-colors cursor-pointer group';
+
+                    // Al hacer clic en la fila completa, simular que se carga la orden (igual que en el selector)
+                    tr.onclick = () => {
+                        const select = document.getElementById('selectorOrdenes');
+                        select.value = o.id_orden_compra;
+                        cargarOrden(o.id_orden_compra);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    };
+
+                    tr.innerHTML = `
+                        <td>
+                            <span class="block font-black text-slate-800 text-xs">${o.numero_orden}</span>
+                        </td>
+                        <td>
+                            <span class="block text-slate-600 font-medium text-xs max-w-[200px] truncate"
+                                title="${o.nombre_proveedor}">${o.nombre_proveedor}</span>
+                        </td>
+                        <td class="text-center">
+                            <span class="text-xs text-slate-500">${(o.fecha_orden || '').split(' ')[0]}</span>
+                        </td>
+                        <td class="text-right">
+                            <span class="font-mono text-slate-700 text-xs font-bold">${parseFloat(o.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </td>
+                        <td class="text-center">
+                            ${estadoHtml}
+                        </td>
+                        <td class="text-center relative z-10">
+                            <button class="bg-primary hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
+                                onclick="event.stopPropagation(); document.getElementById('selectorOrdenes').value = ${o.id_orden_compra}; cargarOrden(${o.id_orden_compra}); window.scrollTo({ top: 0, behavior: 'smooth' });">
+                                Liquidar
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(err => {
+                console.error('Error cargando pendientes:', err);
+                const tbody = document.querySelector('#tablaPendientes tbody');
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-400 text-sm">Error cargando datos.</td></tr>';
+            });
+    }
 
     function cargarHistorialLiquidaciones() {
         fetch('../../api/compras/internaciones.php?action=list_history')
@@ -561,7 +672,7 @@ include '../../includes/header.php';
                 tbody.innerHTML = '';
 
                 if (!data.historial || data.historial.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-400 font-medium text-sm">No hay importaciones liquidadas registradas aún.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center py-8 text-slate-400 font-medium text-sm">No hay importaciones liquidadas registradas aún.</td></tr>';
                     return;
                 }
                 data.historial.forEach(h => {
@@ -608,6 +719,13 @@ include '../../includes/header.php';
 </td>
 <td class="text-center">
     ${estadoRec}
+</td>
+<td class="text-center">
+    <div class="flex justify-center gap-1">
+        <button class="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" onclick="event.stopPropagation(); window.open('../../modules/compras/liquidacion_pdf.php?id=${h.id_orden_compra}', '_blank')" title="Imprimir Liquidación">
+            <span class="material-symbols-outlined text-lg">print</span>
+        </button>
+    </div>
 </td>
 `;
                     tbody.appendChild(tr);
@@ -768,7 +886,10 @@ include '../../includes/header.php';
                     if (document.getElementById('inputTCFOB')) document.getElementById('inputTCFOB').disabled = false;
                 }
 
-                document.getElementById('vacioState').classList.add('hidden');
+                document.getElementById('panelPendientes').classList.add('hidden');
+                document.getElementById('panelHistorial').classList.add('hidden');
+                document.getElementById('btnVolverListado').classList.remove('hidden');
+                document.getElementById('btnVolverListado').classList.add('flex');
                 document.getElementById('detalleInternacion').classList.remove('hidden');
 
                 document.getElementById('labelOC').innerText = ordenActual.numero_orden;
@@ -795,6 +916,27 @@ include '../../includes/header.php';
                 console.error('Error cargando detalles:', err);
                 Swal.fire('Error', 'No se pudo cargar la orden: ' + err.message, 'error');
             });
+    }
+
+    function cerrarOrdenSeleccionada() {
+        ordenActual = null;
+        itemsActuales = [];
+        gastosActuales = [];
+
+        document.getElementById('detalleInternacion').classList.add('hidden');
+        document.getElementById('btnVolverListado').classList.add('hidden');
+        document.getElementById('btnVolverListado').classList.remove('flex');
+
+        document.getElementById('panelPendientes').classList.remove('hidden');
+        document.getElementById('panelHistorial').classList.remove('hidden');
+
+        document.getElementById('selectorOrdenes').value = "";
+
+        listarOrdenes();
+        cargarPendientesLiquidacion();
+        cargarHistorialLiquidaciones();
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function renderGastos() {
@@ -830,86 +972,156 @@ include '../../includes/header.php';
     }
 
     function recalcular() {
-        // Redefinir FobOriginal basado en las cantidades actuales (Packing o OC)
         let fFobOriginal = 0;
+        let sumGaItems = 0;
+        let sumOtrosItems = 0;
+
         itemsActuales.forEach(item => {
             const cant = parseFloat(item.cantidad_embarcada) || parseFloat(item.cantidad_ordenada);
             fFobOriginal += cant * parseFloat(item.precio_unitario);
+            sumGaItems += parseFloat(item.ga_real) || 0;
+            sumOtrosItems += parseFloat(item.otros_directos) || 0;
         });
 
         const tcInternacion = parseFloat(document.getElementById('inputTCFOB').value) || 1;
         const totalFobBOB = fFobOriginal * tcInternacion;
 
-        const totalGastos = gastosActuales.reduce((acc, g) => acc + ((g.monto_bob && parseFloat(g.monto_bob) > 0) ?
+        const totalGastosLogisticos = gastosActuales.reduce((acc, g) => acc + ((g.monto_bob && parseFloat(g.monto_bob) > 0) ?
             parseFloat(g.monto_bob) : parseFloat(g.monto)), 0);
-        const totalInternacion = totalFobBOB + totalGastos;
-        const factor = totalFobBOB > 0 ? totalInternacion / totalFobBOB : 1;
+            
+        const totalInternacion = totalFobBOB + totalGastosLogisticos + sumGaItems + sumOtrosItems;
+        const factorLogistico = totalFobBOB > 0 ? (totalFobBOB + totalGastosLogisticos) / totalFobBOB : 1;
+        const factorGlobal = totalFobBOB > 0 ? totalInternacion / totalFobBOB : factorLogistico;
 
         document.getElementById('factFob').innerText = totalFobBOB.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('factTotal').innerText = totalInternacion.toLocaleString(undefined, {
-            minimumFractionDigits: 2
-        });
-        document.getElementById('factorProrrateo').innerText = factor.toFixed(4);
+        document.getElementById('factGastos').innerText = "+ " + totalGastosLogisticos.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('factGA').innerText = "+ " + sumGaItems.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('factOtros').innerText = "+ " + sumOtrosItems.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('factTotal').innerText = totalInternacion.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('factorProrrateo').innerText = factorLogistico.toFixed(4);
 
         // Actualizar Stats Top
-        document.getElementById('statGastos').innerText = totalGastos.toLocaleString(undefined, { minimumFractionDigits: 2 });
-        document.getElementById('statFactor').innerText = factor.toFixed(4);
-        const impacto = (factor - 1) * 100;
+        document.getElementById('statGastos').innerText = (totalGastosLogisticos + sumGaItems + sumOtrosItems).toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('statFactor').innerText = factorLogistico.toFixed(4);
+        const impacto = (factorGlobal - 1) * 100;
         document.getElementById('statImpacto').innerText = impacto.toFixed(1) + "%";
 
         const tbody = document.querySelector('#tablaItemsRecalculo tbody');
         tbody.innerHTML = '';
+        
+        let sumCantOC = 0;
+        let sumCantPacking = 0;
+        let sumFobItemUsd = 0;
+        let sumTotalInternadoBob = 0;
+        
         itemsActuales.forEach(item => {
             const cantidadActiva = parseFloat(item.cantidad_embarcada) || parseFloat(item.cantidad_ordenada);
+            const cantOC = parseFloat(item.cantidad_ordenada);
             const costoFobOriginal = parseFloat(item.precio_unitario);
             const costoFobBOB = costoFobOriginal * tcInternacion;
-            const costoInternado = costoFobBOB * factor;
-            const diffPorc = ((costoInternado / costoFobBOB) - 1) * 100;
+            
+            const itemGA = parseFloat(item.ga_real) || 0;
+            const itemOtros = parseFloat(item.otros_directos) || 0;
+
+            const totalFobItemBob = costoFobBOB * cantidadActiva;
+            const totalInternadoItem = (totalFobItemBob * factorLogistico) + itemGA + itemOtros;
+            const costoInternado = cantidadActiva > 0 ? totalInternadoItem / cantidadActiva : 0;
+            const diffPorc = costoFobBOB > 0 ? ((costoInternado / costoFobBOB) - 1) * 100 : 0;
+            
+            const totalFobItemUsd = costoFobOriginal * cantidadActiva;
+
+            sumCantOC += cantOC;
+            sumCantPacking += cantidadActiva;
+            sumFobItemUsd += totalFobItemUsd;
+            sumTotalInternadoBob += totalInternadoItem;
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
 <td>
-    <span class="block font-bold text-slate-800 text-sm">${item.descripcion_producto}</span>
-    <span class="text-[10px] font-mono text-slate-400 uppercase">${item.codigo_producto}</span>
+    <span class="block font-bold text-slate-800 text-[11px] leading-tight max-w-[150px] truncate" title="${item.descripcion_producto}">${item.descripcion_producto}</span>
+    <span class="text-[9px] font-mono text-slate-400 uppercase">${item.codigo_producto}</span>
 </td>
-<td class="text-center text-slate-500 font-medium">
-    <span class="line-through opacity-50 text-xs">${parseFloat(item.cantidad_ordenada).toFixed(2)}</span>
+<td class="text-center text-slate-500 font-medium align-middle">
+    <span class="block text-sm">${cantOC.toFixed(2)}</span>
 </td>
-<td class="text-center">
+<td class="text-center align-middle">
     ${window.ordenActualLiquidada ? `
-    <span class="block font-bold text-primary text-lg">${cantidadActiva.toFixed(2)}</span>
+    <span class="block font-bold text-primary text-md">${cantidadActiva.toFixed(2)}</span>
     ` : `
     <input type="number"
-        class="w-full text-center bg-blue-50/50 border border-blue-100 rounded-lg py-1 font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+        class="w-16 text-center bg-blue-50/50 border border-blue-100 rounded-lg py-1 font-bold text-primary focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-xs"
         value="${cantidadActiva.toFixed(2)}" step="0.01"
-        onchange="cambiarCantidadPaquete(${item.id_detalle_oc}, this.value)">
+        onchange="cambiarDatoItem(${item.id_detalle_oc}, 'cantidad_embarcada', this.value)">
     `}
 </td>
-<td class="text-right">
-    <span class="block font-mono text-slate-600">${costoFobBOB.toFixed(2)}</span>
-    ${ordenActual.moneda === 'USD' ? `<span class="text-[9px] text-slate-400">(${costoFobOriginal.toFixed(2)}
-        USD)</span>` : ''}
+<td class="text-right align-middle">
+    <span class="block font-mono text-slate-600 text-xs">${costoFobOriginal.toFixed(2)}</span>
 </td>
-<td class="text-right font-mono text-slate-400 italic">x ${factor.toFixed(4)}</td>
-<td class="text-right">
-    <span class="block font-mono font-bold text-primary text-md">${costoInternado.toFixed(4)}</span>
+<td class="text-right align-middle">
+    <span class="block font-mono font-bold text-slate-800 text-[12px]">${totalFobItemUsd.toFixed(2)}</span>
 </td>
-<td class="text-right">
-    <span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-black">+
-        ${diffPorc.toFixed(1)}%</span>
+<td class="text-center align-middle">
+    ${window.ordenActualLiquidada ? `
+    <span class="block font-mono text-orange-600 text-xs">${itemGA.toFixed(2)}</span>
+    ` : `
+    <input type="number"
+        class="w-16 text-right bg-orange-50/50 border border-orange-100 rounded-md py-1 font-mono text-orange-700 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all text-[11px]"
+        value="${itemGA.toFixed(2)}" step="0.01"
+        onchange="cambiarDatoItem(${item.id_detalle_oc}, 'ga_real', this.value)">
+    `}
+</td>
+<td class="text-center align-middle">
+    ${window.ordenActualLiquidada ? `
+    <span class="block font-mono text-orange-600 text-xs">${itemOtros.toFixed(2)}</span>
+    ` : `
+    <input type="number"
+        class="w-16 text-right bg-orange-50/50 border border-orange-100 rounded-md py-1 font-mono text-orange-700 focus:outline-none focus:ring-1 focus:ring-orange-500 transition-all text-[11px]"
+        value="${itemOtros.toFixed(2)}" step="0.01"
+        onchange="cambiarDatoItem(${item.id_detalle_oc}, 'otros_directos', this.value)">
+    `}
+</td>
+<td class="text-right font-mono text-slate-400 italic text-[10px] align-middle">x ${factorLogistico.toFixed(4)}</td>
+<td class="text-right align-middle bg-slate-50/30">
+    <span class="block font-mono font-bold text-primary text-[11px]">${costoInternado.toFixed(4)} <span class="text-[8px] text-slate-400 font-normal">BOB</span></span>
+</td>
+<td class="text-right align-middle border-l border-slate-100 bg-slate-50/80">
+    <span class="block font-mono font-black text-indigo-700 text-[12px]">${totalInternadoItem.toFixed(2)} <span class="text-[8px] text-indigo-400/50 font-normal">BOB</span></span>
+</td>
+<td class="text-right align-middle">
+    <span class="bg-emerald-50 text-emerald-600 px-1 py-0.5 rounded-sm text-[8px] font-black border border-emerald-100">+${diffPorc.toFixed(1)}%</span>
 </td>
 `;
             tbody.appendChild(tr);
 
-            // Guardar para finalizar
             item.nuevo_costo = costoInternado;
+            item.ga_real = itemGA;
+            item.otros_directos = itemOtros;
         });
+
+        const tfoot = document.getElementById('tfootItemsRecalculo');
+        if (tfoot) {
+            tfoot.innerHTML = `
+                <tr>
+                    <td class="text-right font-black text-slate-700 text-[10px] uppercase tracking-widest py-3 pr-2">TOT:</td>
+                    <td class="text-center font-bold text-slate-700 text-xs align-middle">${sumCantOC.toFixed(2)}</td>
+                    <td class="text-center font-black text-primary text-xs align-middle">${sumCantPacking.toFixed(2)}</td>
+                    <td></td>
+                    <td class="text-right font-black text-slate-800 text-xs align-middle">${sumFobItemUsd.toFixed(2)} <span class="text-[8px] text-slate-500 font-normal">USD</span></td>
+                    <td class="text-center font-black text-orange-600 text-xs align-middle">${sumGaItems.toFixed(2)}</td>
+                    <td class="text-center font-black text-orange-600 text-xs align-middle">${sumOtrosItems.toFixed(2)}</td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-right font-black text-indigo-700 text-[13px] align-middle border-l border-slate-200">${sumTotalInternadoBob.toLocaleString(undefined, {minimumFractionDigits: 2})} <span class="text-[8px] text-indigo-500 font-normal">BOB</span></td>
+                    <td></td>
+                </tr>
+            `;
+        }
     }
 
-    function cambiarCantidadPaquete(idDetalle, valor) {
+    function cambiarDatoItem(idDetalle, campo, valor) {
         const item = itemsActuales.find(i => i.id_detalle_oc == idDetalle);
         if (item) {
-            item.cantidad_embarcada = parseFloat(valor);
+            item[campo] = parseFloat(valor) || 0;
             document.getElementById('btnGuardarPacking').classList.remove('hidden');
             recalcular();
         }
@@ -935,7 +1147,9 @@ include '../../includes/header.php';
                     action: 'guardar_packing',
                     items: itemsActuales.map(i => ({
                         id_detalle_oc: i.id_detalle_oc,
-                        cantidad_embarcada: parseFloat(i.cantidad_embarcada) || parseFloat(i.cantidad_ordenada)
+                        cantidad_embarcada: parseFloat(i.cantidad_embarcada) || parseFloat(i.cantidad_ordenada),
+                        ga_real: parseFloat(i.ga_real) || 0,
+                        otros_directos: parseFloat(i.otros_directos) || 0
                     }))
                 };
 

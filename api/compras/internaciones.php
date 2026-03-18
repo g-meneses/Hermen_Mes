@@ -105,9 +105,14 @@ try {
 
             $db->beginTransaction();
             try {
-                $stmt = $db->prepare("UPDATE ordenes_compra_detalle SET precio_unitario_internacion = ? WHERE id_detalle_oc = ?");
+                $stmt = $db->prepare("UPDATE ordenes_compra_detalle SET precio_unitario_internacion = ?, ga_real = ?, otros_directos = ? WHERE id_detalle_oc = ?");
                 foreach ($itemsNuevos as $item) {
-                    $stmt->execute([$item['costo_internacion'], $item['id_detalle_oc']]);
+                    $stmt->execute([
+                        $item['costo_internacion'],
+                        $item['ga_real'] ?? 0,
+                        $item['otros_directos'] ?? 0,
+                        $item['id_detalle_oc']
+                    ]);
                 }
 
                 // Actualizar estado de la OC (podemos crear uno nuevo si gustas, ej: 'LIQUIDADA')
@@ -124,9 +129,14 @@ try {
 
             $db->beginTransaction();
             try {
-                $stmt = $db->prepare("UPDATE ordenes_compra_detalle SET cantidad_embarcada = ? WHERE id_detalle_oc = ?");
+                $stmt = $db->prepare("UPDATE ordenes_compra_detalle SET cantidad_embarcada = ?, ga_real = ?, otros_directos = ? WHERE id_detalle_oc = ?");
                 foreach ($itemsPaquete as $item) {
-                    $stmt->execute([$item['cantidad_embarcada'], $item['id_detalle_oc']]);
+                    $stmt->execute([
+                        $item['cantidad_embarcada'],
+                        $item['ga_real'] ?? 0,
+                        $item['otros_directos'] ?? 0,
+                        $item['id_detalle_oc']
+                    ]);
                 }
 
                 $db->commit();

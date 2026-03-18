@@ -77,6 +77,10 @@ try {
         $data = json_decode(file_get_contents('php://input'), true);
         $action = $data['action'] ?? 'create';
 
+        // Obtener configuración global del IVA
+        $ivaConfig = (float) getParametro('impuesto_iva', 0.13);
+        $netoConfig = 1 - $ivaConfig;
+
         if ($action === 'create') {
             // Validar
             if (empty($data['id_orden_compra']))
@@ -216,93 +220,207 @@ try {
                     }
                 }
 
-                foreach ($detalles as $det) {
-                    $cantRecibida = (float) $det['cantidad_recibida'];
+                // Función auxiliar para generar número de documento de inventario
+                if (!function_exists('generarNumeroDocumentoInv')) {
+                    function generarNumeroDocumentoInv($db, $idTipoInventario)
+                    {
+                        $prefijos = [
+                            1 => 'IN-MP-C', // Materias Primas
+                            2 => 'IN-CQ-C', // Colorantes / Químicos
+                            3 => 'IN-AC-C', // Accesorios
+                            4 => 'IN-EM-C', // Empaques
+                            5 => 'IN-RE-C', // Repuestos
+                            6 => 'IN-PT-C'  // Productos Terminados
+                        ];
+                        $prefijo = $prefijos[$idTipoInventario] ?? 'IN-XX-C';
+                        $anio = date('Y');
+                        $mes = date('m');
 
-                    // Actualizar detalle OC (siempre que exista el vínculo)
-                    if (!empty($det['id_detalle_oc'])) {
-                        $stmtUpdateOCDet->execute([$cantRecibida, $cantRecibida, $det['id_detalle_oc']]);
+                        $stmt = $db->prepare("SELECT ultimo_numero FROM secuencias_documento WHERE tipo_documento = 'INGRESO' AND prefijo = ? AND anio = ? AND mes = ? FOR UPDATE");
+                        $stmt->execute([$prefijo, $anio, $mes]);
+                        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                        if ($row) {
+                            $siguiente = $row['ultimo_numero'] + 1;
+                            $db->prepare("UPDATE secuencias_documento SET ultimo_numero = ? WHERE tipo_documento = 'INGRESO' AND prefijo = ? AND anio = ? AND mes = ?")->execute([$siguiente, $prefijo, $anio, $mes]);
+                        } else {
+                            $siguiente = 1;
+                            $db->prepare("INSERT INTO secuencias_documento (tipo_documento, prefijo, anio, mes, ultimo_numero) VALUES ('INGRESO', ?, ?, ?, 1)")->execute([$prefijo, $anio, $mes]);
+                        }
+                        return $prefijo . '-' . $anio . $mes . '-' . str_pad($siguiente, 4, '0', STR_PAD_LEFT);
                     }
+                }
 
-                    // --- INTEGRACIÓN CON INVENTARIO ---
+                // --- NUEVA INTEGRACIÓN VINCULADA CON INVENTARIOS ---
+                // 1. Agrupar items válidos por tipo de inventario
+                $detallesValidosPorTipo = [];
+                $mensajesAviso = [];
 
-                    // VALIDACIÓN CRÍTICA: Si no hay id_producto, no podemos actualizar stock ni kardex
+                foreach ($detalles as $det) {
                     if (empty($det['id_producto'])) {
-                        error_log("Aviso: Saltando actualización de inventario para ítem " . $det['codigo_producto'] . " por falta de id_producto.");
+                        $mensajesAviso[] = "Saltando ítem " . $det['codigo_producto'] . " por falta de id_producto en base de datos.";
                         continue;
                     }
+                    $tipo = $det['id_tipo_inventario'] ?? 1; // Default a MP si por alguna razón extraña no existiera
+                    $detallesValidosPorTipo[$tipo][] = $det;
+                }
 
-                    // 1. Obtener precio unitario, considerando moneda si no hay internación
-                    $stmtOCP = $db->prepare("
-                        SELECT od.precio_unitario_internacion, od.precio_unitario, oc.moneda, oc.tipo_cambio
-                        FROM ordenes_compra_detalle od
-                        JOIN ordenes_compra oc ON od.id_orden_compra = oc.id_orden_compra
-                        WHERE od.id_detalle_oc = ?
-                    ");
-                    $stmtOCP->execute([$det['id_detalle_oc']]);
-                    $ocData = $stmtOCP->fetch(PDO::FETCH_ASSOC);
+                // Preparar sentencias de Inserción para Cabecera y Detalle de Documentos
+                $stmtInsertDoc = $db->prepare("
+                    INSERT INTO documentos_inventario (
+                        tipo_documento, tipo_ingreso, id_tipo_ingreso, numero_documento, fecha_documento,
+                        id_tipo_inventario, id_proveedor, referencia_externa, con_factura, moneda,
+                        subtotal, iva, total, observaciones, estado, creado_por
+                    ) VALUES ('INGRESO', 'COMPRA', 1, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?)
+                ");
 
-                    if (!is_null($ocData['precio_unitario_internacion'])) {
-                        $precioUnitOC = (float) $ocData['precio_unitario_internacion'];
-                    } else {
-                        $precioUnitOC = (float) $ocData['precio_unitario'];
-                        // Si no se liquidó la internación y la compra es en USD, convertir a BOB al tipo de cambio de la orden
-                        if (($ocData['moneda'] ?? 'BOB') === 'USD') {
-                            $tipoCambio = (float) ($ocData['tipo_cambio'] ?? 6.96);
-                            $precioUnitOC = $precioUnitOC * $tipoCambio;
+                $stmtInsertDocDet = $db->prepare("
+                    INSERT INTO documentos_inventario_detalle (
+                        id_documento, id_inventario, cantidad, costo_unitario, costo_con_iva, subtotal
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                ");
+
+                // 2. Procesar cada grupo de Tipo de Inventario
+                foreach ($detallesValidosPorTipo as $idTipoInv => $detallesGrupo) {
+                    $totalDocGrupo = 0;
+                    $netoDocGrupo = 0;
+                    $ivaDocGrupo = 0;
+
+                    $detallesProcesados = []; // Matriz con cálculos intermedios
+
+                    foreach ($detallesGrupo as $det) {
+                        $cantRecibida = (float) $det['cantidad_recibida'];
+
+                        // Actualizar detalle OC
+                        if (!empty($det['id_detalle_oc'])) {
+                            $stmtUpdateOCDet->execute([$cantRecibida, $cantRecibida, $det['id_detalle_oc']]);
                         }
+
+                        // Obtener precio unitario, considerando moneda si no hay internación
+                        $stmtOCP = $db->prepare("
+                            SELECT od.precio_unitario_internacion, od.precio_unitario, oc.moneda, oc.tipo_cambio
+                            FROM ordenes_compra_detalle od
+                            JOIN ordenes_compra oc ON od.id_orden_compra = oc.id_orden_compra
+                            WHERE od.id_detalle_oc = ?
+                        ");
+                        $stmtOCP->execute([$det['id_detalle_oc']]);
+                        $ocData = $stmtOCP->fetch(PDO::FETCH_ASSOC);
+
+                        if (!is_null($ocData['precio_unitario_internacion'])) {
+                            $precioUnitOC = (float) $ocData['precio_unitario_internacion'];
+                        } else {
+                            $precioUnitOC = (float) $ocData['precio_unitario'];
+                            // Si no se liquidó la internación y la compra es en USD, convertir a BOB al tipo de cambio de la orden
+                            if (($ocData['moneda'] ?? 'BOB') === 'USD') {
+                                $tipoCambio = (float) ($ocData['tipo_cambio'] ?? 6.96);
+                                $precioUnitOC = $precioUnitOC * $tipoCambio;
+                            }
+                        }
+
+                        $costoConIva = $precioUnitOC; // El costo bruto real pagado
+
+                        // Aplicar descuento contable si es compra formal CON FACTURA para afectar el kardex
+                        if ($condicion_fiscal === 'CON_FACTURA') {
+                            $precioUnitOC = $precioUnitOC * $netoConfig;
+                        }
+
+                        $subtotalBruto = $cantRecibida * $costoConIva;
+                        $totalDocGrupo += $subtotalBruto;
+
+                        if ($condicion_fiscal === 'CON_FACTURA') {
+                            $netoDocGrupo += $subtotalBruto * $netoConfig;
+                            $ivaDocGrupo += $subtotalBruto * $ivaConfig;
+                        } else {
+                            $netoDocGrupo += $subtotalBruto;
+                            $ivaDocGrupo += 0;
+                        }
+
+                        $det['precio_kardex_neto'] = $precioUnitOC;
+                        $det['precio_doc_bruto'] = $costoConIva;
+                        $det['subtotal_bruto'] = $subtotalBruto;
+                        $detallesProcesados[] = $det;
                     }
 
-                    // Aplicar descuento de 13% (IVA) contable si es compra formal CON FACTURA
-                    if ($condicion_fiscal === 'CON_FACTURA') {
-                        $precioUnitOC = $precioUnitOC * 0.87;
-                    }
+                    // 3. Crear cabecera Documento de Inventario para este grupo (Ej. IN-MP-C-001)
+                    $numDocInv = generarNumeroDocumentoInv($db, $idTipoInv);
+                    $obsGenerada = "Ingreso automático generado desde Recepción de Orden de Compra: " . $recepcion['numero_recepcion'];
 
-                    // 2. Obtener datos actuales de inventario
-                    $stmtInv = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ? FOR UPDATE");
-                    $stmtInv->execute([$det['id_producto']]);
-                    $inv = $stmtInv->fetch(PDO::FETCH_ASSOC);
-
-                    $stockAnterior = (float) ($inv['stock_actual'] ?? 0);
-                    $cppAnterior = (float) ($inv['costo_promedio'] ?? 0);
-                    $stockNuevo = $stockAnterior + $cantRecibida;
-
-                    // Cálculo de nuevo costo promedio (CPP)
-                    $cppNuevo = ($stockNuevo > 0)
-                        ? (($stockAnterior * $cppAnterior) + ($cantRecibida * $precioUnitOC)) / $stockNuevo
-                        : $precioUnitOC;
-
-                    // 3. Actualizar Maestro de Inventario
-                    $db->prepare("UPDATE inventarios SET stock_actual = ?, costo_promedio = ?, costo_unitario = ? WHERE id_inventario = ?")
-                        ->execute([$stockNuevo, $cppNuevo, $precioUnitOC, $det['id_producto']]);
-
-                    // 4. Registrar Movimiento (Kardex)
-                    $codMov = generarCodMov($db);
-                    $stmtMov = $db->prepare("
-                        INSERT INTO movimientos_inventario (
-                            id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento, 
-                            codigo_movimiento, documento_tipo, documento_numero, documento_id,
-                            cantidad, costo_unitario, costo_total,
-                            stock_anterior, stock_posterior,
-                            costo_promedio_anterior, costo_promedio_posterior,
-                            estado, creado_por
-                        ) VALUES (?, ?, NOW(), 'ENTRADA_COMPRA', ?, 'RECEPCION_OC', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
-                    ");
-                    $stmtMov->execute([
-                        $det['id_producto'],
-                        $det['id_tipo_inventario'],
-                        $codMov,
-                        $recepcion['numero_recepcion'],
-                        $id_recepcion,
-                        $cantRecibida,
-                        $precioUnitOC,
-                        ($cantRecibida * $precioUnitOC),
-                        $stockAnterior,
-                        $stockNuevo,
-                        $cppAnterior,
-                        $cppNuevo,
+                    $stmtInsertDoc->execute([
+                        $numDocInv,
+                        $idTipoInv,
+                        $recepcion['id_proveedor'],
+                        $recepcion['numero_factura'] ?? null,
+                        ($condicion_fiscal === 'CON_FACTURA') ? 1 : 0,
+                        'BOB', // Módulo de compras convierte a moneda local
+                        $netoDocGrupo,
+                        $ivaDocGrupo,
+                        $totalDocGrupo,
+                        $obsGenerada,
                         $_SESSION['user_id'] ?? 1
                     ]);
+
+                    $idDocInventario = $db->lastInsertId();
+
+                    // 4. Inserción de líneas del documento y Movimientos Kardex
+                    foreach ($detallesProcesados as $det) {
+                        $cantRecibida = (float) $det['cantidad_recibida'];
+
+                        $stmtInsertDocDet->execute([
+                            $idDocInventario,
+                            $det['id_producto'],
+                            $cantRecibida,
+                            $det['precio_kardex_neto'],
+                            $det['precio_doc_bruto'],
+                            $det['subtotal_bruto']
+                        ]);
+
+                        // Obtener datos actuales de inventario para actualizar Kardex
+                        $stmtInv = $db->prepare("SELECT stock_actual, costo_promedio FROM inventarios WHERE id_inventario = ? FOR UPDATE");
+                        $stmtInv->execute([$det['id_producto']]);
+                        $inv = $stmtInv->fetch(PDO::FETCH_ASSOC);
+
+                        $stockAnterior = (float) ($inv['stock_actual'] ?? 0);
+                        $cppAnterior = (float) ($inv['costo_promedio'] ?? 0);
+                        $stockNuevo = $stockAnterior + $cantRecibida;
+
+                        // Cálculo de nuevo costo promedio (CPP)
+                        $cppNuevo = ($stockNuevo > 0)
+                            ? (($stockAnterior * $cppAnterior) + ($cantRecibida * $det['precio_kardex_neto'])) / $stockNuevo
+                            : $det['precio_kardex_neto'];
+
+                        // Actualizar Maestro de Inventario
+                        $db->prepare("UPDATE inventarios SET stock_actual = ?, costo_promedio = ?, costo_unitario = ? WHERE id_inventario = ?")
+                            ->execute([$stockNuevo, $cppNuevo, $det['precio_kardex_neto'], $det['id_producto']]);
+
+                        // Registrar Movimiento (Kardex) ENLAZADO al Documento de Inventario Creado
+                        $codMov = generarCodMov($db);
+                        $stmtMov = $db->prepare("
+                            INSERT INTO movimientos_inventario (
+                                id_inventario, id_tipo_inventario, fecha_movimiento, tipo_movimiento, 
+                                codigo_movimiento, documento_tipo, documento_numero, documento_id,
+                                cantidad, costo_unitario, costo_total,
+                                stock_anterior, stock_posterior,
+                                costo_promedio_anterior, costo_promedio_posterior,
+                                estado, creado_por
+                            ) VALUES (?, ?, NOW(), 'ENTRADA_COMPRA', ?, 'FACTURA', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?)
+                        ");
+                        // NOTA: Se usa documento_tipo = 'FACTURA' para conservar la misma nomenclatura que el Ingreso de Materias Primas normal
+                        $stmtMov->execute([
+                            $det['id_producto'],
+                            $det['id_tipo_inventario'],
+                            $codMov,
+                            $numDocInv,         // Refiere al IN-MP-C-XXXX generado
+                            $idDocInventario,   // Refiere al registro id_documento de documentos_inventario
+                            $cantRecibida,
+                            $det['precio_kardex_neto'],
+                            ($cantRecibida * $det['precio_kardex_neto']),
+                            $stockAnterior,
+                            $stockNuevo,
+                            $cppAnterior,
+                            $cppNuevo,
+                            $_SESSION['user_id'] ?? 1
+                        ]);
+                    }
                 }
 
                 // Actualizar Estado General de OC si ya se recibió todo

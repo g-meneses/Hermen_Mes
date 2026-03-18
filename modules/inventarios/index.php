@@ -1012,6 +1012,18 @@ require_once '../../includes/header.php';
         </button>
     </div>
 
+    <?php if(isset($totalAjustesPendientes)): ?>
+    <div id="alert-ajustes-pendientes" class="alert mb-4 shadow-sm" style="border-left: 5px solid #ff9800; background-color: #fff8e1; color: #b76c00; display: <?= $totalAjustesPendientes > 0 ? 'flex' : 'none' ?>; align-items: center; justify-content: space-between; border-radius: 10px; padding: 15px 20px;">
+        <div style="font-size: 1.05rem;">
+            <i class="fas fa-exclamation-circle fa-lg mr-2" style="color: #ff9800;"></i>
+            <strong>¡Atención!</strong> Hay <strong id="count-ajustes-pendientes-alert"><?= $totalAjustesPendientes ?></strong> solicitud(es) de ajuste de inventario pendiente(s) de revisión.
+        </div>
+        <a href="<?= SITE_URL ?>/modules/configuracion/aprobaciones_ajustes.php" class="btn btn-warning shadow-sm" style="font-weight: 600; border-radius: 8px; color: #fff; background: #ff9800; border: none;">
+            Evaluar Solicitudes <i class="fas fa-arrow-right ml-1"></i>
+        </a>
+    </div>
+    <?php endif; ?>
+
     <!-- KPIs Generales -->
     <div class="inv-kpis">
         <div class="kpi-card">

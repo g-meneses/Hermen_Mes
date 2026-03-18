@@ -1523,7 +1523,7 @@ async function guardarIngreso() {
         }
 
         // 3.4 Validar AUTORIZACIÓN (solo si es requerido)
-        if (config.requiere_autorizacion) {
+        if (config.requiere_autorizacion && config.codigo !== 'AJUSTE_POS') {
             const autorizadoPor = document.getElementById('ingresoAutorizadoPor').value;
             if (!autorizadoPor) {
                 mostrarAlerta('Seleccione quién autoriza', 'error');
@@ -1581,7 +1581,7 @@ async function guardarIngreso() {
         // 6.4 AJUSTE POSITIVO
         else if (config.codigo === 'AJUSTE_POS') {
             datosIngreso.motivo_ingreso = document.getElementById('ingresoMotivo').value;
-            datosIngreso.autorizado_por = parseInt(document.getElementById('ingresoAutorizadoPor').value);
+            // No enviar autorizado_por
         }
 
         console.log('📦 Datos a enviar:', datosIngreso);
@@ -1598,13 +1598,15 @@ async function guardarIngreso() {
         const resultado = await response.json();
 
         if (resultado.success) {
-            mostrarAlerta(`Ingreso ${resultado.numero_documento} registrado exitosamente`, 'success');
             cerrarModal('modalIngreso');
-
-            // Recargar datos
-            if (typeof cargarDatos === 'function') {
-                cargarDatos();
-            }
+            Swal.fire({
+                title: '¡Registrado!',
+                text: `Ingreso ${resultado.numero_documento || ''} registrado exitosamente.`,
+                icon: 'success',
+                confirmButtonText: 'Continuar'
+            }).then(() => {
+                window.location.href = `${window.baseUrl || baseUrl}/modules/inventarios/index.php`;
+            });
         } else {
             mostrarAlerta(resultado.message || 'Error al registrar el ingreso', 'error');
         }

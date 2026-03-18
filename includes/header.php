@@ -619,7 +619,7 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
         <aside class="sidebar">
             <!-- Logo -->
             <div class="logo-container">
-                <a href="<?php echo SITE_URL; ?>/modules/dashboard/index.php">
+                <a href="<?php echo SITE_URL; ?>/dashboard.php">
                     <img src="<?php echo SITE_URL; ?>/assets/img/logo_sidebar.png?v=9" alt="HerMen Ltda.">
                 </a>
             </div>
@@ -628,11 +628,22 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
             <?php
             // Determinar si es un usuario con rol restringido de inventario
             $esOperadorInventario = ($_SESSION['user_role'] ?? '') === 'operador_inv';
+            $esAdmin = in_array($_SESSION['user_role'] ?? '', ['admin', 'gerencia']);
+            
+            // Obtener alertas de ajustes pendientes
+            $totalAjustesPendientes = 0;
+            if ($esAdmin) {
+                try {
+                    $pdo = getDB();
+                    $stmtAjustes = $pdo->query("SELECT COUNT(*) FROM ajustes_inventario WHERE estado = 'PENDIENTE'");
+                    $totalAjustesPendientes = $stmtAjustes->fetchColumn();
+                } catch(Exception $e) { }
+            }
             ?>
             <ul class="sidebar-menu">
                 <!-- Dashboard -->
                 <li class="menu-item">
-                    <a href="<?php echo SITE_URL; ?>/modules/dashboard/index.php"
+                    <a href="<?php echo SITE_URL; ?>/dashboard.php"
                         class="menu-link <?php echo $currentPage === 'dashboard' ? 'active' : ''; ?>">
                         <i class="fas fa-home"></i>
                         <span class="menu-text">Dashboard</span>
@@ -692,6 +703,15 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                             class="menu-text">Prod. Terminados</span><span
                                             class="menu-badge badge-soon">Pronto</span></a></li>
                             </ul>
+                        </li>
+                        <li class="menu-item">
+                            <a href="<?php echo SITE_URL; ?>/modules/configuracion/aprobaciones_ajustes.php" class="menu-link <?php echo $currentPage === 'aprobaciones_ajustes' ? 'active' : ''; ?>">
+                                <i class="fas fa-check-double"></i>
+                                <span class="menu-text">Aprobaciones Ajustes</span>
+                                <?php if(isset($totalAjustesPendientes)): ?>
+                                    <span id="badge-ajustes-pendientes" class="menu-badge" style="background:#dc3545; color:white; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:bold; margin-left:auto; display: <?= $totalAjustesPendientes > 0 ? 'inline-block' : 'none' ?>;"><?php echo $totalAjustesPendientes; ?></span>
+                                <?php endif; ?>
+                            </a>
                         </li>
                         <li class="menu-item">
                             <a class="menu-link" onclick="toggleSubmenu(this)">
@@ -945,12 +965,8 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                             <i class="fas fa-chevron-right menu-arrow"></i>
                         </a>
                         <ul class="submenu">
-                            <li><a href="#" class="menu-link"><i class="fas fa-users-cog"></i><span
-                                        class="menu-text">Usuarios</span><span
-                                        class="menu-badge badge-soon">Pronto</span></a></li>
-                            <li><a href="#" class="menu-link"><i class="fas fa-cog"></i><span
-                                        class="menu-text">Configuración</span><span
-                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                            <li><a href="<?php echo SITE_URL; ?>/modules/configuracion/index.php" class="menu-link <?php echo $currentPage === 'configuracion' ? 'active' : ''; ?>"><i class="fas fa-cog"></i><span
+                                        class="menu-text">Configuración Global</span></a></li>
                         </ul>
                     </li>
                 <?php endif; ?>

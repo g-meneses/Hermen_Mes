@@ -265,6 +265,67 @@ try {
                     $db->beginTransaction();
 
                     try {
+                        // 1. VERIFICAR SI REQUIERE AUTORIZACION (ES UN AJUSTE NEGATIVO)
+                        if ($tipoSalida === 'AJUSTE') {
+                            // -------------------------------------------------------------
+                            // RUTA A: GUARDAR COMO BORRADOR DE AJUSTE (PENDIENTE DE APROBAR)
+                            // -------------------------------------------------------------
+                            
+                            // Generar código único para el ajuste
+                            $codigoAjuste = generarNumeroDocumento($db, 'SALIDA', 'AJ-NEG'); // Ajuste Negativo
+                            
+                            $stmtAjuste = $db->prepare("
+                                INSERT INTO ajustes_inventario (
+                                    codigo_ajuste, id_solicitante, tipo_ajuste, estado, motivo
+                                ) VALUES (?, ?, 'SALIDA', 'PENDIENTE', ?)
+                            ");
+                            
+                            $stmtAjuste->execute([
+                                $codigoAjuste,
+                                $_SESSION['user_id'] ?? null,
+                                $data['observaciones'] ?? 'Ajuste negativo solicitado'
+                            ]);
+                            
+                            $idAjuste = $db->lastInsertId();
+                            
+                            $stmtDetalleAjuste = $db->prepare("
+                                INSERT INTO ajustes_inventario_detalle (
+                                    id_ajuste, id_inventario, cantidad_solicitada, costo_unitario_guardado
+                                ) VALUES (?, ?, ?, ?)
+                            ");
+                            
+                            foreach ($data['lineas'] as $linea) {
+                                $cantidad = floatval($linea['cantidad']);
+                                $costoUnitario = floatval($linea['costo_unitario'] ?? 0);
+                                
+                                $stmtDetalleAjuste->execute([
+                                    $idAjuste,
+                                    $linea['id_inventario'],
+                                    $cantidad,
+                                    $costoUnitario
+                                ]);
+                            }
+                            
+                            $db->commit();
+                            
+                            ob_clean();
+                            echo json_encode([
+                                'success' => true,
+                                'message' => "El Ajuste Negativo ($codigoAjuste) ha sido enviado a Gerencia/Administración para su aprobación.",
+                                'is_ajuste' => true,
+                                'codigo_ajuste' => $codigoAjuste
+                            ]);
+                            exit();
+                        }
+
+                        // -------------------------------------------------------------
+                        // RUTA B: SALIDAS DIRECTAS (FLUJO NORMAL)
+                        // -------------------------------------------------------------
+                        
+                        // Obtener configuración global del IVA
+                        $ivaConfig = (float) getParametro('impuesto_iva', 0.13);
+                        $netoConfig = 1 - $ivaConfig;
+
                         // Generar número de documento con Prefijo Inteligente
                         $codigosTipo = [
                             'PRODUCCION' => 'P',
@@ -291,8 +352,8 @@ try {
                             if ($teniaIva) {
                                 // Para devoluciones con IVA: recalcular el total bruto
                                 $subtotalNeto = $cantidad * $costo;
-                                $iva = $subtotalNeto / 0.87 * 0.13; // IVA sobre el bruto
-                                $subtotalBruto = $subtotalNeto / 0.87;
+                                $iva = $subtotalNeto / $netoConfig * $ivaConfig; // IVA sobre el bruto
+                                $subtotalBruto = $subtotalNeto / $netoConfig;
 
                                 $totalNeto += $subtotalNeto;
                                 $totalIVA += $iva;

@@ -228,6 +228,77 @@ try {
                     $db->beginTransaction();
 
                     try {
+                        // 1. VERIFICAR SI REQUIERE AUTORIZACION (ES UN AJUSTE U OTRO TIPO CONTROLADO)
+                        $requiereAutorizacion = false;
+                        if ($idTipoIngreso) {
+                            $stmtAuth = $db->prepare("SELECT requiere_autorizacion FROM tipos_ingreso WHERE id_tipo_ingreso = ?");
+                            $stmtAuth->execute([$idTipoIngreso]);
+                            $rowAuth = $stmtAuth->fetch(PDO::FETCH_ASSOC);
+                            if ($rowAuth && $rowAuth['requiere_autorizacion'] == 1) {
+                                $requiereAutorizacion = true;
+                            }
+                        }
+
+                        if ($requiereAutorizacion) {
+                            // -------------------------------------------------------------
+                            // RUTA A: GUARDAR COMO BORRADOR DE AJUSTE (PENDIENTE DE APROBAR)
+                            // -------------------------------------------------------------
+                            
+                            // Generar código único para el ajuste
+                            $codigoAjuste = generarNumeroDocumento($db, 'INGRESO', 'AJ-POS'); // Ajuste Positivo
+                            
+                            $stmtAjuste = $db->prepare("
+                                INSERT INTO ajustes_inventario (
+                                    codigo_ajuste, id_solicitante, tipo_ajuste, estado, motivo
+                                ) VALUES (?, ?, 'ENTRADA', 'PENDIENTE', ?)
+                            ");
+                            
+                            $stmtAjuste->execute([
+                                $codigoAjuste,
+                                $_SESSION['user_id'] ?? null,
+                                $data['observaciones'] ?? 'Ajuste positivo solicitado'
+                            ]);
+                            
+                            $idAjuste = $db->lastInsertId();
+                            
+                            $stmtDetalleAjuste = $db->prepare("
+                                INSERT INTO ajustes_inventario_detalle (
+                                    id_ajuste, id_inventario, cantidad_solicitada, costo_unitario_guardado
+                                ) VALUES (?, ?, ?, ?)
+                            ");
+                            
+                            foreach ($data['lineas'] as $linea) {
+                                $cantidad = floatval($linea['cantidad']);
+                                $costoUnitario = floatval($linea['costo_unitario'] ?? 0);
+                                
+                                $stmtDetalleAjuste->execute([
+                                    $idAjuste,
+                                    $linea['id_inventario'],
+                                    $cantidad,
+                                    $costoUnitario
+                                ]);
+                            }
+                            
+                            $db->commit();
+                            
+                            ob_clean();
+                            echo json_encode([
+                                'success' => true,
+                                'message' => "El Ajuste Positivo ($codigoAjuste) ha sido enviado a Gerencia/Administración para su aprobación.",
+                                'is_ajuste' => true,
+                                'codigo_ajuste' => $codigoAjuste
+                            ]);
+                            exit();
+                        }
+
+                        // -------------------------------------------------------------
+                        // RUTA B: COMPRAS E INGRESOS DIRECTOS (FLUJO NORMAL)
+                        // -------------------------------------------------------------
+                        
+                        // Obtener configuración global del IVA
+                        $ivaConfig = (float) getParametro('impuesto_iva', 0.13);
+                        $netoConfig = 1 - $ivaConfig;
+
                         // Generar número de documento con Prefijo Inteligente
                         $codigosTipo = [
                             'COMPRA' => 'C',
@@ -251,10 +322,10 @@ try {
                             $totalDocumento += $subtotalLinea;
 
                             if ($conFactura) {
-                                // Neto = Subtotal * 0.87
-                                $netoLinea = $subtotalLinea * 0.87;
+                                // Neto = Subtotal * netoConfig
+                                $netoLinea = $subtotalLinea * $netoConfig;
                                 $totalNeto += $netoLinea;
-                                $iva += $subtotalLinea * 0.13;
+                                $iva += $subtotalLinea * $ivaConfig;
                             } else {
                                 $totalNeto += $subtotalLinea;
                             }
@@ -330,8 +401,8 @@ try {
                             $cantidad = floatval($linea['cantidad']);
                             $subtotalLinea = floatval($linea['subtotal'] ?? ($linea['valor_total_item'] ?? ($linea['cantidad'] * ($linea['costo_unitario'] ?? 0))));
                             $costoConIva = $cantidad > 0 ? $subtotalLinea / $cantidad : 0;
-                            // Costo sin IVA = Costo Bruto * 0.87
-                            $costoUnit = $conFactura ? $costoConIva * 0.87 : $costoConIva;
+                            // Costo sin IVA
+                            $costoUnit = $conFactura ? $costoConIva * $netoConfig : $costoConIva;
 
                             // Insertar línea
                             $stmtLinea->execute([

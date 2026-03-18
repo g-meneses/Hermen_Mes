@@ -340,6 +340,25 @@ include '../../includes/header.php';
                                         Alternar Precios
                                     </button>
                                 </div>
+                                <div class="p-4 bg-white border-b border-slate-100 filtros-box" id="seccion_filtros_productos">
+                                    <div class="flex flex-wrap items-center justify-between gap-4">
+                                        <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Búsqueda Rápida de Ítems</h5>
+                                        <div class="flex flex-wrap gap-2">
+                                            <select id="filtro_tipo_inventario" onchange="manejarCambioTipoInventario(this.value)"
+                                                class="text-xs border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary font-medium text-primary shadow-sm hover:bg-slate-100 cursor-pointer">
+                                                <option value="">Tipo de Inventario</option>
+                                            </select>
+                                            <select id="filtro_categoria" onchange="cargarSubcategoriasFiltro()"
+                                                class="text-xs border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary shadow-sm hover:bg-slate-100 cursor-pointer">
+                                                <option value="">Categorías</option>
+                                            </select>
+                                            <select id="filtro_subcategoria" onchange="cargarProductosFiltrados()"
+                                                class="text-xs border-slate-200 bg-slate-50 rounded-lg px-2 py-1.5 outline-none focus:ring-1 focus:ring-primary shadow-sm hover:bg-slate-100 cursor-pointer">
+                                                <option value="">Subcategorías</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="overflow-x-auto">
                                     <table class="w-full text-left border-collapse table-premium" id="tablaDetalles">
                                         <thead>
@@ -364,41 +383,6 @@ include '../../includes/header.php';
                                         onclick="agregarFila()">
                                         <span class="material-symbols-outlined text-sm">add_circle</span>
                                         AÑADIR NUEVA LÍNEA
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Gastos Adicionales -->
-                            <div class="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden mb-6">
-                                <div class="p-4 bg-slate-50 border-b border-slate-100">
-                                    <h4
-                                        class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                        <span class="material-symbols-outlined text-sm">payments</span>
-                                        Gastos Adicionales (Fletes, Estibajes, Varios)
-                                    </h4>
-                                </div>
-                                <div class="overflow-x-auto">
-                                    <table class="w-full text-left border-collapse table-premium" id="tablaGastos">
-                                        <thead>
-                                            <tr>
-                                                <th width="25%">Tipo de Gasto</th>
-                                                <th width="40%">Descripción / Nota</th>
-                                                <th width="15%" class="text-center">Moneda</th>
-                                                <th width="15%" class="text-right">Monto</th>
-                                                <th width="5%"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="bodyGastos">
-                                            <!-- Dinámico -->
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div class="p-4 border-t border-slate-50 bg-slate-50/30">
-                                    <button type="button"
-                                        class="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-white px-4 py-2 rounded-xl transition-all shadow-sm active:scale-95"
-                                        onclick="agregarGasto()">
-                                        <span class="material-symbols-outlined text-sm">add_circle</span>
-                                        AÑADIR GASTO ASOCIADO
                                     </button>
                                 </div>
                             </div>
@@ -503,9 +487,10 @@ include '../../includes/header.php';
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     let itemsDetalle = [];
-    let itemsGastos = [];
     let solicitudesAprobadas = [];
     let listaProveedores = [];
+    let productosDisponibles = [];
+    let productosFiltrados = [];
     let totalGeneral = 0;
     let preciosVisibles = true;
     let ordenEnEdicion = null;
@@ -524,78 +509,112 @@ include '../../includes/header.php';
         }
     }
 
-    function agregarGasto() {
-        itemsGastos.push({
-            tipo_gasto: 'FLETE',
-            descripcion: '',
-            moneda: 'BOB',
-            monto: 0
-        });
-        renderGastos();
-    }
-
-    function renderGastos() {
-        const tbody = document.getElementById('bodyGastos');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-
-        itemsGastos.forEach((gasto, index) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <select class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                        onchange="actualizarGasto(${index}, 'tipo_gasto', this.value)">
-                        <option value="FLETE" ${gasto.tipo_gasto === 'FLETE' ? 'selected' : ''}>🚚 Flete / Transporte</option>
-                        <option value="ESTIBAJE" ${gasto.tipo_gasto === 'ESTIBAJE' ? 'selected' : ''}>💪 Estibaje / Carga</option>
-                        <option value="COMISION" ${gasto.tipo_gasto === 'COMISION' ? 'selected' : ''}>💰 Comisión</option>
-                        <option value="SEGURO" ${gasto.tipo_gasto === 'SEGURO' ? 'selected' : ''}>🛡️ Seguro</option>
-                        <option value="OTROS" ${gasto.tipo_gasto === 'OTROS' ? 'selected' : ''}>⚙️ Otros</option>
-                    </select>
-                </td>
-                <td>
-                    <input type="text" class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                        value="${gasto.descripcion || ''}" 
-                        onchange="actualizarGasto(${index}, 'descripcion', this.value)"
-                        placeholder="Ej: Transporte desde puerto a planta">
-                </td>
-                <td>
-                    <select class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-center focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                        onchange="actualizarGasto(${index}, 'moneda', this.value)">
-                        <option value="BOB" ${gasto.moneda === 'BOB' ? 'selected' : ''}>BOB</option>
-                        <option value="USD" ${gasto.moneda === 'USD' ? 'selected' : ''}>USD</option>
-                    </select>
-                </td>
-                <td>
-                    <input type="number" class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm text-right font-mono font-bold text-indigo-600 focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                        value="${gasto.monto || 0}" min="0" step="0.01"
-                        onchange="actualizarGasto(${index}, 'monto', parseFloat(this.value))">
-                </td>
-                <td class="text-center">
-                    <button type="button" class="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors" onclick="eliminarGasto(${index})">
-                        <span class="material-symbols-outlined text-lg">delete</span>
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-
-        // No afectamos el total de la OC porque estos gastos pueden ser directos
-        // Pero los guardamos para el costeo final
-    }
-
-    function actualizarGasto(index, field, value) {
-        itemsGastos[index][field] = value;
-    }
-
-    function eliminarGasto(index) {
-        itemsGastos.splice(index, 1);
-        renderGastos();
-    }
-
     document.addEventListener('DOMContentLoaded', function () {
         cargarProveedores();
         cargarOrdenes();
+        cargarTiposInventarioFiltro();
     });
+
+    function cargarTiposInventarioFiltro() {
+        if (!document.getElementById('filtro_tipo_inventario')) return;
+        fetch('../../api/centro_inventarios.php?action=tipos')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const select = document.getElementById('filtro_tipo_inventario');
+                    select.innerHTML = '<option value="">Tipo de Inventario</option>';
+                    data.tipos.forEach(tipo => {
+                        const option = document.createElement('option');
+                        option.value = tipo.id_tipo_inventario;
+                        option.textContent = tipo.nombre;
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => console.error('Error al cargar tipos de inventario:', error));
+    }
+
+    function manejarCambioTipoInventario(tipoId) {
+        if (!tipoId) {
+            document.getElementById('filtro_categoria').innerHTML = '<option value="">Categorías</option>';
+            document.getElementById('filtro_subcategoria').innerHTML = '<option value="">Subcategorías</option>';
+            productosDisponibles = [];
+            productosFiltrados = [];
+            renderDetalles();
+            return;
+        }
+        cargarCategoriasPorTipo(tipoId);
+        cargarProductosPorTipo(tipoId);
+    }
+
+    function cargarCategoriasPorTipo(tipoId) {
+        fetch(`../../api/centro_inventarios.php?action=categorias&tipo_id=${tipoId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const select = document.getElementById('filtro_categoria');
+                    select.innerHTML = '<option value="">Todas las categorías</option>';
+                    data.categorias.forEach(cat => {
+                        const option = document.createElement('option');
+                        option.value = cat.id_categoria;
+                        option.textContent = cat.nombre;
+                        select.appendChild(option);
+                    });
+                    document.getElementById('filtro_subcategoria').innerHTML = '<option value="">Todas las subcategorías</option>';
+                }
+            })
+            .catch(error => console.error('Error al cargar categorías:', error));
+    }
+
+    function cargarSubcategoriasFiltro() {
+        const categoriaId = document.getElementById('filtro_categoria').value;
+        const selectSubcat = document.getElementById('filtro_subcategoria');
+        if (!categoriaId) {
+            selectSubcat.innerHTML = '<option value="">Todas las subcategorías</option>';
+            cargarProductosFiltrados();
+            return;
+        }
+        fetch(`../../api/centro_inventarios.php?action=subcategorias&categoria_id=${categoriaId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    selectSubcat.innerHTML = '<option value="">Todas las subcategorías</option>';
+                    data.subcategorias.forEach(sub => {
+                        const option = document.createElement('option');
+                        option.value = sub.id_subcategoria;
+                        option.textContent = sub.nombre;
+                        selectSubcat.appendChild(option);
+                    });
+                    cargarProductosFiltrados();
+                }
+            })
+            .catch(error => console.error('Error al cargar subcategorías:', error));
+    }
+
+    function cargarProductosPorTipo(tipoId) {
+        fetch(`../../api/centro_inventarios.php?action=list&tipo_id=${tipoId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    productosDisponibles = data.inventarios || [];
+                    productosFiltrados = [...productosDisponibles];
+                    renderDetalles();
+                }
+            })
+            .catch(error => console.error('Error al cargar productos:', error));
+    }
+
+    function cargarProductosFiltrados() {
+        const categoriaId = document.getElementById('filtro_categoria').value;
+        const subcategoriaId = document.getElementById('filtro_subcategoria').value;
+        productosFiltrados = productosDisponibles.filter(prod => {
+            let cumple = true;
+            if (categoriaId && prod.id_categoria != categoriaId) cumple = false;
+            if (subcategoriaId && prod.id_subcategoria != subcategoriaId) cumple = false;
+            return cumple;
+        });
+        renderDetalles();
+    }
 
 
     // Cargar solicitudes aprobadas disponibles
@@ -706,13 +725,16 @@ include '../../includes/header.php';
 
     // Cargar productos desde una solicitud aprobada
     function cargarDesdeSolicitud(idSolicitud) {
+        const filtrosBox = document.getElementById('seccion_filtros_productos');
         if (!idSolicitud) {
             // Si selecciona "Sin solicitud", limpiar y permitir orden manual
             itemsDetalle = [];
             document.getElementById('numero_solicitud_ref').value = '';
+            if (filtrosBox) filtrosBox.style.display = 'block';
             agregarFila();
             return;
         }
+        if (filtrosBox) filtrosBox.style.display = 'none';
 
         const solicitud = solicitudesAprobadas.find(s => s.id_solicitud == idSolicitud);
         if (!solicitud) return;
@@ -912,9 +934,17 @@ include '../../includes/header.php';
         document.getElementById('id_solicitud_origen').value = '';
         document.getElementById('numero_solicitud_ref').value = '';
         itemsDetalle = [];
-        itemsGastos = [];
+
+        if (document.getElementById('filtro_tipo_inventario')) {
+            document.getElementById('filtro_tipo_inventario').value = '';
+            manejarCambioTipoInventario(''); // clear filters
+        }
+
+        // Mostrar siempre el filtro al crear una orden manual
+        const filtrosBox = document.getElementById('seccion_filtros_productos');
+        if (filtrosBox) filtrosBox.style.display = 'block';
+
         renderDetalles();
-        renderGastos();
 
         // Restaurar UI para nueva orden
         document.getElementById('tituloModal').innerHTML = `
@@ -960,11 +990,14 @@ include '../../includes/header.php';
 
     function agregarFila() {
         itemsDetalle.push({
+            id_producto: null,
+            codigo_producto: '',
             descripcion_producto: '',
             cantidad: 1,
             unidad_medida: 'Unidad',
             precio_unitario: 0,
-            total: 0
+            total: 0,
+            id_tipo_inventario: document.getElementById('filtro_tipo_inventario')?.value || 1
         });
         renderDetalles();
     }
@@ -991,19 +1024,50 @@ include '../../includes/header.php';
             const tr = document.createElement('tr');
             const esCompleta = item.estado_recepcion === 'COMPLETA';
             if (esCompleta) tr.classList.add('bg-emerald-50/50');
+            
+            let productosOptions = '<option value="">-- Seleccionar producto --</option>';
+            productosOptions += '<option value="CUSTOM">✏️ Descripción personalizada</option>';
+
+            if (item.id_producto && item.id_producto !== 'CUSTOM' && !productosFiltrados.some(p => p.id_inventario == item.id_producto)) {
+                productosOptions += `<option value="${item.id_producto}" selected>${item.codigo_producto ? item.codigo_producto + ' - ' : ''}${item.descripcion_producto}</option>`;
+            }
+
+            productosFiltrados.forEach(prod => {
+                const isSelected = item.id_producto == prod.id_inventario;
+                const text = isSelected ? prod.nombre : `${prod.codigo} - ${prod.nombre}`;
+                const selected = isSelected ? 'selected' : '';
+                productosOptions += `<option value="${prod.id_inventario}" ${selected}>${text}</option>`;
+            });
+
+            const esPersonalizado = item.id_producto === 'CUSTOM' || (!item.id_producto && item.descripcion_producto);
+
+            let descripcionHtml = '';
+            if (esOrdenEditable) {
+                if (esPersonalizado) {
+                    descripcionHtml = `<div class="flex items-center gap-2">
+                        <input type="text" 
+                                class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                                value="${item.descripcion_producto || ''}" 
+                                onchange="actualizarItem(${index}, 'descripcion_producto', this.value)"
+                                placeholder="Descripción del producto">
+                        <button type="button" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all flex items-center justify-center shadow-sm shrink-0"
+                                onclick="cambiarASelector(${index})" title="Cambiar a selector de la lista">
+                                <span class="material-symbols-outlined text-sm">list</span>
+                        </button>
+                    </div>`;
+                } else {
+                    descripcionHtml = `<select class="w-full border-slate-200 bg-slate-50 rounded-xl py-2 px-3 text-sm font-medium text-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
+                            onchange="seleccionarProducto(${index}, this.value)">
+                            ${productosOptions}
+                        </select>`;
+                }
+            } else {
+                descripcionHtml = `<div class="flex flex-col"><span class="font-bold text-slate-700">${item.descripcion_producto}</span><span class="text-[10px] text-slate-400 font-mono">${item.codigo_producto || ''}</span></div>`;
+            }
 
             tr.innerHTML = `
                 <td class="text-center font-mono text-xs text-slate-400">${index + 1}</td>
-                <td>
-                    ${esOrdenEditable ?
-                    `<input type="text" 
-                            class="w-full border-slate-200 bg-white rounded-xl py-2 px-3 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary shadow-sm transition-all"
-                            value="${item.descripcion_producto || ''}" 
-                            onchange="actualizarItem(${index}, 'descripcion_producto', this.value)"
-                            placeholder="Descripción del producto">` :
-                    `<div class="flex flex-col"><span class="font-bold text-slate-700">${item.descripcion_producto}</span><span class="text-[10px] text-slate-400 font-mono">${item.codigo_producto || ''}</span></div>`
-                }
-                </td>
+                <td>${descripcionHtml}</td>
                 <td>
                     ${esOrdenEditable ?
                     `<input type="number" tabindex="1" onclick="this.select()"
@@ -1058,6 +1122,33 @@ include '../../includes/header.php';
         document.getElementById('totalOrdenCell').textContent = total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function seleccionarProducto(index, productoId) {
+        if (productoId === 'CUSTOM') {
+            itemsDetalle[index].id_producto = 'CUSTOM';
+            itemsDetalle[index].descripcion_producto = '';
+            // No cambiamos otros valores
+        } else if (productoId) {
+            const producto = productosFiltrados.find(p => p.id_inventario == productoId);
+            if (producto) {
+                itemsDetalle[index].id_producto = producto.id_inventario;
+                itemsDetalle[index].codigo_producto = producto.codigo;
+                itemsDetalle[index].descripcion_producto = producto.nombre;
+                itemsDetalle[index].unidad_medida = producto.unidad || 'Unidad';
+                itemsDetalle[index].id_tipo_inventario = document.getElementById('filtro_tipo_inventario')?.value || 1;
+            }
+        } else {
+            itemsDetalle[index].id_producto = null;
+            itemsDetalle[index].descripcion_producto = '';
+        }
+        renderDetalles();
+    }
+
+    function cambiarASelector(index) {
+        itemsDetalle[index].id_producto = null;
+        itemsDetalle[index].descripcion_producto = '';
+        renderDetalles();
+    }
+
     function actualizarItem(index, field, value) {
         itemsDetalle[index][field] = value;
         if (field === 'cantidad' || field === 'precio_unitario') {
@@ -1102,9 +1193,10 @@ include '../../includes/header.php';
             total: totalGeneral,
             detalles: itemsDetalle.map(item => ({
                 ...item,
+                id_producto: item.id_producto === 'CUSTOM' ? null : item.id_producto,
                 id_tipo_inventario: item.id_tipo_inventario || 1
             })),
-            gastos: itemsGastos
+            gastos: []
         };
 
         if (data.detalles.length === 0 || !data.id_proveedor) {
@@ -1201,15 +1293,6 @@ include '../../includes/header.php';
 
                 renderDetalles();
 
-                // Cargar gastos en itemsGastos
-                itemsGastos = (orden.gastos || []).map(g => ({
-                    tipo_gasto: g.tipo_gasto,
-                    descripcion: g.descripcion,
-                    moneda: g.moneda,
-                    monto: parseFloat(g.monto)
-                }));
-                renderGastos();
-
                 // Habilitar/deshabilitar campos según estado
                 const campos = ['id_proveedor', 'fecha_entrega', 'condicion_pago', 'observaciones_orden'];
                 campos.forEach(id => {
@@ -1229,6 +1312,9 @@ include '../../includes/header.php';
                 // Botón añadir línea
                 const btnAdd = document.querySelector('button[onclick="agregarFila()"]');
                 if (btnAdd) btnAdd.style.display = esEditable ? 'inline-block' : 'none';
+
+                const filtrosBox = document.getElementById('seccion_filtros_productos');
+                if (filtrosBox) filtrosBox.style.display = (esEditable && !orden.id_solicitud) ? 'block' : 'none';
 
                 // Botón guardar
                 const btnGuardar = document.getElementById('btnGuardarOrden');

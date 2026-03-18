@@ -111,7 +111,50 @@
         // SISTEMA DE NOTIFICACIONES
         // =====================================================
         initNotificationSystem();
+        
+        // =====================================================
+        // ALERTAS DE AJUSTES EN TIEMPO REAL
+        // =====================================================
+        initAjustesBadgePolling();
     });
+
+    function initAjustesBadgePolling() {
+        // Consultar cada 60 segundos (60000ms)
+        setInterval(loadAjustesBadgeCount, 60000);
+    }
+    
+    async function loadAjustesBadgeCount() {
+        try {
+            const response = await fetch(`${window.baseUrl}/api/aprobaciones_ajuste.php?action=count_pendientes`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const badge = document.getElementById('badge-ajustes-pendientes');
+                const adminAlert = document.getElementById('alert-ajustes-pendientes');
+                const adminAlertCount = document.getElementById('count-ajustes-pendientes-alert');
+                
+                if (badge) {
+                    if (data.total > 0) {
+                        badge.textContent = data.total;
+                        badge.style.display = 'inline-block';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                }
+                
+                if (adminAlert && adminAlertCount) {
+                    if (data.total > 0) {
+                        adminAlertCount.textContent = data.total;
+                        adminAlert.style.display = 'flex';
+                    } else {
+                        adminAlert.style.display = 'none';
+                    }
+                }
+            }
+        } catch (error) {
+            console.log('[Ajustes Polling] Error obteniendo conteo de ajustes:', error);
+        }
+    }
 
     function initNotificationSystem() {
         const btn = document.getElementById('notificationBtn');

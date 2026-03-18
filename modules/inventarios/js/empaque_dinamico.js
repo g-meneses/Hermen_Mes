@@ -160,7 +160,7 @@ async function cargarTiposIngreso() {
         const data = await response.json();
 
         if (data.success) {
-            data.tipos.forEach(tipo => {
+                                        data.tipos.forEach(tipo => {
                 tiposIngresoConfig[tipo.id_tipo_ingreso] = tipo;
             });
 
@@ -168,11 +168,13 @@ async function cargarTiposIngreso() {
             if (select) {
                 select.innerHTML = '<option value="">Seleccione tipo de ingreso...</option>';
                 data.tipos.forEach(tipo => {
-                    select.innerHTML += `
-                        <option value="${tipo.id_tipo_ingreso}" data-codigo="${tipo.codigo}">
-                            ${tipo.nombre}
-                        </option>
-                    `;
+                    if (tipo.codigo !== 'COMPRA') {
+                        select.innerHTML += `
+                            <option value="${tipo.id_tipo_ingreso}" data-codigo="${tipo.codigo}">
+                                ${tipo.nombre}
+                            </option>
+                        `;
+                    }
                 });
             }
 
@@ -439,7 +441,7 @@ async function cambiarTipoIngreso() {
     }
 
     // 5. AUTORIZACIÓN
-    if (config.requiere_autorizacion) {
+    if (config.requiere_autorizacion && config.codigo !== 'AJUSTE_POS') {
         mostrarSeccionAutorizacion();
     } else {
         mostrarSeccion('seccionAutorizacion', false);

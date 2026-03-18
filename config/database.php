@@ -126,4 +126,23 @@ function jsonResponse($data, $status = 200)
     echo json_encode($data);
     exit();
 }
+
+/**
+ * Obtiene un parámetro de configuración global
+ * @param string $llave La clave a buscar
+ * @param mixed $default Valor por defecto si no existe
+ * @return mixed
+ */
+function getParametro($llave, $default = null)
+{
+    try {
+        $db = getDB();
+        $stmt = $db->prepare("SELECT valor FROM configuracion_sistema WHERE llave = ?");
+        $stmt->execute([$llave]);
+        $row = $stmt->fetch();
+        return $row ? $row['valor'] : $default;
+    } catch (Exception $e) {
+        return $default;
+    }
+}
 ?>

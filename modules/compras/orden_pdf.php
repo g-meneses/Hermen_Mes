@@ -113,13 +113,13 @@ $stmtDet = $db->prepare("SELECT * FROM ordenes_compra_detalle WHERE id_orden_com
 $stmtDet->execute([$id]);
 $detalles = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
 
-// Datos de la empresa
+// Datos dinámicos de la empresa centralizados en la BD
 $empresa = [
-    'nombre' => 'Hermen Ltda.',
-    'nit' => '123456789',
-    'direccion' => 'Zona Industrial, La Paz - Bolivia',
-    'telefono' => '+591 2 1234567',
-    'email' => 'compras@hermen.com.bo'
+    'nombre' => getParametro('empresa_nombre', 'Hermen Ltda.'),
+    'nit' => getParametro('empresa_nit', '123456789'),
+    'direccion' => getParametro('empresa_direccion', 'Zona Industrial, La Paz - Bolivia'),
+    'telefono' => getParametro('empresa_telefono', '+591 2 1234567'),
+    'email' => getParametro('empresa_email', 'compras@hermen.com.bo')
 ];
 ?>
 <!DOCTYPE html>
@@ -501,7 +501,54 @@ $empresa = [
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($detalles as $i => $det): ?>
+                    <?php
+                    function traducirProducto($texto, $lang)
+                    {
+                        if ($lang !== 'en')
+                            return htmlspecialchars($texto);
+                        $diccionario = [
+                            'NEGRO' => 'BLACK',
+                            'BLANCO' => 'WHITE',
+                            'ROJO' => 'RED',
+                            'AZUL' => 'BLUE',
+                            'VERDE' => 'GREEN',
+                            'AMARILLO' => 'YELLOW',
+                            'GRIS' => 'GRAY',
+                            'CAFE' => 'BROWN',
+                            'CAFÉ' => 'BROWN',
+                            'TORSION' => 'TWIST',
+                            'TORSIÓN' => 'TWIST',
+                            'ALGODON' => 'COTTON',
+                            'ALGODÓN' => 'COTTON',
+                            'POLIESTER' => 'POLYESTER',
+                            'POLIÉSTER' => 'POLYESTER',
+                            'HILO' => 'YARN',
+                            'CAJA' => 'BOX',
+                            'CAJAS' => 'BOXES',
+                            'CONO' => 'CONE',
+                            'CONOS' => 'CONES',
+                            'BOLSAS' => 'BAGS',
+                            'BOLSA' => 'BAG',
+                            'TINTA' => 'INK',
+                            'REPUESTO' => 'SPARE PART',
+                            'AGUJAS' => 'NEEDLES',
+                            'ACEITE' => 'OIL',
+                            'PEINADO' => 'COMBED',
+                            'CRUDO' => 'RAW',
+                            'SE SOLICITA' => 'REQUESTED',
+                            'CON PRIORIDAD' => 'WITH PRIORITY',
+                            'PRIORIDAD' => 'PRIORITY',
+                            'EL HILO' => 'THE YARN',
+                            'TITULO' => 'COUNT',
+                            'TÍTULO' => 'COUNT',
+                            'LOTE' => 'LOT',
+                            'CALIDAD' => 'QUALITY'
+                        ];
+                        $traducido = str_ireplace(array_keys($diccionario), array_values($diccionario), strtoupper($texto));
+                        return htmlspecialchars($traducido);
+                    }
+
+                    foreach ($detalles as $i => $det): ?>
                         <tr>
                             <td class="text-center">
                                 <?= $i + 1 ?>
@@ -510,7 +557,7 @@ $empresa = [
                                 <?= htmlspecialchars($det['codigo_producto'] ?? '-') ?>
                             </td>
                             <td>
-                                <?= htmlspecialchars($det['descripcion_producto']) ?>
+                                <?= traducirProducto($det['descripcion_producto'], $lang) ?>
                             </td>
                             <td class="text-center">
                                 <?= number_format($det['cantidad_ordenada'], 2) ?>
@@ -561,7 +608,7 @@ $empresa = [
             <div class="observaciones">
                 <h4>📝 <?= $txt['observaciones'] ?></h4>
                 <p>
-                    <?= nl2br(htmlspecialchars($orden['observaciones'])) ?>
+                    <?= nl2br(traducirProducto($orden['observaciones'], $lang)) ?>
                 </p>
             </div>
         <?php endif; ?>

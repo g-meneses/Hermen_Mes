@@ -394,10 +394,10 @@ include '../../includes/header.php';
                         <table class="w-full text-left border-collapse table-premium">
                             <thead>
                                 <tr>
-                                    <th style="width: 40%;">Producto / Descripción</th>
-                                    <th style="width: 12%;" class="text-center">Unidad</th>
-                                    <th style="width: 18%;" class="text-center">Stock Actual</th>
-                                    <th style="width: 20%;" class="text-center">Cantidad</th>
+                                    <th style="width: 52%;">Producto / Descripción</th>
+                                    <th style="width: 10%;" class="text-center">Unidad</th>
+                                    <th style="width: 13%;" class="text-center">Stock Actual</th>
+                                    <th style="width: 15%;" class="text-center">Cantidad</th>
                                     <th style="width: 10%;" class="text-center">Acción</th>
                                 </tr>
                             </thead>
@@ -759,17 +759,18 @@ include '../../includes/header.php';
             let productosOptions = '<option value="">-- Seleccionar producto --</option>';
             productosOptions += '<option value="CUSTOM">✏️ Descripción personalizada</option>';
 
-            // Asegurar que si el ítem actual está seleccionado pero filtrado, siga apareciendo en el select
             if (item.id_producto && item.id_producto !== 'CUSTOM' && !productosFiltrados.some(p => p.id_inventario == item.id_producto)) {
                 const prod = productosDisponibles.find(p => p.id_inventario == item.id_producto);
                 if (prod) {
-                    productosOptions += `<option value="${prod.id_inventario}" selected>${prod.codigo} - ${prod.nombre}</option>`;
+                    productosOptions += `<option value="${prod.id_inventario}" selected>${prod.nombre}</option>`;
                 }
             }
 
             productosFiltrados.forEach(prod => {
-                const selected = item.id_producto == prod.id_inventario ? 'selected' : '';
-                productosOptions += `<option value="${prod.id_inventario}" ${selected}>${prod.codigo} - ${prod.nombre}</option>`;
+                const isSelected = item.id_producto == prod.id_inventario;
+                const text = isSelected ? prod.nombre : `${prod.codigo} - ${prod.nombre}`;
+                const selected = isSelected ? 'selected' : '';
+                productosOptions += `<option value="${prod.id_inventario}" ${selected}>${text}</option>`;
             });
 
             // Determinar si mostrar selector o input de texto

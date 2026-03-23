@@ -6,7 +6,7 @@
  */
 
 // Configuración de la base de datos
-define('DB_HOST', 'localhost');
+define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'mes_hermen');
 define('DB_USER', 'root');
 define('DB_PASS', ''); // Cambia esto si tu XAMPP tiene password

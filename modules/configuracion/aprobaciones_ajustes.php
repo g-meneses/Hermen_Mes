@@ -57,11 +57,13 @@ include '../../includes/header.php';
 
 <!-- Modal Aprobar/Rechazar Ajuste -->
 <style>
-    #modalAprobacion { overflow-y: auto !important; }
-    #modalAprobacion .modal-dialog {
+    #modalAprobacion .modal-content {
         max-width: 1100px !important;
-        width: calc(100vw - 50px) !important;
-        margin: 1rem auto !important;
+        width: 95% !important;
+    }
+    /* Asegurar que SweetAlert2 siempre aparezca por encima del modal */
+    .swal2-container {
+        z-index: 99999 !important;
     }
 </style>
 <div class="modal fade" id="modalAprobacion" tabindex="-1">
@@ -254,9 +256,7 @@ async function abrirAprobacion(id, estadoActual) {
             if (selectAuth) {
                 selectAuth.innerHTML = '<option value="">Seleccione autorizador...</option>';
                 usuariosAutorizados.forEach(u => {
-                    const nombre = u.nombre || '';
-                    const apellido = u.apellido || '';
-                    const nombreCompleto = `${nombre} ${apellido}`.trim();
+                    const nombreCompleto = u.nombre_completo || u.nombre || '';
                     selectAuth.innerHTML += `<option value="${u.id_usuario}">${nombreCompleto}</option>`;
                 });
             }

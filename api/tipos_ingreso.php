@@ -213,31 +213,15 @@ try {
                 break;
 
         case 'usuarios_autorizacion':
-    // Usuarios que pueden autorizar ajustes
-    // Mock temporal (sin usar tabla usuarios)
-    
-    $usuarios = [
-        [
-            'id_usuario' => 1,
-            'nombre' => 'Gary Meneses',
-            'rol' => 'Gerente General'
-        ],
-        [
-            'id_usuario' => 2,
-            'nombre' => 'Supervisor Producción',
-            'rol' => 'Supervisor'
-        ],
-        [
-            'id_usuario' => 3,
-            'nombre' => 'Jefe de Inventarios',
-            'rol' => 'Jefe de Área'
-        ],
-        [
-            'id_usuario' => 4,
-            'nombre' => 'Coordinador Almacén',
-            'rol' => 'Coordinador'
-        ]
-    ];
+    // Usuarios que pueden autorizar ajustes (roles admin y gerencia)
+    $stmt = $db->prepare("
+        SELECT id_usuario, nombre_completo, rol 
+        FROM usuarios 
+        WHERE estado = 'activo' AND rol IN ('admin', 'gerencia')
+        ORDER BY nombre_completo
+    ");
+    $stmt->execute();
+    $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     ob_clean();
     echo json_encode([

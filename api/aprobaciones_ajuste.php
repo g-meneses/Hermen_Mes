@@ -153,11 +153,11 @@ switch ($method) {
                 $estadoFinal = ($decision === 'APROBAR') ? 'APROBADO' : 'RECHAZADO';
 
                 if ($autorizadoPorId) {
-                    $stmtUsu = $db->prepare("SELECT nombre, apellido FROM usuarios WHERE id_usuario = ?");
+                    $stmtUsu = $db->prepare("SELECT nombre_completo FROM usuarios WHERE id_usuario = ?");
                     $stmtUsu->execute([$autorizadoPorId]);
                     $usu = $stmtUsu->fetch(PDO::FETCH_ASSOC);
                     if ($usu) {
-                        $nombreAutorizador = trim($usu['nombre'] . ' ' . $usu['apellido']);
+                        $nombreAutorizador = trim($usu['nombre_completo']);
                         $observaciones = "(Autorizado por: " . $nombreAutorizador . ")\n" . $observaciones;
                     }
                 }
@@ -245,8 +245,8 @@ switch ($method) {
                                 if ($c['id_detalle'] == $linea['id_detalle']) {
                                     $costoUnitarioUsar = floatval($c['costo_unitario']);
                                     // Actualizar el detalle con el nuevo costo
-                                    $stmtUpdDet = $db->prepare("UPDATE ajustes_inventario_detalle SET costo_unitario_guardado = ?, costo_unitario = ? WHERE id_detalle = ?");
-                                    $stmtUpdDet->execute([$costoUnitarioUsar, $costoUnitarioUsar, $linea['id_detalle']]);
+                                    $stmtUpdDet = $db->prepare("UPDATE ajustes_inventario_detalle SET costo_unitario_guardado = ? WHERE id_detalle = ?");
+                                    $stmtUpdDet->execute([$costoUnitarioUsar, $linea['id_detalle']]);
                                     break;
                                 }
                             }

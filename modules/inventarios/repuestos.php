@@ -2190,8 +2190,8 @@ require_once '../../includes/permisos_inventario.php';
 
 <!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="js/repuestos.js"></script>
-<script src="js/repuestos_dinamico.js"></script>
-<script src="js/devolucion_proveedor.js"></script>
-<script src="js/kardex_rep.js"></script>
+<script src="js/repuestos.js?v=<?= time() ?>"></script>
+<script src="js/repuestos_dinamico.js?v=<?= time() ?>"></script>
+<script src="js/devolucion_proveedor.js?v=<?= time() ?>"></script>
+<script src="js/kardex_rep.js?v=<?= time() ?>"></script>
 <?php require_once '../../includes/footer.php'; ?>

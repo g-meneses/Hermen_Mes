@@ -39,11 +39,18 @@ try {
                     $proveedor = $_GET['proveedor'] ?? null;
                     $estado = $_GET['estado'] ?? 'todos';
 
-                    // Consulta directa sin depender de la vista
+                    // Consulta con joins a tablas de catálogo
                     $sql = "SELECT 
                                 d.id_documento,
                                 d.numero_documento,
                                 d.fecha_documento,
+                                d.id_doc_tipo,
+                                dt.nombre AS doc_tipo_nombre,
+                                d.id_doc_subtipo,
+                                st.nombre AS doc_subtipo_nombre,
+                                d.id_doc_estado,
+                                es.nombre AS doc_estado_nombre,
+                                es.color_hex AS doc_estado_color,
                                 d.tipo_documento,
                                 d.tipo_ingreso,
                                 d.id_tipo_ingreso,
@@ -64,7 +71,10 @@ try {
                                 d.fecha_creacion
                             FROM documentos_inventario d
                             LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
-                            WHERE d.tipo_documento = 'INGRESO' 
+                            LEFT JOIN inv_doc_tipos dt ON d.id_doc_tipo = dt.id_tipo
+                            LEFT JOIN inv_doc_subtipos st ON d.id_doc_subtipo = st.id_subtipo
+                            LEFT JOIN inv_doc_estados es ON d.id_doc_estado = es.id_estado
+                            WHERE (d.tipo_documento = 'INGRESO' OR d.id_doc_tipo = 1)
                             AND d.id_tipo_inventario = ?
                             AND d.fecha_documento BETWEEN ? AND ?";
                     $params = [$TIPO_INVENTARIO_MP, $desde, $hasta];
@@ -116,11 +126,17 @@ try {
                         exit();
                     }
 
-                    // Documento principal
+                    // Documento principal con catálogos
                     $stmt = $db->prepare("
-                        SELECT d.*, p.razon_social, p.nombre_comercial
+                        SELECT d.*, p.razon_social, p.nombre_comercial,
+                               dt.nombre AS doc_tipo_nombre,
+                               st.nombre AS doc_subtipo_nombre,
+                               es.nombre AS doc_estado_nombre
                         FROM documentos_inventario d
                         LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
+                        LEFT JOIN inv_doc_tipos dt ON d.id_doc_tipo = dt.id_tipo
+                        LEFT JOIN inv_doc_subtipos st ON d.id_doc_subtipo = st.id_subtipo
+                        LEFT JOIN inv_doc_estados es ON d.id_doc_estado = es.id_estado
                         WHERE d.id_documento = ?
                     ");
                     $stmt->execute([$id]);
@@ -176,13 +192,13 @@ try {
                     $stmt = $db->prepare("
                         SELECT 
                             COUNT(*) as total_documentos,
-                            SUM(CASE WHEN estado = 'CONFIRMADO' THEN total ELSE 0 END) as valor_total,
-                            SUM(CASE WHEN estado = 'CONFIRMADO' THEN 1 ELSE 0 END) as confirmados,
-                            SUM(CASE WHEN estado = 'ANULADO' THEN 1 ELSE 0 END) as anulados,
-                            SUM(CASE WHEN con_factura = 1 AND estado = 'CONFIRMADO' THEN total ELSE 0 END) as total_con_factura,
-                            SUM(CASE WHEN con_factura = 0 AND estado = 'CONFIRMADO' THEN total ELSE 0 END) as total_sin_factura
+                            SUM(CASE WHEN estado = 'CONFIRMADO' OR id_doc_estado = 2 THEN total ELSE 0 END) as valor_total,
+                            SUM(CASE WHEN estado = 'CONFIRMADO' OR id_doc_estado = 2 THEN 1 ELSE 0 END) as confirmados,
+                            SUM(CASE WHEN estado = 'ANULADO' OR id_doc_estado = 3 THEN 1 ELSE 0 END) as anulados,
+                            SUM(CASE WHEN con_factura = 1 AND (estado = 'CONFIRMADO' OR id_doc_estado = 2) THEN total ELSE 0 END) as total_con_factura,
+                            SUM(CASE WHEN con_factura = 0 AND (estado = 'CONFIRMADO' OR id_doc_estado = 2) THEN total ELSE 0 END) as total_sin_factura
                         FROM documentos_inventario 
-                        WHERE tipo_documento = 'INGRESO' 
+                        WHERE (tipo_documento = 'INGRESO' OR id_doc_tipo = 1)
                         AND id_tipo_inventario = ?
                         AND MONTH(fecha_documento) = ? 
                         AND YEAR(fecha_documento) = ?
@@ -365,6 +381,41 @@ try {
                         exit();
                     }
 
+                    // Validación especial para Inventario Inicial
+                    if ($tipoIngreso === 'INICIAL') {
+                        foreach ($data['lineas'] as $linea) {
+                            $cantidad = floatval($linea['cantidad'] ?? 0);
+                            $costoUnitario = floatval($linea['costo_unitario'] ?? 0);
+
+                            if ($cantidad <= 0 || $costoUnitario <= 0) {
+                                echo json_encode(['success' => false, 'message' => 'Para Inventario Inicial, la cantidad y el costo unitario son obligatorios y deben ser mayores a cero.']);
+                                exit();
+                            }
+
+                            // Verificar historial y stock actual
+                            $idInv = $linea['id_inventario'];
+                            $stmtVerificar = $db->prepare("
+                                SELECT 
+                                    i.stock_actual, 
+                                    (SELECT COUNT(*) FROM movimientos_inventario m WHERE m.id_inventario = i.id_inventario) as total_movimientos
+                                FROM inventarios i
+                                WHERE i.id_inventario = ?
+                            ");
+                            $stmtVerificar->execute([$idInv]);
+                            $check = $stmtVerificar->fetch(PDO::FETCH_ASSOC);
+
+                            if ($check) {
+                                $stock = floatval($check['stock_actual']);
+                                $movimientos = intval($check['total_movimientos']);
+
+                                if ($stock != 0 || $movimientos > 0) {
+                                    echo json_encode(['success' => false, 'message' => 'El Inventario Inicial solo se puede registrar una vez al dar de alta el producto. Para correcciones de stock, use Ajuste Positivo.']);
+                                    exit();
+                                }
+                            }
+                        }
+                    }
+
                     $db->beginTransaction();
 
                     try {
@@ -471,22 +522,30 @@ try {
                             }
                         }
 
-                        // Insertar documento
+                        // Obtener ID del subtipo desde el catálogo
+                        $stmtSub = $db->prepare("SELECT id_subtipo FROM inv_doc_subtipos WHERE codigo = ? AND id_tipo = 1");
+                        $stmtSub->execute([$tipoIngreso]);
+                        $idDocSubtipo = $stmtSub->fetchColumn() ?: null;
+
+                        // Insertar documento con normalización
                         $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
+                                id_doc_tipo, id_doc_subtipo, id_doc_estado,
                                 tipo_documento, tipo_ingreso, id_tipo_ingreso, 
                                 numero_documento, fecha_documento,
                                 id_tipo_inventario, id_proveedor, referencia_externa,
                                 con_factura, moneda, subtotal, iva, total,
                                 observaciones, estado, creado_por
                             ) VALUES (
+                                1, ?, 2,
                                 'INGRESO', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
                             )
                         ");
 
                         $stmt->execute([
-                            $tipoIngreso,           // 1
-                            $idTipoIngreso,         // 2
+                            $idDocSubtipo,          // id_doc_subtipo
+                            $tipoIngreso,           // tipo_ingreso (backup)
+                            $idTipoIngreso,         // id_tipo_ingreso (backup)
                             $numeroDoc,             // 3
                             $data['fecha'] ?? date('Y-m-d'),  // 4
                             $TIPO_INVENTARIO_MP,    // 5
@@ -642,12 +701,12 @@ try {
 
                     try {
                         // Verificar que el documento existe y está confirmado
-                        $stmt = $db->prepare("SELECT * FROM documentos_inventario WHERE id_documento = ? AND estado = 'CONFIRMADO'");
+                        $stmt = $db->prepare("SELECT * FROM documentos_inventario WHERE id_documento = ? AND (estado = 'CONFIRMADO' OR id_doc_estado = 2)");
                         $stmt->execute([$id]);
                         $doc = $stmt->fetch(PDO::FETCH_ASSOC);
 
                         if (!$doc) {
-                            echo json_encode(['success' => false, 'message' => 'Documento no encontrado o ya anulado']);
+                            echo json_encode(['success' => false, 'message' => 'Documento no encontrado o ya anulado (solo se pueden anular documentos CONFIRMADOS)']);
                             exit();
                         }
 
@@ -699,10 +758,11 @@ try {
                             ]);
                         }
 
-                        // Marcar documento como anulado
+                        // Marcar documento como anulado (Actualizar ambos campos)
                         $stmtAnular = $db->prepare("
                             UPDATE documentos_inventario 
-                            SET estado = 'ANULADO', fecha_anulacion = NOW(), motivo_anulacion = ?, actualizado_por = ?
+                            SET id_doc_estado = 3, estado = 'ANULADO', 
+                                fecha_anulacion = NOW(), motivo_anulacion = ?, actualizado_por = ?
                             WHERE id_documento = ?
                         ");
                         $stmtAnular->execute([$motivo, $_SESSION['user_id'] ?? null, $id]);

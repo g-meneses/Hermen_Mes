@@ -740,7 +740,7 @@ function imprimirReporte() {
  */
 async function fetchCategoriasParaReporte() {
     try {
-        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias&tipo_id=1`);
+        const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias&tipo_id=' + (window.TIPO_INVENTARIO_ID || 1) + '`);
         const data = await response.json();
         if (data.success && data.categorias) {
             window.categorias = data.categorias;

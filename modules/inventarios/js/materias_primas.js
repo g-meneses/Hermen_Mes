@@ -7,7 +7,7 @@
 const BASE_URL_API = window.location.origin + '/mes_hermen/api';
 const baseUrl = window.location.origin + '/mes_hermen';
 const iconTitle = document.querySelector('.mp-title-icon');
-const TIPO_ID = (iconTitle && iconTitle.dataset && iconTitle.dataset.tipoId) || 1;
+const TIPO_ID = window.TIPO_INVENTARIO_ID || 1;
 
 let categorias = [], subcategorias = [], productos = [], productosCompletos = [];
 let unidades = [], proveedores = [];
@@ -297,12 +297,9 @@ async function cargarKPIs() {
         const d = await r.json();
         if (d.success) {
             const totales = d.totales || {};
-            const numCategorias = d.resumen ? d.resumen.length : 0;
-
             document.getElementById('kpiItems').textContent = totales.items || 0;
             document.getElementById('kpiValor').textContent = 'Bs. ' + formatNum(totales.valor);
             document.getElementById('kpiAlertas').textContent = totales.alertas || 0;
-            document.getElementById('kpiCategorias').textContent = numCategorias;
         }
     } catch (e) { console.error('Error KPIs:', e); }
 }
@@ -336,7 +333,7 @@ async function cargarCategorias() {
                         const stockMin = toNum(prod.stock_minimo);
                         const costo = toNum(prod.costo_promedio) || toNum(prod.costo_unitario);
                         cat.valor_total += stock * costo;
-                        if (stock > 0 && stock <= stockMin) {
+                        if (stock <= 0 || stock <= stockMin) {
                             cat.alertas++;
                         }
                     }
@@ -344,6 +341,9 @@ async function cargarCategorias() {
             }
 
             renderCategorias();
+            document.getElementById('kpiCategorias').textContent = categorias.length;
+        } else {
+            document.getElementById('kpiCategorias').textContent = 0;
         }
     } catch (e) { console.error('Error categorías:', e); }
 }

@@ -748,13 +748,7 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                 <?php endif; ?>
                             </ul>
                         </li>
-                        <li class="menu-item">
-                            <a href="<?php echo SITE_URL; ?>/modules/inventarios/proveedores.php"
-                                class="menu-link <?php echo $currentPage === 'proveedores' ? 'active' : ''; ?>">
-                                <i class="fas fa-truck"></i>
-                                <span class="menu-text">Proveedores</span>
-                            </a>
-                        </li>
+
                     </ul>
                 </li>
 

@@ -32,7 +32,7 @@ async function abrirModalDevolucion() {
 
 async function cargarIngresosDisponibles() {
     try {
-        const r = await fetch(`${baseUrl}/api/salidas_mp.php?action=ingresos_devolucion&limit=20`);
+        const r = await fetch(`${baseUrl}/api/salidas_mp.php?action=ingresos_devolucion&limit=100`);
         const d = await r.json();
 
         if (d.success && d.ingresos) {

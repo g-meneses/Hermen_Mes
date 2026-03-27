@@ -2045,9 +2045,9 @@ require_once '../../includes/header.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/productos_terminados.js"></script>
-<script src="js/productos_terminados_dinamico.js"></script>
-<script src="js/devolucion_proveedor.js"></script>
-<script src="js/historial_movimientos.js"></script>
-<script src="js/kardex_pt.js"></script>
+<script src="js/productos_terminados.js?v=<?= time() ?>"></script>
+<script src="js/productos_terminados_dinamico.js?v=<?= time() ?>"></script>
+<script src="js/devolucion_proveedor.js?v=<?= time() ?>"></script>
+<script src="js/historial_movimientos.js?v=<?= time() ?>"></script>
+<script src="js/kardex_pt.js?v=<?= time() ?>"></script>
 <?php require_once '../../includes/footer.php'; ?>

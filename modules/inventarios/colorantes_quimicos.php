@@ -2175,11 +2175,11 @@ require_once '../../includes/permisos_inventario.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/colorantes_quimicos.js"></script>
-<script src="js/colorantes_quimicos_dinamico.js"></script>
-<script src="js/devolucion_proveedor_caq.js"></script>
-<script src="js/historial_movimientos_caq.js"></script>
-<script src="js/kardex_caq.js"></script>
+<script src="js/colorantes_quimicos.js?v=<?= time() ?>"></script>
+<script src="js/colorantes_quimicos_dinamico.js?v=<?= time() ?>"></script>
+<script src="js/devolucion_proveedor_caq.js?v=<?= time() ?>"></script>
+<script src="js/historial_movimientos_caq.js?v=<?= time() ?>"></script>
+<script src="js/kardex_caq.js?v=<?= time() ?>"></script>
 <!-- Inyectar fecha del servidor como variable global -->
 <script>
     window.FECHA_SERVIDOR = '<?php echo date("Y-m-d"); ?>';

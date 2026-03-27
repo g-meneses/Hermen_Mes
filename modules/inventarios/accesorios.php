@@ -2566,9 +2566,9 @@ require_once '../../includes/permisos_inventario.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/accesorios.js?v=<?php echo time(); ?>"></script>
-<script src="js/accesorios_dinamico.js?v=<?php echo time(); ?>"></script>
-<script src="js/devolucion_proveedor_acc.js?v=<?php echo time(); ?>"></script>
-<script src="js/kardex_acc.js?v=<?php echo time(); ?>"></script>
+<script src="js/accesorios.js?v=<?= time() ?>"></script>
+<script src="js/accesorios_dinamico.js?v=<?= time() ?>"></script>
+<script src="js/devolucion_proveedor_acc.js?v=<?= time() ?>"></script>
+<script src="js/kardex_acc.js?v=<?= time() ?>"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

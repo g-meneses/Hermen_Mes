@@ -116,73 +116,84 @@ function renderHistorial() {
         const fecha = new Date(doc.fecha_documento).toLocaleDateString('es-BO');
         const tipo = doc.tipo_mov || 'INGRESO';
         const estado = doc.estado || 'CONFIRMADO';
+        const idEstado = parseInt(doc.id_doc_estado || 0);
 
         // Movimiento (I/S)
         let badgeMov = '';
-        if (tipo === 'INGRESO') {
+        if (tipo === 'INGRESO' || doc.id_doc_tipo == 1) {
             badgeMov = '<span class="badge-tipo-mov ingreso"><i class="fas fa-arrow-down"></i> INGRESO</span>';
         } else {
             badgeMov = '<span class="badge-tipo-mov salida"><i class="fas fa-arrow-up"></i> SALIDA</span>';
         }
 
-        // Subtipo descriptivo
-        let nombreSubtipo = '-';
+        // Subtipo descriptivo (Preferir el nombre normalizado de la API)
+        let nombreSubtipo = doc.doc_subtipo_nombre || '-';
         let claseSubtipo = '';
 
-        if (tipo === 'INGRESO') {
-            const sub = doc.tipo_ingreso || '';
-            const ref = (doc.referencia_externa || '').toUpperCase();
+        if (!doc.doc_subtipo_nombre) {
+            // Fallback a lógica antigua si no viene el nombre normalizado
+            if (tipo === 'INGRESO') {
+                const sub = doc.tipo_ingreso || '';
+                const ref = (doc.referencia_externa || '').toUpperCase();
 
-            if (sub === 'COMPRA') {
-                nombreSubtipo = 'Compra Proveedor'; claseSubtipo = 'badge-sub-compra';
-            }
-            else if (sub === 'DEVOLUCION_PROD' || ref.includes('DEVOLUCION')) {
-                nombreSubtipo = 'Devolución Prod.'; claseSubtipo = 'badge-sub-devolucion';
-            }
-            else if (sub === 'AJUSTE_POS' || ref.includes('AJUSTE')) {
-                nombreSubtipo = 'Ajuste (+)'; claseSubtipo = 'badge-sub-ajuste';
-            }
-            else if (sub === 'INICIAL' || ref.includes('INICIAL')) {
-                nombreSubtipo = 'Inventario Inicial'; claseSubtipo = 'badge-sub-inicial';
-            }
-            else {
-                // Fallback inteligente: si no tiene proveedor, probablemente es interno
-                if (!doc.id_proveedor) {
-                    nombreSubtipo = 'Devolución Prod.';
-                    claseSubtipo = 'badge-sub-devolucion';
-                } else {
-                    nombreSubtipo = 'Compra Proveedor';
-                    claseSubtipo = 'badge-sub-compra';
+                if (sub === 'COMPRA') {
+                    nombreSubtipo = 'Compra Proveedor'; claseSubtipo = 'badge-sub-compra';
                 }
-            }
-        } else {
-            const sub = doc.tipo_salida || '';
-            if (sub === 'PRODUCCION' || (doc.referencia_externa && doc.referencia_externa.includes('PRODUCCION'))) {
-                nombreSubtipo = 'Producción'; claseSubtipo = 'badge-sub-produccion';
-            } else if (sub === 'VENTA' || (doc.referencia_externa && doc.referencia_externa.includes('VENTA'))) {
-                nombreSubtipo = 'Venta'; claseSubtipo = 'badge-sub-venta';
-            } else if (sub === 'DEVOLUCION' || (doc.referencia_externa && doc.referencia_externa.includes('DEVOLUCION'))) {
-                nombreSubtipo = 'Dev. a Proveedor'; claseSubtipo = 'badge-sub-devolucion';
-            } else if (sub === 'MUESTRAS' || (doc.referencia_externa && doc.referencia_externa.includes('MUESTRAS'))) {
-                nombreSubtipo = 'Muestras'; claseSubtipo = 'badge-sub-muestras';
-            } else if (sub === 'AJUSTE' || (doc.referencia_externa && doc.referencia_externa.includes('AJUSTE'))) {
-                nombreSubtipo = 'Ajuste (-)'; claseSubtipo = 'badge-sub-ajuste';
+                else if (sub === 'DEVOLUCION_PROD' || ref.includes('DEVOLUCION')) {
+                    nombreSubtipo = 'Devolución Prod.'; claseSubtipo = 'badge-sub-devolucion';
+                }
+                else if (sub === 'AJUSTE_POS' || ref.includes('AJUSTE')) {
+                    nombreSubtipo = 'Ajuste (+)'; claseSubtipo = 'badge-sub-ajuste';
+                }
+                else if (sub === 'INICIAL' || ref.includes('INICIAL')) {
+                    nombreSubtipo = 'Inventario Inicial'; claseSubtipo = 'badge-sub-inicial';
+                }
+                else {
+                    if (!doc.id_proveedor) {
+                        nombreSubtipo = 'Devolución Prod.';
+                        claseSubtipo = 'badge-sub-devolucion';
+                    } else {
+                        nombreSubtipo = 'Compra Proveedor';
+                        claseSubtipo = 'badge-sub-compra';
+                    }
+                }
             } else {
-                nombreSubtipo = 'Salida Gral.';
+                const sub = doc.tipo_salida || '';
+                if (sub === 'PRODUCCION' || (doc.referencia_externa && doc.referencia_externa.includes('PRODUCCION'))) {
+                    nombreSubtipo = 'Producción'; claseSubtipo = 'badge-sub-produccion';
+                } else if (sub === 'VENTA' || (doc.referencia_externa && doc.referencia_externa.includes('VENTA'))) {
+                    nombreSubtipo = 'Venta'; claseSubtipo = 'badge-sub-venta';
+                } else if (sub === 'DEVOLUCION' || (doc.referencia_externa && doc.referencia_externa.includes('DEVOLUCION'))) {
+                    nombreSubtipo = 'Dev. a Proveedor'; claseSubtipo = 'badge-sub-devolucion';
+                } else if (sub === 'MUESTRAS' || (doc.referencia_externa && doc.referencia_externa.includes('MUESTRAS'))) {
+                    nombreSubtipo = 'Muestras'; claseSubtipo = 'badge-sub-muestras';
+                } else if (sub === 'AJUSTE' || (doc.referencia_externa && doc.referencia_externa.includes('AJUSTE'))) {
+                    nombreSubtipo = 'Ajuste (-)'; claseSubtipo = 'badge-sub-ajuste';
+                } else {
+                    nombreSubtipo = 'Salida Gral.';
+                }
             }
         }
 
         const badgeSubtipo = `<span class="badge-subtipo ${claseSubtipo}">${nombreSubtipo}</span>`;
 
-        // Badge de estado
+        // Badge de estado (Preferir el nombre normalizado de la API)
         let badgeEstado = '';
-        if (estado === 'CONFIRMADO') {
-            badgeEstado = '<span class="badge-estado confirmado">CONFIRMADO</span>';
-        } else if (estado === 'ANULADO') {
-            badgeEstado = '<span class="badge-estado anulado">ANULADO</span>';
+        if (doc.doc_estado_nombre) {
+            const color = doc.doc_estado_color || '#6c757d';
+            badgeEstado = `<span class="badge-estado" style="background-color: ${color}; color: white;">${doc.doc_estado_nombre.toUpperCase()}</span>`;
         } else {
-            badgeEstado = '<span class="badge-estado pendiente">PENDIENTE</span>';
+            // Fallback a lógica antigua
+            if (estado === 'CONFIRMADO' || idEstado === 2) {
+                badgeEstado = '<span class="badge-estado confirmado">CONFIRMADO</span>';
+            } else if (estado === 'ANULADO' || idEstado === 3) {
+                badgeEstado = '<span class="badge-estado anulado">ANULADO</span>';
+            } else {
+                badgeEstado = '<span class="badge-estado pendiente">PENDIENTE</span>';
+            }
         }
+
+        const esConfirmado = (estado === 'CONFIRMADO' || idEstado === 2);
 
         return `
             <tr>
@@ -199,7 +210,7 @@ function renderHistorial() {
                     <button class="btn-icon ver" onclick="verDetalleDocumento(${doc.id_documento}, '${tipo}')" title="Ver Detalle">
                         <i class="fas fa-eye"></i>
                     </button>
-                    ${estado === 'CONFIRMADO' ? `
+                    ${esConfirmado ? `
                         <button class="btn-icon anular" onclick="confirmarAnulacion(${doc.id_documento}, '${tipo}')" title="Anular">
                             <i class="fas fa-ban"></i>
                         </button>
@@ -249,7 +260,10 @@ function mostrarDetalleDocumento(doc, detalle, tipo) {
                 </div>
                 <div>
                     <strong>Estado:</strong><br>
-                    ${doc.estado === 'CONFIRMADO' ? '<span class="badge-estado confirmado">CONFIRMADO</span>' : '<span class="badge-estado anulado">ANULADO</span>'}
+                    ${doc.doc_estado_nombre ? 
+                        `<span class="badge-estado" style="background-color: ${doc.doc_estado_color}; color: white;">${doc.doc_estado_nombre.toUpperCase()}</span>` : 
+                        (doc.estado === 'CONFIRMADO' ? '<span class="badge-estado confirmado">CONFIRMADO</span>' : '<span class="badge-estado anulado">ANULADO</span>')
+                    }
                 </div>
                 <div>
                     <strong>Total:</strong><br>

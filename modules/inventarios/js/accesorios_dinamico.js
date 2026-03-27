@@ -718,7 +718,7 @@ async function cargarProveedores() {
 
 async function cargarCategoriasIngreso() {
     try {
-        const url = `${BASE_URL_API}/centro_inventarios.php?action=categorias&tipo_id=4`;
+        const url = `${BASE_URL_API}/centro_inventarios.php?action=categorias&tipo_id=${window.TIPO_INVENTARIO_ID || 4}`;
         console.log('🔄 Cargando categorías desde:', url);
 
         const response = await fetch(url);

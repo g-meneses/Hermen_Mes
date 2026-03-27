@@ -2221,8 +2221,8 @@ require_once '../../includes/permisos_inventario.php';
 </div>
 
 <!-- Scripts -->
-<script src="js/empaque.js?v=<?php echo time(); ?>"></script>
-<script src="js/empaque_dinamico.js"></script>
-<script src="js/devolucion_proveedor.js"></script>
-<script src="js/kardex_emp.js"></script>
+<script src="js/empaque.js?v=<?= time() ?>"></script>
+<script src="js/empaque_dinamico.js?v=<?= time() ?>"></script>
+<script src="js/devolucion_proveedor.js?v=<?= time() ?>"></script>
+<script src="js/kardex_emp.js?v=<?= time() ?>"></script>
 <?php require_once '../../includes/footer.php'; ?>

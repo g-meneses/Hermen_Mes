@@ -3171,24 +3171,14 @@ require_once '../../includes/header.php';
             7: 'repuestos.php'
         };
 
-        const destino = rutas[idTipo];
+        const destino = rutas[idTipo] || `materias_primas.php?id=${idTipo}`;
 
         if (destino) {
             // Animación de salida opcional
             document.getElementById(`tipoCard_${idTipo}`).classList.add('active');
 
-            // Redirigir a la página correspondiente
+            // Redirigir a la página (unificada)
             window.location.href = destino;
-        } else {
-            // Manejo de módulos no implementados (Próximamente)
-            const tipo = tiposInventario.find(t => t.id_tipo_inventario == idTipo);
-            const nombre = tipo ? tipo.nombre : 'este módulo';
-
-            alert(`ℹ️ El módulo de "${nombre}" se encuentra actualmente en desarrollo y estará disponible próximamente.`);
-
-            // Si el workspace estaba abierto por alguna razón previa, ocultarlo
-            const workspace = document.getElementById('workspace');
-            if (workspace) workspace.classList.remove('active');
         }
     }
 
@@ -3997,6 +3987,9 @@ require_once '../../includes/header.php';
                 <button class="btn-editar-config" onclick="event.stopPropagation(); editarTipo(${tipo.id_tipo_inventario})" title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
+                <button class="btn-eliminar-config" onclick="event.stopPropagation(); eliminarTipo(${tipo.id_tipo_inventario})" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         </div>
     `).join('');
@@ -4070,6 +4063,35 @@ require_once '../../includes/header.php';
         } catch (error) {
             console.error('Error:', error);
             alert('❌ Error de conexión');
+        }
+    }
+
+    async function eliminarTipo(id) {
+        if (!confirm('¿Está seguro de eliminar este Tipo de Inventario? Esta acción no se puede deshacer y solo es posible si no hay productos asociados.')) return;
+
+        try {
+            const response = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'eliminar_tipo', id_tipo_inventario: id })
+            });
+
+            const data = await response.json();
+            console.log('Respuesta eliminarTipo:', data);
+
+            if (data.success) {
+                alert('✅ ' + data.message);
+                cargarTiposConfig();
+            } else {
+                let msg = data.message || 'Error al eliminar';
+                if (data.debug_data !== undefined) {
+                    msg += '\nDebug ID_raw: ' + JSON.stringify(data.debug_raw_id);
+                }
+                alert('❌ ' + msg);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error de conexión al eliminar');
         }
     }
 

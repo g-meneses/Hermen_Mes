@@ -369,6 +369,41 @@ try {
                         exit();
                     }
 
+                    // Validación especial para Inventario Inicial
+                    if ($tipoIngreso === 'INICIAL') {
+                        foreach ($data['lineas'] as $linea) {
+                            $cantidad = floatval($linea['cantidad'] ?? 0);
+                            $costoUnitario = floatval($linea['costo_unitario'] ?? 0);
+
+                            if ($cantidad <= 0 || $costoUnitario <= 0) {
+                                echo json_encode(['success' => false, 'message' => 'Para Inventario Inicial, la cantidad y el costo unitario son obligatorios y deben ser mayores a cero.']);
+                                exit();
+                            }
+
+                            // Verificar historial y stock actual
+                            $idInv = $linea['id_inventario'];
+                            $stmtVerificar = $db->prepare("
+                                SELECT 
+                                    i.stock_actual, 
+                                    (SELECT COUNT(*) FROM movimientos_inventario m WHERE m.id_inventario = i.id_inventario) as total_movimientos
+                                FROM inventarios i
+                                WHERE i.id_inventario = ?
+                            ");
+                            $stmtVerificar->execute([$idInv]);
+                            $check = $stmtVerificar->fetch(PDO::FETCH_ASSOC);
+
+                            if ($check) {
+                                $stock = floatval($check['stock_actual']);
+                                $movimientos = intval($check['total_movimientos']);
+
+                                if ($stock != 0 || $movimientos > 0) {
+                                    echo json_encode(['success' => false, 'message' => 'El Inventario Inicial solo se puede registrar una vez al dar de alta el producto. Para correcciones de stock, use Ajuste Positivo.']);
+                                    exit();
+                                }
+                            }
+                        }
+                    }
+
                     $db->beginTransaction();
 
                     try {

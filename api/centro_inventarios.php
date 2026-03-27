@@ -45,25 +45,32 @@ try {
             switch ($action) {
                 case 'resumen':
                     // Resumen por tipo de inventario (para dashboard)
-                    $stmt = $db->query("
-SELECT
-ti.id_tipo_inventario,
-ti.codigo,
-ti.nombre,
-ti.icono,
-ti.color,
-ti.orden,
-COUNT(i.id_inventario) AS total_items,
-SUM(CASE WHEN i.stock_actual <= 0 THEN 1 ELSE 0 END) AS sin_stock, SUM(CASE WHEN i.stock_actual> 0 AND i.stock_actual <=
-        i.stock_minimo THEN 1 ELSE 0 END) AS stock_critico, SUM(CASE WHEN i.stock_actual> i.stock_minimo THEN 1 ELSE 0
-        END) AS stock_ok,
-        COALESCE(SUM(i.stock_actual * i.costo_unitario), 0) AS valor_total
-        FROM tipos_inventario ti
-        LEFT JOIN inventarios i ON ti.id_tipo_inventario = i.id_tipo_inventario AND i.activo = 1
-        WHERE ti.activo = 1
-        GROUP BY ti.id_tipo_inventario, ti.codigo, ti.nombre, ti.icono, ti.color, ti.orden
-        ORDER BY ti.orden
-        ");
+                    $tipoId = $_GET['tipo_id'] ?? null;
+                    $sql = "
+                    SELECT 
+                        ti.id_tipo_inventario, 
+                        ti.codigo, 
+                        ti.nombre, 
+                        ti.icono, 
+                        ti.color, 
+                        ti.orden,
+                        COUNT(i.id_inventario) AS total_items,
+                        SUM(CASE WHEN i.stock_actual <= 0 THEN 1 ELSE 0 END) AS sin_stock,
+                        SUM(CASE WHEN i.stock_actual > 0 AND i.stock_actual <= i.stock_minimo THEN 1 ELSE 0 END) AS stock_critico,
+                        SUM(CASE WHEN i.stock_actual > i.stock_minimo THEN 1 ELSE 0 END) AS stock_ok,
+                        COALESCE(SUM(i.stock_actual * i.costo_unitario), 0) AS valor_total
+                    FROM tipos_inventario ti
+                    LEFT JOIN inventarios i ON ti.id_tipo_inventario = i.id_tipo_inventario AND i.activo = 1
+                    WHERE ti.activo = 1 ";
+                    
+                    if ($tipoId) {
+                        $sql .= " AND ti.id_tipo_inventario = " . intval($tipoId);
+                    }
+                    
+                    $sql .= " GROUP BY ti.id_tipo_inventario, ti.codigo, ti.nombre, ti.icono, ti.color, ti.orden
+                    ORDER BY ti.orden ";
+
+                    $stmt = $db->query($sql);
                     $resumen = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                     // Calcular totales generales
@@ -817,7 +824,7 @@ SUM(CASE WHEN i.stock_actual <= 0 THEN 1 ELSE 0 END) AS sin_stock, SUM(CASE WHEN
 
             // ========== GUARDAR TIPO DE INVENTARIO ==========
             if ($action === 'guardar_tipo') {
-                $idTipo = $data['id_tipo_inventario'] ?? null;
+                $idTipo = !empty($data['id_tipo_inventario']) ? intval($data['id_tipo_inventario']) : null;
                 $codigo = strtoupper(trim($data['codigo'] ?? ''));
                 $nombre = trim($data['nombre'] ?? '');
                 $icono = trim($data['icono'] ?? 'fa-box');
@@ -871,6 +878,65 @@ SUM(CASE WHEN i.stock_actual <= 0 THEN 1 ELSE 0 END) AS sin_stock, SUM(CASE WHEN
                                 $e->getMessage()
                         ]);
                     }
+                }
+                exit();
+            }
+
+            // ========== ELIMINAR TIPO DE INVENTARIO ==========
+            if ($action === 'eliminar_tipo') {
+                $raw_id = $data['id_tipo_inventario'] ?? null;
+                $idTipo = intval($raw_id);
+
+                if (!$idTipo) {
+                    ob_clean();
+                    echo json_encode([
+                        'success' => false, 
+                        'message' => 'ID de tipo requerido', 
+                        'debug_data' => $data, 
+                        'debug_raw_id' => $raw_id,
+                        'debug_id_tipo' => $idTipo
+                    ]);
+                    exit();
+                }
+
+                try {
+                    // Validar que no tenga inventarios (productos) asociados
+                    $stmtCheck = $db->prepare('SELECT COUNT(*) FROM inventarios WHERE id_tipo_inventario = ? AND activo = 1');
+                    $stmtCheck->execute([$idTipo]);
+                    $count = $stmtCheck->fetchColumn();
+
+                    if ((int)$count > 0) {
+                        ob_clean();
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'No se puede eliminar: Hay ' . $count . ' producto(s) asociado(s) a este tipo de inventario.'
+                        ]);
+                        exit();
+                    }
+
+                    // Proceder a eliminar el tipo de inventario (o soft delete, aquí haremos full delete de tipos, categorías y subcategorías que no tengan productos)
+                    $db->beginTransaction();
+                    
+                    // Borrar subcategorías asociadas a las categorías de este tipo
+                    $db->prepare("DELETE FROM subcategorias_inventario WHERE id_categoria IN (SELECT id_categoria FROM categorias_inventario WHERE id_tipo_inventario = ?)")->execute([$idTipo]);
+                    
+                    // Borrar categorías de este tipo
+                    $db->prepare("DELETE FROM categorias_inventario WHERE id_tipo_inventario = ?")->execute([$idTipo]);
+
+                    // Borrar el tipo
+                    $db->prepare("DELETE FROM tipos_inventario WHERE id_tipo_inventario = ?")->execute([$idTipo]);
+
+                    $db->commit();
+
+                    ob_clean();
+                    echo json_encode(['success' => true, 'message' => 'Tipo de inventario eliminado permanentemente']);
+                } catch (PDOException $e) {
+                    $db->rollBack();
+                    ob_clean();
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Error al eliminar: ' . $e->getMessage()
+                    ]);
                 }
                 exit();
             }

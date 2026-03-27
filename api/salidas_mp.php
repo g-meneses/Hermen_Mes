@@ -42,6 +42,13 @@ try {
                                 d.id_documento,
                                 d.numero_documento,
                                 d.fecha_documento,
+                                d.id_doc_tipo,
+                                dt.nombre AS doc_tipo_nombre,
+                                d.id_doc_subtipo,
+                                st.nombre AS doc_subtipo_nombre,
+                                d.id_doc_estado,
+                                es.nombre AS doc_estado_nombre,
+                                es.color_hex AS doc_estado_color,
                                 d.tipo_documento,
                                 d.referencia_externa,
                                 d.tipo_salida,
@@ -50,7 +57,10 @@ try {
                                 d.observaciones,
                                 d.fecha_creacion
                             FROM documentos_inventario d
-                            WHERE d.tipo_documento = 'SALIDA' 
+                            LEFT JOIN inv_doc_tipos dt ON d.id_doc_tipo = dt.id_tipo
+                            LEFT JOIN inv_doc_subtipos st ON d.id_doc_subtipo = st.id_subtipo
+                            LEFT JOIN inv_doc_estados es ON d.id_doc_estado = es.id_estado
+                            WHERE (d.tipo_documento = 'SALIDA' OR d.id_doc_tipo = 2)
                             AND d.id_tipo_inventario = ?
                             AND d.fecha_documento BETWEEN ? AND ?";
                     $params = [$TIPO_INVENTARIO_MP, $desde, $hasta];
@@ -96,9 +106,9 @@ try {
                                 d.observaciones
                             FROM documentos_inventario d
                             LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
-                            WHERE d.tipo_documento = 'INGRESO'
+                            WHERE (d.tipo_documento = 'INGRESO' OR d.id_doc_tipo = 1)
                             AND d.id_tipo_inventario = ?
-                            AND d.estado = 'CONFIRMADO'
+                            AND (d.estado = 'CONFIRMADO' OR d.id_doc_estado = 2)
                             AND d.id_documento > 0";
                     $params = [$TIPO_INVENTARIO_MP];
 
@@ -137,7 +147,10 @@ try {
                             p.nombre_comercial AS proveedor_comercial
                         FROM documentos_inventario d
                         LEFT JOIN proveedores p ON d.id_proveedor = p.id_proveedor
-                        WHERE d.id_documento = ? AND d.tipo_documento = 'INGRESO'
+                        LEFT JOIN inv_doc_tipos dt ON d.id_doc_tipo = dt.id_tipo
+                        LEFT JOIN inv_doc_subtipos st ON d.id_doc_subtipo = st.id_subtipo
+                        LEFT JOIN inv_doc_estados es ON d.id_doc_estado = es.id_estado
+                        WHERE d.id_documento = ? AND (d.tipo_documento = 'INGRESO' OR d.id_doc_tipo = 1)
                     ");
                     $stmt->execute([$id]);
                     $documento = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -164,8 +177,8 @@ try {
                                  FROM documentos_inventario_detalle dds
                                  JOIN documentos_inventario ds ON dds.id_documento = ds.id_documento
                                  WHERE dds.id_detalle_origen = dd.id_detalle 
-                                 AND ds.tipo_documento = 'SALIDA'
-                                 AND ds.estado = 'CONFIRMADO'
+                                 AND (ds.tipo_documento = 'SALIDA' OR ds.id_doc_tipo = 2)
+                                 AND (ds.estado = 'CONFIRMADO' OR ds.id_doc_estado = 2)
                                  AND ds.referencia_externa COLLATE utf8mb4_unicode_ci LIKE 'DEVOLUCION%'
                                 ), 0
                             ) AS cantidad_devuelta
@@ -201,9 +214,15 @@ try {
                     // Documento principal
                     $stmt = $db->prepare("
                         SELECT 
-                            d.*
+                            d.*,
+                            dt.nombre AS doc_tipo_nombre,
+                            st.nombre AS doc_subtipo_nombre,
+                            es.nombre AS doc_estado_nombre
                         FROM documentos_inventario d
-                        WHERE d.id_documento = ? AND d.tipo_documento = 'SALIDA'
+                        LEFT JOIN inv_doc_tipos dt ON d.id_doc_tipo = dt.id_tipo
+                        LEFT JOIN inv_doc_subtipos st ON d.id_doc_subtipo = st.id_subtipo
+                        LEFT JOIN inv_doc_estados es ON d.id_doc_estado = es.id_estado
+                        WHERE d.id_documento = ? AND (d.tipo_documento = 'SALIDA' OR d.id_doc_tipo = 2)
                     ");
                     $stmt->execute([$id]);
                     $documento = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -364,14 +383,21 @@ try {
                             }
                         }
 
-                        // Insertar documento
+                        // Obtener ID del subtipo desde el catálogo
+                        $stmtSub = $db->prepare("SELECT id_subtipo FROM inv_doc_subtipos WHERE codigo = ? AND id_tipo = 2");
+                        $stmtSub->execute([$tipoSalida]);
+                        $idDocSubtipo = $stmtSub->fetchColumn() ?: null;
+
+                        // Insertar documento con normalización
                         $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
+                                id_doc_tipo, id_doc_subtipo, id_doc_estado,
                                 tipo_documento, tipo_salida, numero_documento, fecha_documento,
                                 id_tipo_inventario, id_proveedor, id_documento_origen,
                                 referencia_externa, subtotal, iva, total,
                                 observaciones, estado, creado_por
                             ) VALUES (
+                                2, ?, 2,
                                 'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
                             )
                         ");
@@ -382,7 +408,8 @@ try {
                         }
 
                         $stmt->execute([
-                            $tipoSalida,
+                            $idDocSubtipo,
+                            $tipoSalida,           // backup
                             $numeroDoc,
                             $data['fecha'] ?? date('Y-m-d'),
                             $TIPO_INVENTARIO_MP,
@@ -463,8 +490,8 @@ try {
                                              FROM documentos_inventario_detalle dds
                                              JOIN documentos_inventario ds ON dds.id_documento = ds.id_documento
                                              WHERE dds.id_detalle_origen = ?
-                                             AND ds.tipo_documento = 'SALIDA'
-                                             AND ds.estado = 'CONFIRMADO'
+                                             AND (ds.tipo_documento = 'SALIDA' OR ds.id_doc_tipo = 2)
+                                             AND (ds.estado = 'CONFIRMADO' OR ds.id_doc_estado = 2)
                                              AND ds.referencia_externa COLLATE utf8mb4_unicode_ci LIKE 'DEVOLUCION%'
                                              ), 0
                                         ) AS cantidad_devuelta
@@ -559,12 +586,12 @@ try {
 
                     try {
                         // Verificar que el documento existe y está confirmado
-                        $stmt = $db->prepare("SELECT * FROM documentos_inventario WHERE id_documento = ? AND estado = 'CONFIRMADO'");
+                        $stmt = $db->prepare("SELECT * FROM documentos_inventario WHERE id_documento = ? AND (estado = 'CONFIRMADO' OR id_doc_estado = 2)");
                         $stmt->execute([$id]);
                         $doc = $stmt->fetch(PDO::FETCH_ASSOC);
 
                         if (!$doc) {
-                            echo json_encode(['success' => false, 'message' => 'Documento no encontrado o ya anulado']);
+                            echo json_encode(['success' => false, 'message' => 'Documento no encontrado o ya anulado (solo se pueden anular documentos CONFIRMADOS)']);
                             exit();
                         }
 
@@ -617,7 +644,8 @@ try {
                         // Marcar documento como anulado
                         $stmtAnular = $db->prepare("
                             UPDATE documentos_inventario 
-                            SET estado = 'ANULADO', fecha_anulacion = NOW(), observaciones = CONCAT(COALESCE(observaciones, ''), '\nANULADO: ', ?), actualizado_por = ?
+                            SET id_doc_estado = 3, estado = 'ANULADO', 
+                                fecha_anulacion = NOW(), observaciones = CONCAT(COALESCE(observaciones, ''), '\nANULADO: ', ?), actualizado_por = ?
                             WHERE id_documento = ?
                         ");
                         $stmtAnular->execute([$motivo, $_SESSION['user_id'] ?? null, $id]);

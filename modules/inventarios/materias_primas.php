@@ -9,20 +9,28 @@ if (!isLoggedIn()) {
     redirect('index.php');
 }
 
-$pageTitle = 'Materias Primas - Inventarios';
-$currentPage = 'materias_primas';
-
 $db = getDB();
-$stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'MP' AND activo = 1");
-$stmt->execute();
+
+$idTipoReq = $_GET['id'] ?? null;
+if ($idTipoReq) {
+    $stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE id_tipo_inventario = ? AND activo = 1");
+    $stmt->execute([$idTipoReq]);
+} else {
+    $stmt = $db->prepare("SELECT * FROM tipos_inventario WHERE codigo = 'MP' AND activo = 1");
+    $stmt->execute();
+}
 $tipoInventario = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$tipoInventario) {
     die('Error: Tipo de inventario "Materias Primas" no encontrado');
 }
 
 $tipoId = $tipoInventario['id_tipo_inventario'];
+$tipoNombre = $tipoInventario['nombre'];
 $tipoColor = $tipoInventario['color'] ?? '#007bff';
 $tipoIcono = $tipoInventario['icono'] ?? 'fa-box';
+
+$pageTitle = $tipoNombre . ' - Inventarios';
+$currentPage = 'inventarios_' . strtolower(str_replace(' ', '_', $tipoInventario['codigo']));
 
 require_once '../../includes/header.php';
 require_once '../../includes/permisos_inventario.php';
@@ -1313,8 +1321,8 @@ require_once '../../includes/permisos_inventario.php';
             <div class="mp-title">
                 <div class="mp-title-icon"><i class="fas <?php echo $tipoIcono; ?>"></i></div>
                 <div>
-                    <h1>Materias Primas</h1>
-                    <p>Gestión de inventario de materias primas</p>
+                    <h1><?php echo htmlspecialchars($tipoNombre); ?></h1>
+                    <p>Gestión de inventario de <?php echo htmlspecialchars(strtolower($tipoNombre)); ?></p>
                 </div>
             </div>
         </div>
@@ -2103,7 +2111,7 @@ require_once '../../includes/permisos_inventario.php';
                 <h4><i class="fas fa-list"></i> Paso 2: Indique las cantidades a devolver</h4>
                 <p style="color:#6c757d; font-size:0.9rem; margin-bottom:15px;">
                     Las cantidades se valoran al <strong>costo de adquisición original</strong>
-                    ${document.getElementById('devolucionFecha') ? '' : '(con IVA si corresponde)'}
+                    (con IVA si corresponde)
                 </p>
 
                 <div class="tabla-ingreso-container">
@@ -2178,16 +2186,11 @@ require_once '../../includes/permisos_inventario.php';
     </div>
 </div>
 
-<!-- Scripts -->
-<script src="js/materias_primas.js"></script>
-<script src="js/materias_primas_dinamico.js"></script>
-<script src="js/devolucion_proveedor.js"></script>
-<script src="js/historial_movimientos.js"></script>
-<script src="js/kardex_mp.js"></script>
-<!-- Inyectar fecha del servidor como variable global -->
+<!-- Inyectar variables globales del servidor ANTES de cargar los scripts -->
 <script>
+    window.TIPO_INVENTARIO_ID = <?php echo $tipoId; ?>;
     window.FECHA_SERVIDOR = '<?php echo date("Y-m-d"); ?>';
-    console.log('📅 Fecha del servidor inyectada:', window.FECHA_SERVIDOR);
+    console.log('📅 Fecha servidor:', window.FECHA_SERVIDOR, '💡 Tipo Inventario ID:', window.TIPO_INVENTARIO_ID);
 
     // === PERMISOS DE INVENTARIO (para control dinámico en JS) ===
     window.PERMISOS_INV = {
@@ -2201,6 +2204,13 @@ require_once '../../includes/permisos_inventario.php';
     };
     console.log('🔐 Permisos de inventario cargados:', window.PERMISOS_INV);
 </script>
+
+<!-- Scripts -->
+<script src="js/materias_primas.js?v=<?= time() ?>"></script>
+<script src="js/materias_primas_dinamico.js?v=<?= time() ?>"></script>
+<script src="js/devolucion_proveedor.js?v=<?= time() ?>"></script>
+<script src="js/historial_movimientos.js?v=<?= time() ?>"></script>
+<script src="js/kardex_mp.js?v=<?= time() ?>"></script>
 <!-- Control de Fechas - INLINE para evitar problemas de caché -->
 <script>
     (function () {

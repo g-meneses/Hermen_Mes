@@ -229,8 +229,7 @@ try {
                             2 => 'IN-CQ-C', // Colorantes / Químicos
                             3 => 'IN-AC-C', // Accesorios
                             4 => 'IN-EM-C', // Empaques
-                            5 => 'IN-RE-C', // Repuestos
-                            6 => 'IN-PT-C'  // Productos Terminados
+                            5 => 'IN-RE-C' // Repuestos
                         ];
                         $prefijo = $prefijos[$idTipoInventario] ?? 'IN-XX-C';
                         $anio = date('Y');

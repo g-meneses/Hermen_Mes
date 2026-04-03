@@ -17,7 +17,7 @@
 **Función principal:** Generar números de documento únicos para todos los módulos de inventario.
 
 **Parámetros requeridos:**
-- `tipo_inventario`: ID del tipo de inventario (1=MP, 2=CAQ, 3=EMP, 4=ACC, 6=PT, 7=REP)
+- `tipo_inventario`: ID del tipo de inventario (1=MP, 2=CAQ, 3=EMP, 4=ACC, 7=REP)
 - `operacion`: INGRESO o SALIDA
 - `tipo_movimiento`: COMPRA, PRODUCCION, VENTA, etc.
 - `modo`: **preview** (no consume) o **commit** (consume secuencia)
@@ -171,7 +171,6 @@ CREATE TABLE secuencias_documento (
 - CAQ = Colorantes y Aux. Químicos (2)
 - EMP = Empaque (3)
 - ACC = Accesorios (4)
-- PT = Productos Terminados (6)
 - REP = Repuestos (7)
 
 ### Códigos de Tipo:

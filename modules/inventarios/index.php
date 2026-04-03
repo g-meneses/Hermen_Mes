@@ -1843,7 +1843,7 @@ require_once '../../includes/header.php';
                     <div class="form-row">
                         <div class="form-group">
                             <label>Código *</label>
-                            <input type="text" id="tipoCodigo" maxlength="10" placeholder="Ej: MP, CAQ, PT">
+                            <input type="text" id="tipoCodigo" maxlength="10" placeholder="Ej: MP, CAQ, EMP">
                         </div>
                         <div class="form-group">
                             <label>Nombre *</label>
@@ -3076,10 +3076,11 @@ require_once '../../includes/header.php';
                 document.getElementById('kpiValorTotal').textContent = 'Bs. ' + parseFloat(data.totales.valor).toLocaleString('es-BO', { minimumFractionDigits: 2 });
                 document.getElementById('kpiAlertas').textContent = data.totales.alertas;
                 document.getElementById('kpiAlertas').className = 'kpi-value ' + (data.totales.alertas > 0 ? 'danger' : 'success');
-                document.getElementById('kpiTipos').textContent = data.resumen.length;
+                const tiposVisibles = data.resumen.filter(tipo => (tipo.codigo || '').toUpperCase() !== 'PT');
+                document.getElementById('kpiTipos').textContent = tiposVisibles.length;
 
                 // Guardar tipos y renderizar
-                tiposInventario = data.resumen;
+                tiposInventario = tiposVisibles;
                 renderTiposInventario(tiposInventario);
             } else {
                 console.error('Error backend:', data.message);
@@ -3167,7 +3168,6 @@ require_once '../../includes/header.php';
             2: 'colorantes_quimicos.php',
             3: 'empaque.php',
             4: 'accesorios.php',
-            6: 'productos_terminados.php',
             7: 'repuestos.php'
         };
 

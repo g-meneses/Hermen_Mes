@@ -154,6 +154,7 @@ try {
                     color
                 FROM tipos_inventario 
                 WHERE activo = 1
+                  AND codigo <> 'PT'
                 ORDER BY orden
             ");
             $tipos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -197,6 +198,7 @@ try {
                 SELECT id_tipo_inventario AS id, codigo, nombre, icono, color
                 FROM tipos_inventario 
                 WHERE activo = 1
+                  AND codigo <> 'PT'
                 ORDER BY orden
             ");
             $tipos_inventario = $stmtTI->fetchAll(PDO::FETCH_ASSOC);
@@ -228,10 +230,6 @@ try {
                         case 'PP':
                             $ti['icono'] = 'fa-industry';
                             $ti['color'] = '#1abc9c';
-                            break;
-                        case 'PT':
-                            $ti['icono'] = 'fa-check-circle';
-                            $ti['color'] = '#2ecc71';
                             break;
                         default:
                             $ti['icono'] = 'fa-cube';

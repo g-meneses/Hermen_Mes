@@ -269,15 +269,15 @@ class MobileApp {
 
         console.log('[App] Tipos de inventario cargados:', tipos);
 
-        // Excluir Productos en Proceso (WIP) y Productos Terminados (PT)
-        tipos = tipos.filter(t => !['WIP', 'PT'].includes(t.codigo));
+        // Excluir Productos en Proceso (WIP)
+        tipos = tipos.filter(t => t.codigo !== 'WIP');
 
         if (tipos.length === 0) {
             // Si no hay tipos, intentar recargar catálogos
             console.log('[App] No hay tipos de inventario, recargando catálogos...');
             await syncManager.loadCatalogs();
             tipos = await localDB.getTiposInventario();
-            tipos = tipos.filter(t => !['WIP', 'PT'].includes(t.codigo));
+            tipos = tipos.filter(t => t.codigo !== 'WIP');
         }
 
         container.innerHTML = tipos.map(t => `

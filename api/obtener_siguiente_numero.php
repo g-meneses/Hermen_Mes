@@ -112,7 +112,6 @@ try {
         '2' => 'CAQ',  // Colorantes y Aux. Químicos
         '3' => 'EMP',  // Empaque
         '4' => 'ACC',  // Accesorios
-        '6' => 'PT',   // Productos Terminados
         '7' => 'REP'   // Repuestos
     ];
 

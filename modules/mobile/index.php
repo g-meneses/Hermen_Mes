@@ -54,7 +54,7 @@
             <div class="splash-status">
                 <div id="connection-status" class="status-indicator">
                     <span class="status-dot"></span>
-                    <span class="status-text">Verificando conexión...</span>
+                    <span class="status-text">Verificando conexiÃƒÂ³n...</span>
                 </div>
                 <div id="pending-count" class="pending-badge" style="display: none;">
                     <i class="fas fa-clock"></i>
@@ -77,6 +77,7 @@
                 <i class="fas fa-user-lock"></i>
                 <h2>Ingresa tu PIN</h2>
                 <p>4 dígitos</p>
+                <p>Necesitas conexión para iniciar sesión.</p>
             </div>
 
             <div class="pin-display">
@@ -110,7 +111,7 @@
     </div>
 
     <!-- =====================================================
-         PANTALLA 2: MENÚ PRINCIPAL
+         PANTALLA 2: MENÃƒÅ¡ PRINCIPAL
     ====================================================== -->
     <div id="screen-menu" class="screen">
         <header class="app-header">
@@ -163,7 +164,7 @@
         </header>
 
         <main class="tipo-grid" id="tipos-inventario-container">
-            <!-- Se llena dinámicamente -->
+            <!-- Se llena dinÃƒÂ¡micamente -->
         </main>
     </div>
 
@@ -180,7 +181,7 @@
         </header>
 
         <main class="tipo-grid" id="tipos-salida-container">
-            <!-- Se llena dinámicamente -->
+            <!-- Se llena dinÃƒÂ¡micamente -->
         </main>
     </div>
 
@@ -193,7 +194,7 @@
                 <i class="fas fa-arrow-left"></i>
             </button>
             <h2>Productos</h2>
-            <span id="carrito-tipo-badge" class="tipo-badge">Producción</span>
+            <span id="carrito-tipo-badge" class="tipo-badge">ProducciÃƒÂ³n</span>
         </header>
 
         <main class="carrito-content">
@@ -232,7 +233,7 @@
             <div class="search-container">
                 <div class="search-input-wrapper">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="producto-search" placeholder="Buscar por código o nombre...">
+                    <input type="text" id="producto-search" placeholder="Buscar por cÃƒÂ³digo o nombre...">
                 </div>
                 <button class="btn-scan" id="btn-scan-qr" title="Escanear QR">
                     <i class="fas fa-qrcode"></i>
@@ -240,7 +241,7 @@
             </div>
 
             <div id="productos-list" class="productos-list">
-                <!-- Se llena dinámicamente -->
+                <!-- Se llena dinÃƒÂ¡micamente -->
             </div>
 
             <div id="producto-selected" class="producto-form" style="display: none;">
@@ -276,23 +277,23 @@
     </div>
 
     <!-- =====================================================
-         PANTALLA 5: DESTINO / ÁREA
+         PANTALLA 5: DESTINO / ÃƒÂREA
     ====================================================== -->
     <div id="screen-destino" class="screen">
         <header class="screen-header">
             <button class="btn-back" id="btn-back-destino">
                 <i class="fas fa-arrow-left"></i>
             </button>
-            <h2>Área Destino</h2>
+            <h2>ÃƒÂrea Destino</h2>
         </header>
 
         <main class="areas-grid" id="areas-container">
-            <!-- Se llena dinámicamente -->
+            <!-- Se llena dinÃƒÂ¡micamente -->
         </main>
     </div>
 
     <!-- =====================================================
-         PANTALLA 6: FIRMA DIGITAL (PIN RECEPTOR)
+         PANTALLA 6: CONFIRMACIÃƒÆ’Ã¢â‚¬Å“N DE RECEPCIÃƒÆ’Ã¢â‚¬Å“N
     ====================================================== -->
     <div id="screen-firma" class="screen">
         <header class="screen-header">
@@ -307,41 +308,24 @@
                 <i class="fas fa-signature"></i>
             </div>
             <p class="firma-instruction">
-                Quien <strong>recibe</strong> el material debe ingresar su PIN
+                Selecciona a quien <strong>recibe</strong> el material para continuar.
             </p>
-
-            <div class="pin-display firma-pin">
-                <div class="pin-dot"></div>
-                <div class="pin-dot"></div>
-                <div class="pin-dot"></div>
-                <div class="pin-dot"></div>
-            </div>
 
             <div id="firma-error" class="error-message" style="display: none;"></div>
 
-            <div class="pin-keypad firma-keypad">
-                <button class="key" data-value="1">1</button>
-                <button class="key" data-value="2">2</button>
-                <button class="key" data-value="3">3</button>
-                <button class="key" data-value="4">4</button>
-                <button class="key" data-value="5">5</button>
-                <button class="key" data-value="6">6</button>
-                <button class="key" data-value="7">7</button>
-                <button class="key" data-value="8">8</button>
-                <button class="key" data-value="9">9</button>
-                <button class="key key-clear" data-value="clear">
-                    <i class="fas fa-delete-left"></i>
-                </button>
-                <button class="key" data-value="0">0</button>
-                <button class="key key-enter" data-value="enter">
-                    <i class="fas fa-check"></i>
-                </button>
-            </div>
+            <select id="receptor-select" class="firma-select">
+                <option value="">Selecciona a quien recibe</option>
+            </select>
+
+            <button class="btn-primary btn-full firma-confirm-btn" id="btn-validar-firma">
+                <i class="fas fa-check"></i>
+                Confirmar receptor
+            </button>
         </main>
     </div>
 
     <!-- =====================================================
-         PANTALLA 7: CONFIRMACIÓN
+         PANTALLA 7: CONFIRMACIÃƒâ€œN
     ====================================================== -->
     <div id="screen-confirmacion" class="screen">
         <header class="screen-header">
@@ -402,11 +386,11 @@
                 <i class="fas fa-check-circle"></i>
             </div>
 
-            <h2>¡Salida Registrada!</h2>
+            <h2>Ã‚Â¡Salida Registrada!</h2>
 
             <div class="comprobante-card">
                 <div class="comprobante-numero">
-                    <small>Nº de Salida</small>
+                    <small>NÃ‚Âº de Salida</small>
                     <strong id="comprobante-uuid"></strong>
                 </div>
 
@@ -434,7 +418,7 @@
                 </button>
                 <button class="btn-secondary btn-full" id="btn-menu">
                     <i class="fas fa-home"></i>
-                    Ir al Menú
+                    Ir al MenÃƒÂº
                 </button>
             </div>
         </main>
@@ -479,7 +463,7 @@
                         <span id="det-tipo-inventario" class="detalle-value"></span>
                     </div>
                     <div class="detalle-meta-row">
-                        <span class="detalle-label">Área destino</span>
+                        <span class="detalle-label">ÃƒÂrea destino</span>
                         <span id="det-area" class="detalle-value"></span>
                     </div>
                     <div class="detalle-meta-row">

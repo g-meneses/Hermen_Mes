@@ -1,6 +1,6 @@
 /**
  * App Principal - PWA Mobile Hermen
- * Lógica de navegación y flujos de pantalla
+ * LÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³gica de navegaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n y flujos de pantalla
  */
 
 class MobileApp {
@@ -8,7 +8,6 @@ class MobileApp {
         this.currentScreen = 'splash';
         this.currentUser = null;
         this.currentPin = '';
-        this.firmaPin = '';
         this.receptorUser = null;
 
         // Estado de la salida actual
@@ -29,13 +28,13 @@ class MobileApp {
     async init() {
         console.log('[App] Inicializando...');
 
-        // Esperar a que DB esté lista
+        // Esperar a que DB estÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© lista
         await localDB.ready;
 
-        // Configurar listeners de conexión
+        // Configurar listeners de conexiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n
         syncManager.onStatusChange((status) => this.updateConnectionUI(status));
 
-        // Cargar catálogos y mostrar splash
+        // Cargar catÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡logos y mostrar splash
         await this.showSplash();
 
         // Inicializar event listeners
@@ -53,10 +52,10 @@ class MobileApp {
         const pendingEl = document.getElementById('pending-count');
 
         try {
-            // Verificar conexión
+            // Verificar conexiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n
             statusEl.querySelector('.status-text').textContent = 'Conectando...';
 
-            // Cargar catálogos
+            // Cargar catÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡logos
             const result = await syncManager.loadCatalogs();
 
             statusEl.classList.add('online');
@@ -76,12 +75,25 @@ class MobileApp {
             pendingEl.querySelector('span').textContent = `${status.pendientes} pendientes`;
         }
 
-        // Esperar y mostrar login
-        setTimeout(() => this.showScreen('login'), 2000);
+        const savedSession = await localDB.getCurrentSession();
+
+        setTimeout(() => {
+            if (savedSession) {
+                this.currentUser = savedSession;
+                this.showMenu();
+                return;
+            }
+
+            this.showScreen('login');
+
+            if (!syncManager.isOnline) {
+                this.showLoginError('Necesitas conexion para iniciar sesion por primera vez.');
+            }
+        }, 2000);
     }
 
     // =====================================================
-    // NAVEGACIÓN
+    // NAVEGACIÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN
     // =====================================================
 
     showScreen(screenId) {
@@ -101,7 +113,7 @@ class MobileApp {
             key.addEventListener('click', () => this.handleLoginKey(key.dataset.value));
         });
 
-        // ===== MENÚ =====
+        // ===== MENÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ =====
         document.getElementById('btn-nueva-salida').addEventListener('click', () => {
             this.resetSalida();
             this.showTiposInventario();
@@ -134,11 +146,9 @@ class MobileApp {
 
         // ===== FIRMA =====
         document.getElementById('btn-back-firma').addEventListener('click', () => this.showScreen('destino'));
-        document.querySelectorAll('#screen-firma .key').forEach(key => {
-            key.addEventListener('click', () => this.handleFirmaKey(key.dataset.value));
-        });
+        document.getElementById('btn-validar-firma').addEventListener('click', () => this.validateFirma());
 
-        // ===== CONFIRMACIÓN =====
+        // ===== CONFIRMACIÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN =====
         document.getElementById('btn-back-confirmacion').addEventListener('click', () => this.showScreen('firma'));
         document.getElementById('btn-cancelar').addEventListener('click', () => this.cancelarSalida());
         document.getElementById('btn-confirmar').addEventListener('click', () => this.confirmarSalida());
@@ -186,43 +196,50 @@ class MobileApp {
 
         errorEl.style.display = 'none';
 
-        // Auto-submit cuando hay 4 dígitos
+        // Auto-submit cuando hay 4 dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­gitos
         if (this.currentPin.length === 4) {
             setTimeout(() => this.doLogin(), 200);
         }
     }
 
     async doLogin() {
-        const errorEl = document.getElementById('login-error');
-
         try {
             const result = await syncManager.authenticatePin(this.currentPin);
 
             if (result.success) {
                 this.currentUser = result.user;
+                this.currentPin = '';
+                document.querySelectorAll('#screen-login .pin-dot').forEach(d => d.classList.remove('filled'));
+                this.showLoginError('');
                 this.showMenu();
             } else {
-                errorEl.textContent = result.message || 'PIN incorrecto';
-                errorEl.style.display = 'block';
+                this.showLoginError(result.message || 'PIN incorrecto');
                 this.currentPin = '';
                 document.querySelectorAll('#screen-login .pin-dot').forEach(d => d.classList.remove('filled'));
             }
         } catch (error) {
-            errorEl.textContent = 'Error de autenticación';
-            errorEl.style.display = 'block';
+            this.showLoginError('Error de autenticaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n');
         }
     }
 
-    logout() {
+    async logout() {
         this.currentUser = null;
         this.currentPin = '';
+        await localDB.clearCurrentSession();
         this.resetSalida();
         document.querySelectorAll('#screen-login .pin-dot').forEach(d => d.classList.remove('filled'));
+        this.showLoginError(syncManager.isOnline ? '' : 'Necesitas conexiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n para iniciar sesiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.');
         this.showScreen('login');
     }
 
+    showLoginError(message) {
+        const errorEl = document.getElementById('login-error');
+        errorEl.textContent = message;
+        errorEl.style.display = message ? 'block' : 'none';
+    }
+
     // =====================================================
-    // MENÚ
+    // MENÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡
     // =====================================================
 
     showMenu() {
@@ -273,8 +290,8 @@ class MobileApp {
         tipos = tipos.filter(t => t.codigo !== 'WIP');
 
         if (tipos.length === 0) {
-            // Si no hay tipos, intentar recargar catálogos
-            console.log('[App] No hay tipos de inventario, recargando catálogos...');
+            // Si no hay tipos, intentar recargar catÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡logos
+            console.log('[App] No hay tipos de inventario, recargando catÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡logos...');
             await syncManager.loadCatalogs();
             tipos = await localDB.getTiposInventario();
             tipos = tipos.filter(t => t.codigo !== 'WIP');
@@ -462,7 +479,7 @@ class MobileApp {
 
         const cantidad = parseFloat(document.getElementById('producto-cantidad').value) || 0;
         if (cantidad <= 0) {
-            this.toast('Ingresa una cantidad válida', 'warning');
+            this.toast('Ingresa una cantidad vÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡lida', 'warning');
             return;
         }
 
@@ -475,14 +492,14 @@ class MobileApp {
         // Validar si excede el stock
         if (cantidadTotal > stockDisponible) {
             const mensaje = cantidadEnCarrito > 0
-                ? `⚠️ Stock insuficiente\n\nProducto: ${this.selectedProducto.nombre}\nStock disponible: ${stockDisponible}\nYa en carrito: ${cantidadEnCarrito}\nIntentando agregar: ${cantidad}\nTotal: ${cantidadTotal}\n\n¿Deseas continuar de todos modos?`
-                : `⚠️ Stock insuficiente\n\nProducto: ${this.selectedProducto.nombre}\nStock disponible: ${stockDisponible}\nCantidad solicitada: ${cantidad}\n\n¿Deseas continuar de todos modos?`;
+                ? `ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Stock insuficiente\n\nProducto: ${this.selectedProducto.nombre}\nStock disponible: ${stockDisponible}\nYa en carrito: ${cantidadEnCarrito}\nIntentando agregar: ${cantidad}\nTotal: ${cantidadTotal}\n\nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿Deseas continuar de todos modos?`
+                : `ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Stock insuficiente\n\nProducto: ${this.selectedProducto.nombre}\nStock disponible: ${stockDisponible}\nCantidad solicitada: ${cantidad}\n\nÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿Deseas continuar de todos modos?`;
 
             if (!confirm(mensaje)) {
                 return;
             }
-            // Si confirma, continúa pero mostrará advertencia
-            this.toast('⚠️ Cantidad excede stock disponible', 'warning');
+            // Si confirma, continÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âºa pero mostrarÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ advertencia
+            this.toast('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Cantidad excede stock disponible', 'warning');
         }
 
         // Agregar al carrito
@@ -535,59 +552,51 @@ class MobileApp {
     // FIRMA
     // =====================================================
 
-    showFirma() {
-        this.firmaPin = '';
+    async showFirma() {
         this.receptorUser = null;
-        document.querySelectorAll('#screen-firma .pin-dot').forEach(d => d.classList.remove('filled'));
-        document.getElementById('firma-error').style.display = 'none';
-        this.showScreen('firma');
-    }
-
-    handleFirmaKey(value) {
-        const dots = document.querySelectorAll('#screen-firma .pin-dot');
         const errorEl = document.getElementById('firma-error');
+        const selectEl = document.getElementById('receptor-select');
+        const usuarios = await localDB.getUsuarios();
+        const receptores = usuarios.filter(u => u.id !== this.currentUser.id);
 
-        if (value === 'clear') {
-            this.firmaPin = this.firmaPin.slice(0, -1);
-        } else if (value === 'enter') {
-            if (this.firmaPin.length === 4) {
-                this.validateFirma();
-            }
-            return;
-        } else if (this.firmaPin.length < 4) {
-            this.firmaPin += value;
-        }
-
-        dots.forEach((dot, i) => {
-            dot.classList.toggle('filled', i < this.firmaPin.length);
-        });
+        selectEl.innerHTML = `
+            <option value="">Selecciona a quien recibe</option>
+            ${receptores.map(u => `
+                <option value="${u.id}">${u.nombre}${u.area ? ` - ${u.area}` : ''}</option>
+            `).join('')}
+        `;
 
         errorEl.style.display = 'none';
 
-        if (this.firmaPin.length === 4) {
-            setTimeout(() => this.validateFirma(), 200);
+        if (receptores.length === 0) {
+            errorEl.textContent = 'No hay usuarios sincronizados para confirmar la recepciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.';
+            errorEl.style.display = 'block';
         }
+
+        this.showScreen('firma');
     }
 
     async validateFirma() {
         const errorEl = document.getElementById('firma-error');
+        const receptorId = parseInt(document.getElementById('receptor-select').value, 10);
 
-        // El receptor no puede ser el mismo que el que entrega
-        const receptor = await localDB.getUsuarioByPin(this.firmaPin);
+        if (!receptorId) {
+            errorEl.textContent = 'Selecciona quiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©n recibe el material.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        const receptor = await localDB.getUsuarioById(receptorId);
 
         if (!receptor) {
-            errorEl.textContent = 'PIN no encontrado';
+            errorEl.textContent = 'El usuario seleccionado no estÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡ disponible sin conexiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n.';
             errorEl.style.display = 'block';
-            this.firmaPin = '';
-            document.querySelectorAll('#screen-firma .pin-dot').forEach(d => d.classList.remove('filled'));
             return;
         }
 
         if (receptor.id === this.currentUser.id) {
             errorEl.textContent = 'No puede firmar la misma persona que entrega';
             errorEl.style.display = 'block';
-            this.firmaPin = '';
-            document.querySelectorAll('#screen-firma .pin-dot').forEach(d => d.classList.remove('filled'));
             return;
         }
 
@@ -596,7 +605,7 @@ class MobileApp {
     }
 
     // =====================================================
-    // CONFIRMACIÓN
+    // CONFIRMACIÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN
     // =====================================================
 
     showConfirmacion() {
@@ -620,7 +629,7 @@ class MobileApp {
     }
 
     cancelarSalida() {
-        if (confirm('¿Cancelar esta salida?')) {
+        if (confirm('ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿Cancelar esta salida?')) {
             this.resetSalida();
             this.showScreen('menu');
         }
@@ -698,7 +707,7 @@ class MobileApp {
         // Obtener todas las salidas locales
         const salidasLocales = await localDB.getAllSalidas();
 
-        // Obtener del servidor si hay conexión
+        // Obtener del servidor si hay conexiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n
         let salidasServidor = [];
         if (syncManager.isOnline) {
             try {
@@ -742,7 +751,7 @@ class MobileApp {
                     estado === 'OBSERVADA' ? 'Observada' :
                         estado === 'RECHAZADA' ? 'Rechazada' : 'Pendiente';
 
-                // Color del icono según estado
+                // Color del icono segÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Âºn estado
                 const iconColor = estado === 'SINCRONIZADA' ? '#48bb78' :
                     estado === 'OBSERVADA' ? '#f6ad55' :
                         estado === 'RECHAZADA' ? '#fc8181' : '#4facfe';
@@ -758,7 +767,7 @@ class MobileApp {
                 const tipoInvNombre = s.tipo_inventario_nombre || s.tipoInventarioNombre || '';
                 const tipoInvCodigo = s.tipo_inventario || s.tipoInventario || '';
                 const tipoSalidaLabel = {
-                    'PRODUCCION': 'Producción', 'MUESTRA': 'Muestra',
+                    'PRODUCCION': 'ProducciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n', 'MUESTRA': 'Muestra',
                     'CONSUMO_INTERNO': 'Consumo Interno', 'MERMA': 'Merma', 'AJUSTE': 'Ajuste'
                 };
                 const tipoSalidaNombre = s.tipo_salida_nombre || s.tipoNombre ||
@@ -776,7 +785,7 @@ class MobileApp {
                         </div>
                         <div class="historial-info">
                             <strong>${titulo}</strong>
-                            <small>${fechaStr} ${hora} • ${s.total_items || s.items?.length || 0} productos</small>
+                            <small>${fechaStr} ${hora} ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ ${s.total_items || s.items?.length || 0} productos</small>
                             ${motivoHtml}
                         </div>
                         <span class="historial-estado ${estadoClass}">${estadoText}</span>
@@ -805,7 +814,7 @@ class MobileApp {
         const loading = document.getElementById('det-loading');
         const productosList = document.getElementById('det-productos');
 
-        // Mostrar modal con datos básicos ya disponibles
+        // Mostrar modal con datos bÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¡sicos ya disponibles
         const estado = salida.estado_sync || salida.estado || 'PENDIENTE_SYNC';
         const estadoLabels = {
             'SINCRONIZADA': 'Sincronizada', 'OBSERVADA': 'Observada',
@@ -823,17 +832,17 @@ class MobileApp {
         });
 
         document.getElementById('det-tipo-salida').textContent =
-            salida.tipo_salida_nombre || salida.tipoNombre || salida.tipo_salida || '—';
+            salida.tipo_salida_nombre || salida.tipoNombre || salida.tipo_salida || 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â';
         document.getElementById('det-tipo-inventario').textContent =
             salida.tipo_inventario_nombre || salida.tipoInventarioNombre ||
-            salida.tipo_inventario || salida.tipoInventario || '—';
+            salida.tipo_inventario || salida.tipoInventario || 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â';
         document.getElementById('det-area').textContent =
-            salida.area_nombre || salida.areaNombre || salida.area_destino || '—';
+            salida.area_nombre || salida.areaNombre || salida.area_destino || 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â';
         document.getElementById('det-fecha').textContent = fechaStr;
         document.getElementById('det-entrega').textContent =
-            salida.usuario_entrega_nombre || salida.usuario_entrega || '—';
+            salida.usuario_entrega_nombre || salida.usuario_entrega || 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â';
         document.getElementById('det-recibe').textContent =
-            salida.usuario_recibe_nombre || salida.usuario_recibe || '—';
+            salida.usuario_recibe_nombre || salida.usuario_recibe || 'ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â';
 
         const estadoEl = document.getElementById('det-estado');
         estadoEl.textContent = estadoLabels[estado] || estado;
@@ -887,7 +896,7 @@ class MobileApp {
                     productosList.innerHTML = '<li class="det-no-data">Error al cargar productos</li>';
                 }
             } else {
-                productosList.innerHTML = '<li class="det-no-data">Sin conexión para cargar productos</li>';
+                productosList.innerHTML = '<li class="det-no-data">Sin conexiÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n para cargar productos</li>';
             }
             loading.style.display = 'none';
         }
@@ -898,7 +907,7 @@ class MobileApp {
     }
 
     // =====================================================
-    // SINCRONIZACIÓN MANUAL
+    // SINCRONIZACIÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œN MANUAL
     // =====================================================
 
     async doSync() {
@@ -912,7 +921,7 @@ class MobileApp {
             if (result.synced > 0) {
                 this.toast(`${result.synced} salida(s) sincronizada(s)`, 'success');
             } else if (result.failed > 0) {
-                this.toast(`${result.failed} error(es) de sincronización`, 'warning');
+                this.toast(`${result.failed} error(es) de sincronizaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n`, 'warning');
             } else {
                 this.toast('No hay salidas pendientes', 'info');
             }
@@ -920,7 +929,7 @@ class MobileApp {
             this.updatePendingBadge();
 
         } catch (error) {
-            this.toast('Error de sincronización', 'error');
+            this.toast('Error de sincronizaciÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â³n', 'error');
         } finally {
             btn.disabled = false;
             btn.querySelector('i').classList.remove('fa-spin');
@@ -942,7 +951,6 @@ class MobileApp {
             area: null,
             areaNombre: ''
         };
-        this.firmaPin = '';
         this.receptorUser = null;
         this.selectedProducto = null;
     }
@@ -966,7 +974,7 @@ class MobileApp {
     }
 }
 
-// Iniciar app cuando el DOM esté listo
+// Iniciar app cuando el DOM estÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© listo
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new MobileApp();
 });

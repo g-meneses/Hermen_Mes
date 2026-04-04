@@ -1,6 +1,6 @@
 /**
  * Sync Manager - PWA Mobile Hermen
- * Gestión de sincronización offline/online
+ * GestiÃƒÂ³n de sincronizaciÃƒÂ³n offline/online
  */
 
 const API_BASE = '/mes_hermen/api/mobile';
@@ -17,7 +17,7 @@ class SyncManager {
     }
 
     init() {
-        // Escuchar cambios de conexión
+        // Escuchar cambios de conexiÃƒÂ³n
         window.addEventListener('online', () => this.handleOnline());
         window.addEventListener('offline', () => this.handleOffline());
 
@@ -30,12 +30,12 @@ class SyncManager {
             });
         }
 
-        // Iniciar sincronización automática cada 20 minutos
+        // Iniciar sincronizaciÃƒÂ³n automÃƒÂ¡tica cada 20 minutos
         this.startAutoSync();
     }
 
     // =====================================================
-    // SINCRONIZACIÓN AUTOMÁTICA CADA 20 MINUTOS
+    // SINCRONIZACIÃƒâ€œN AUTOMÃƒÂTICA CADA 20 MINUTOS
     // =====================================================
 
     startAutoSync() {
@@ -47,14 +47,14 @@ class SyncManager {
         console.log('[Sync] Auto-sync configurado cada 20 minutos');
 
         this.autoSyncTimer = setInterval(async () => {
-            // Solo sincronizar si hay conexión y hay pendientes
+            // Solo sincronizar si hay conexiÃƒÂ³n y hay pendientes
             if (!this.isOnline) {
-                console.log('[AutoSync] Sin conexión, omitiendo...');
+                console.log('[AutoSync] Sin conexiÃƒÂ³n, omitiendo...');
                 return;
             }
 
             if (this.syncInProgress) {
-                console.log('[AutoSync] Sincronización en progreso, omitiendo...');
+                console.log('[AutoSync] SincronizaciÃƒÂ³n en progreso, omitiendo...');
                 return;
             }
 
@@ -79,7 +79,7 @@ class SyncManager {
     }
 
     handleOnline() {
-        console.log('[Sync] Conexión restaurada');
+        console.log('[Sync] ConexiÃƒÂ³n restaurada');
         this.isOnline = true;
         this.notifyListeners('online');
 
@@ -88,7 +88,7 @@ class SyncManager {
     }
 
     handleOffline() {
-        console.log('[Sync] Sin conexión');
+        console.log('[Sync] Sin conexiÃƒÂ³n');
         this.isOnline = false;
         this.notifyListeners('offline');
     }
@@ -102,7 +102,7 @@ class SyncManager {
     }
 
     // =====================================================
-    // CARGAR CATÁLOGOS DESDE SERVIDOR
+    // CARGAR CATÃƒÂLOGOS DESDE SERVIDOR
     // =====================================================
 
     async loadCatalogs() {
@@ -110,7 +110,7 @@ class SyncManager {
             const response = await fetch(`${API_BASE}/catalogos.php?action=all`);
 
             if (!response.ok) {
-                throw new Error('Error cargando catálogos');
+                throw new Error('Error cargando catÃƒÂ¡logos');
             }
 
             const data = await response.json();
@@ -124,19 +124,19 @@ class SyncManager {
                 await localDB.saveTiposSalida(data.catalogs.tipos_salida);
                 await localDB.setConfig('catalogos_version', data.version);
 
-                console.log('[Sync] Catálogos cargados:', data.totals);
+                console.log('[Sync] CatÃƒÂ¡logos cargados:', data.totals);
                 return data.totals;
             }
 
             throw new Error(data.message || 'Error en respuesta');
 
         } catch (error) {
-            console.error('[Sync] Error cargando catálogos:', error);
+            console.error('[Sync] Error cargando catÃƒÂ¡logos:', error);
 
-            // Verificar si hay catálogos locales
+            // Verificar si hay catÃƒÂ¡logos locales
             const version = await localDB.getConfig('catalogos_version');
             if (version) {
-                console.log('[Sync] Usando catálogos locales de:', version);
+                console.log('[Sync] Usando catÃƒÂ¡logos locales de:', version);
                 return { cached: true, version };
             }
 
@@ -145,50 +145,44 @@ class SyncManager {
     }
 
     // =====================================================
-    // AUTENTICACIÓN
+    // AUTENTICACIÃƒâ€œN
     // =====================================================
 
     async authenticatePin(pin) {
-        // Intentar online primero
-        if (this.isOnline) {
-            try {
-                const response = await fetch(`${API_BASE}/auth.php`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ pin })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    return { success: true, user: data.user, mode: 'online' };
-                }
-
-                return { success: false, message: data.message };
-
-            } catch (error) {
-                console.log('[Sync] Auth online falló, intentando offline');
-            }
-        }
-
-        // Fallback offline
-        const user = await localDB.getUsuarioByPin(pin);
-
-        if (user) {
+        if (!this.isOnline) {
             return {
-                success: true,
-                user: {
-                    id: user.id,
-                    codigo: user.codigo,
-                    nombre: user.nombre,
-                    rol: user.rol,
-                    area: user.area
-                },
-                mode: 'offline'
+                success: false,
+                requiresOnline: true,
+                message: 'Necesitas conexion para iniciar sesion.'
             };
         }
 
-        return { success: false, message: 'PIN no encontrado' };
+        try {
+            const response = await fetch(`${API_BASE}/auth.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pin })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                await localDB.setCurrentSession(data.user);
+                return { success: true, user: data.user, mode: 'online' };
+            }
+
+            return {
+                success: false,
+                message: data.message || 'No se pudo iniciar sesiÃƒÆ’Ã‚Â³n.'
+            };
+        } catch (error) {
+            console.error('[Sync] Error de autenticaciÃƒÆ’Ã‚Â³n online:', error);
+            return {
+                success: false,
+                requiresOnline: true,
+                message: 'Necesitas conexion para iniciar sesion.'
+            };
+        }
     }
 
     // =====================================================
@@ -211,7 +205,7 @@ class SyncManager {
         await localDB.saveSalidaPendiente(salida);
         console.log('[Sync] Salida guardada localmente:', uuid);
 
-        // Intentar sincronizar si hay conexión
+        // Intentar sincronizar si hay conexiÃƒÂ³n
         if (this.isOnline) {
             await this.syncSalida(salida);
         }
@@ -255,7 +249,7 @@ class SyncManager {
 
                 console.log(`[Sync] Salida ${salida.uuid} -> ${estadoFinal}`);
 
-                // Considerar exitoso aunque sea OBSERVADA (ya está en servidor)
+                // Considerar exitoso aunque sea OBSERVADA (ya estÃƒÂ¡ en servidor)
                 return estadoFinal !== 'RECHAZADA';
             }
 
@@ -278,7 +272,7 @@ class SyncManager {
         }
 
         this.syncInProgress = true;
-        console.log('[Sync] Iniciando sincronización de pendientes...');
+        console.log('[Sync] Iniciando sincronizaciÃƒÂ³n de pendientes...');
 
         try {
             const pendientes = await localDB.getSalidasPendientes();
@@ -369,11 +363,11 @@ class SyncManager {
             estado_sync: s.estado || 'PENDIENTE_SYNC',
             total_items: s.items?.length || 0,
             items: s.items,
-            // Marcar como local para identificación
+            // Marcar como local para identificaciÃƒÂ³n
             _isLocal: true
         }));
 
-        // Filtrar del servidor las que ya están en pendientes (evitar duplicados)
+        // Filtrar del servidor las que ya estÃƒÂ¡n en pendientes (evitar duplicados)
         const uuidsLocales = new Set(localPendientes.map(s => s.uuid));
         const serverFiltradas = serverSalidas.filter(s => !uuidsLocales.has(s.uuid_local));
 

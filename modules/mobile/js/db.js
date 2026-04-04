@@ -1,10 +1,10 @@
 /**
  * IndexedDB Wrapper - PWA Mobile Hermen
- * Gestión de almacenamiento local offline
+ * GestiÃƒÂ³n de almacenamiento local offline
  */
 
 const DB_NAME = 'HermenMobileDB';
-const DB_VERSION = 2; // Incrementado para agregar tipos_inventario
+const DB_VERSION = 3; // Remueve PIN local y agrega sesion cacheada
 
 class LocalDB {
     constructor() {
@@ -22,7 +22,7 @@ class LocalDB {
                 this.db = request.result;
                 console.log('[DB] Base de datos abierta, version:', this.db.version);
 
-                // Verificar si necesita actualización de stores
+                // Verificar si necesita actualizaciÃƒÂ³n de stores
                 if (this.needsUpgrade()) {
                     console.warn('[DB] Base de datos desactualizada, eliminando y recreando...');
                     this.db.close();
@@ -48,13 +48,23 @@ class LocalDB {
     handleUpgrade(event) {
         const db = event.target.result;
 
-        // Store: Usuarios (para validación offline de PIN)
+        // Store: Usuarios (para validaciÃƒÂ³n offline de PIN)
+        let userStore;
         if (!db.objectStoreNames.contains('usuarios')) {
-            const userStore = db.createObjectStore('usuarios', { keyPath: 'id' });
-            userStore.createIndex('pin', 'pin', { unique: false });
+            userStore = db.createObjectStore('usuarios', { keyPath: 'id' });
+        } else {
+            userStore = event.target.transaction.objectStore('usuarios');
         }
 
-        // Store: Productos (catálogo)
+        if (userStore.indexNames.contains('pin')) {
+            userStore.deleteIndex('pin');
+        }
+
+        if (!userStore.indexNames.contains('codigo')) {
+            userStore.createIndex('codigo', 'codigo', { unique: false });
+        }
+
+        // Store: Productos (catÃƒÂ¡logo)
         if (!db.objectStoreNames.contains('productos')) {
             const prodStore = db.createObjectStore('productos', { keyPath: 'id' });
             prodStore.createIndex('codigo', 'codigo', { unique: true });
@@ -62,7 +72,7 @@ class LocalDB {
             prodStore.createIndex('id_tipo_inventario', 'id_tipo_inventario', { unique: false });
         }
 
-        // Store: Áreas
+        // Store: ÃƒÂreas
         if (!db.objectStoreNames.contains('areas')) {
             db.createObjectStore('areas', { keyPath: 'id' });
         }
@@ -84,12 +94,12 @@ class LocalDB {
             salidaStore.createIndex('fecha', 'fecha_hora_local', { unique: false });
         }
 
-        // Store: Configuración
+        // Store: ConfiguraciÃƒÂ³n
         if (!db.objectStoreNames.contains('config')) {
             db.createObjectStore('config', { keyPath: 'key' });
         }
 
-        console.log('[DB] Esquema actualizado a versión', DB_VERSION);
+        console.log('[DB] Esquema actualizado a versiÃƒÂ³n', DB_VERSION);
     }
 
     needsUpgrade() {
@@ -113,7 +123,7 @@ class LocalDB {
             };
             deleteRequest.onerror = () => reject(deleteRequest.error);
             deleteRequest.onblocked = () => {
-                console.warn('[DB] Eliminación bloqueada, reintentando...');
+                console.warn('[DB] EliminaciÃƒÂ³n bloqueada, reintentando...');
                 setTimeout(resolve, 500);
             };
         });
@@ -141,19 +151,6 @@ class LocalDB {
         });
     }
 
-    async getUsuarioByPin(pin) {
-        await this.ready;
-        const tx = this.db.transaction('usuarios', 'readonly');
-        const store = tx.objectStore('usuarios');
-        const index = store.index('pin');
-
-        return new Promise((resolve, reject) => {
-            const request = index.get(pin);
-            request.onsuccess = () => resolve(request.result || null);
-            request.onerror = () => reject(request.error);
-        });
-    }
-
     async getUsuarioById(id) {
         await this.ready;
         const tx = this.db.transaction('usuarios', 'readonly');
@@ -162,6 +159,23 @@ class LocalDB {
         return new Promise((resolve, reject) => {
             const request = store.get(id);
             request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getUsuarios() {
+        await this.ready;
+        const tx = this.db.transaction('usuarios', 'readonly');
+        const store = tx.objectStore('usuarios');
+
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => {
+                const usuarios = request.result.sort((a, b) =>
+                    (a.nombre || '').localeCompare(b.nombre || '')
+                );
+                resolve(usuarios);
+            };
             request.onerror = () => reject(request.error);
         });
     }
@@ -238,7 +252,7 @@ class LocalDB {
     }
 
     // =====================================================
-    // ÁREAS
+    // ÃƒÂREAS
     // =====================================================
 
     async saveAreas(areas) {
@@ -301,7 +315,7 @@ class LocalDB {
 
         // Verificar si el store existe
         if (!this.db.objectStoreNames.contains('tipos_inventario')) {
-            console.warn('[DB] Store tipos_inventario no existe, requiere actualización de DB');
+            console.warn('[DB] Store tipos_inventario no existe, requiere actualizaciÃƒÂ³n de DB');
             return [];
         }
 
@@ -427,7 +441,7 @@ class LocalDB {
     }
 
     // =====================================================
-    // CONFIGURACIÓN
+    // CONFIGURACIÃƒâ€œN
     // =====================================================
 
     async getConfig(key) {
@@ -452,6 +466,33 @@ class LocalDB {
             request.onsuccess = () => resolve(true);
             request.onerror = () => reject(request.error);
         });
+    }
+
+    async deleteConfig(key) {
+        await this.ready;
+        const tx = this.db.transaction('config', 'readwrite');
+        const store = tx.objectStore('config');
+
+        return new Promise((resolve, reject) => {
+            const request = store.delete(key);
+            request.onsuccess = () => resolve(true);
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async setCurrentSession(user) {
+        return this.setConfig('current_session', {
+            ...user,
+            authenticated_at: new Date().toISOString()
+        });
+    }
+
+    async getCurrentSession() {
+        return this.getConfig('current_session');
+    }
+
+    async clearCurrentSession() {
+        return this.deleteConfig('current_session');
     }
 
     // =====================================================

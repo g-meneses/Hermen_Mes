@@ -34,11 +34,10 @@ try {
                     id_usuario AS id,
                     codigo_usuario AS codigo,
                     nombre_completo AS nombre,
-                    pin,
                     rol,
                     area
                 FROM usuarios 
-                WHERE estado = 'activo' AND pin IS NOT NULL AND pin != ''
+                WHERE estado = 'activo'
                 ORDER BY nombre_completo
             ");
             $usuarios = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -172,8 +171,10 @@ try {
         case 'all':
             // Usuarios
             $stmtU = $db->query("
-                SELECT id_usuario AS id, codigo_usuario AS codigo, nombre_completo AS nombre, pin, rol, area
-                FROM usuarios WHERE estado = 'activo' AND pin IS NOT NULL
+                SELECT id_usuario AS id, codigo_usuario AS codigo, nombre_completo AS nombre, rol, area
+                FROM usuarios
+                WHERE estado = 'activo'
+                ORDER BY nombre_completo
             ");
             $usuarios = $stmtU->fetchAll(PDO::FETCH_ASSOC);
 

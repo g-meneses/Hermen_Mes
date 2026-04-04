@@ -972,12 +972,20 @@ include '../../includes/header.php';
                         $('#modalSolicitud').modal('show');
                     }
                 } else {
-                    Swal.fire('Error', 'No se pudo cargar la solicitud: ' + data.message, 'error');
+                    showSolicitudAlert({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'No se pudo cargar la solicitud: ' + data.message
+                    });
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                Swal.fire('Error', 'Error de conexión al cargar la solicitud', 'error');
+                showSolicitudAlert({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error de conexión al cargar la solicitud'
+                });
             });
     }
 
@@ -995,6 +1003,18 @@ include '../../includes/header.php';
 
         const filtrosBox = document.querySelector('.filtros-box');
         if (filtrosBox) filtrosBox.style.display = isReadOnly ? 'none' : 'block';
+    }
+
+    function showSolicitudAlert(options) {
+        const modal = document.getElementById('modalSolicitud');
+        const modalContent = modal ? modal.querySelector('.modal-content') : null;
+        const isModalOpen = modal && modal.classList.contains('show');
+
+        return Swal.fire({
+            target: isModalOpen && modalContent ? modalContent : document.body,
+            heightAuto: false,
+            ...options
+        });
     }
 
     function actualizarItem(index, field, value) {
@@ -1039,7 +1059,11 @@ include '../../includes/header.php';
         };
 
         if (data.detalles.length === 0) {
-            Swal.fire('Error', 'Debe agregar al menos un producto válido', 'error');
+            showSolicitudAlert({
+                icon: 'error',
+                title: 'Error',
+                text: 'Debe agregar al menos un producto válido'
+            });
             return;
         }
 
@@ -1060,7 +1084,11 @@ include '../../includes/header.php';
                     });
                     cargarSolicitudes();
                 } else {
-                    Swal.fire('Error', res.message, 'error');
+                    showSolicitudAlert({
+                        icon: 'error',
+                        title: 'Error',
+                        text: res.message
+                    });
                 }
             });
     }

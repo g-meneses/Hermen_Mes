@@ -41,8 +41,7 @@ try {
             codigo_usuario,
             nombre_completo,
             rol,
-            area,
-            pin
+            area
         FROM usuarios 
         WHERE pin = ? AND estado = 'activo'
     ");

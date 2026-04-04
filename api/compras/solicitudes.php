@@ -214,7 +214,7 @@ try {
                             $data['id_almacen'] ?? null,
                             $data['moneda'] ?? 'BOB',
                             $data['monto_estimado'] ?? 0,
-                            session_id() // TODO: Usar ID real de sesión
+                            $_SESSION['user_id'] ?? 1
                         ]);
 
                         $id_solicitud = $db->lastInsertId();
@@ -268,6 +268,23 @@ try {
 
                     $db->beginTransaction();
                     try {
+                        $stmtDownstream = $db->prepare("
+                            SELECT convertida_oc,
+                                   (SELECT COUNT(*) FROM ordenes_compra WHERE id_solicitud = s.id_solicitud) AS total_ordenes
+                            FROM solicitudes_compra s
+                            WHERE s.id_solicitud = ?
+                        ");
+                        $stmtDownstream->execute([$id_solicitud]);
+                        $downstream = $stmtDownstream->fetch(PDO::FETCH_ASSOC);
+
+                        if (!$downstream) {
+                            throw new Exception("Solicitud no encontrada");
+                        }
+
+                        if (!empty($downstream['convertida_oc']) || (int) ($downstream['total_ordenes'] ?? 0) > 0) {
+                            throw new Exception("No se puede actualizar una solicitud con downstream en compras");
+                        }
+
                         // Actualizar cabecera
                         $stmt = $db->prepare("
                             UPDATE solicitudes_compra SET 

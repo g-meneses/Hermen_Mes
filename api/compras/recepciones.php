@@ -253,24 +253,37 @@ try {
                 // --- NUEVA INTEGRACIÓN VINCULADA CON INVENTARIOS ---
                 // 1. Agrupar items válidos por tipo de inventario
                 $detallesValidosPorTipo = [];
-                $mensajesAviso = [];
+                $detallesSinProducto = [];
 
                 foreach ($detalles as $det) {
                     if (empty($det['id_producto'])) {
-                        $mensajesAviso[] = "Saltando ítem " . $det['codigo_producto'] . " por falta de id_producto en base de datos.";
+                        $detallesSinProducto[] = $det['codigo_producto'] ?: ('Línea ' . ($det['numero_linea'] ?? '?'));
                         continue;
                     }
                     $tipo = $det['id_tipo_inventario'] ?? 1; // Default a MP si por alguna razón extraña no existiera
                     $detallesValidosPorTipo[$tipo][] = $det;
                 }
 
+                if (!empty($detallesSinProducto)) {
+                    throw new Exception("No se puede procesar la recepción: hay líneas sin id_producto (" . implode(', ', $detallesSinProducto) . ")");
+                }
+
                 // Preparar sentencias de Inserción para Cabecera y Detalle de Documentos
+                $stmtSubtipoCompra = $db->prepare("SELECT id_subtipo FROM inv_doc_subtipos WHERE codigo = 'COMPRA' AND id_tipo = 1 LIMIT 1");
+                $stmtSubtipoCompra->execute();
+                $idDocSubtipoCompra = $stmtSubtipoCompra->fetchColumn();
+
+                if (!$idDocSubtipoCompra) {
+                    throw new Exception("No se encontró el subtipo documental COMPRA para ingresos");
+                }
+
                 $stmtInsertDoc = $db->prepare("
                     INSERT INTO documentos_inventario (
+                        id_doc_tipo, id_doc_subtipo, id_doc_estado,
                         tipo_documento, tipo_ingreso, id_tipo_ingreso, numero_documento, fecha_documento,
                         id_tipo_inventario, id_proveedor, referencia_externa, con_factura, moneda,
                         subtotal, iva, total, observaciones, estado, creado_por
-                    ) VALUES ('INGRESO', 'COMPRA', 1, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?)
+                    ) VALUES (1, ?, 2, 'INGRESO', 'COMPRA', 1, ?, NOW(), ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?)
                 ");
 
                 $stmtInsertDocDet = $db->prepare("
@@ -345,6 +358,7 @@ try {
                     $obsGenerada = "Ingreso automático generado desde Recepción de Orden de Compra: " . $recepcion['numero_recepcion'];
 
                     $stmtInsertDoc->execute([
+                        $idDocSubtipoCompra,
                         $numDocInv,
                         $idTipoInv,
                         $recepcion['id_proveedor'],

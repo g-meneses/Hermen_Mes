@@ -256,6 +256,20 @@ try {
                     throw new Exception("Solo se pueden editar órdenes en estado BORRADOR");
                 }
 
+                $stmtDownstream = $db->prepare("
+                    SELECT
+                        (SELECT COUNT(*) FROM recepciones_compra r WHERE r.id_orden_compra = oc.id_orden_compra) AS total_recepciones,
+                        (SELECT COUNT(*) FROM ordenes_compra_detalle d WHERE d.id_orden_compra = oc.id_orden_compra AND COALESCE(d.cantidad_recibida, 0) > 0) AS detalles_recibidos
+                    FROM ordenes_compra oc
+                    WHERE oc.id_orden_compra = ?
+                ");
+                $stmtDownstream->execute([$id_orden]);
+                $downstream = $stmtDownstream->fetch(PDO::FETCH_ASSOC);
+
+                if ((int) ($downstream['total_recepciones'] ?? 0) > 0 || (int) ($downstream['detalles_recibidos'] ?? 0) > 0) {
+                    throw new Exception("No se puede actualizar una orden con downstream en recepciones");
+                }
+
                 // Actualizar header
                 $stmt = $db->prepare("
                     UPDATE ordenes_compra SET

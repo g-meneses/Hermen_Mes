@@ -1005,16 +1005,24 @@ button:active:not(:disabled) {
     max-width: 280px;
 }
 
-.firma-pin {
+.firma-select {
+    width: 100%;
+    max-width: 340px;
+    padding: var(--spacing-md);
     margin-bottom: var(--spacing-lg);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 16px;
 }
 
-.firma-keypad {
-    max-width: 280px;
+.firma-confirm-btn {
+    max-width: 340px;
 }
 
 /* =====================================================
-   CONFIRMACIÓN
+   CONFIRMACIÃ“N
 ====================================================== */
 .confirmacion-content {
     flex: 1;

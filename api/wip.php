@@ -33,6 +33,65 @@ function manejarGet($db)
 {
     $action = $_GET['action'] ?? 'list';
 
+    if ($action === 'areas') {
+        $stmt = $db->query("
+            SELECT id_area, codigo, nombre
+            FROM areas_produccion
+            WHERE activo = 1
+            ORDER BY id_area
+        ");
+
+        jsonResponse([
+            'success' => true,
+            'areas' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+        ]);
+    }
+
+    if ($action === 'historial') {
+        $idLote = (int) ($_GET['id_lote_wip'] ?? 0);
+        if ($idLote <= 0) {
+            jsonResponse(['success' => false, 'message' => 'ID de lote requerido'], 400);
+        }
+
+        $lote = obtenerHistorialCabeceraLote($db, $idLote);
+        if (!$lote) {
+            jsonResponse(['success' => false, 'message' => 'Lote WIP no encontrado'], 404);
+        }
+
+        $documentoOrigen = obtenerDocumentoOrigenLote($db, $idLote);
+        $movimientos = obtenerMovimientosHistorialLote($db, $idLote);
+
+        $resumen = [
+            'area_origen' => null,
+            'area_actual' => $lote['area_actual_nombre'] ?? null,
+            'numero_transferencias' => 0,
+            'ultima_fecha_movimiento' => null,
+            'documento_origen_asociado' => $documentoOrigen['numero_documento'] ?? null,
+            'lote_padre' => $lote['codigo_lote_padre'] ?? null,
+            'cantidad_hijos' => !empty($lote['lotes_hijos']) ? count($lote['lotes_hijos']) : 0
+        ];
+
+        if (!empty($movimientos)) {
+            $resumen['ultima_fecha_movimiento'] = end($movimientos)['fecha'] ?? null;
+            foreach ($movimientos as $movimiento) {
+                if ($resumen['area_origen'] === null) {
+                    $resumen['area_origen'] = $movimiento['area_origen_nombre'] ?? $movimiento['area_destino_nombre'] ?? null;
+                }
+                if (($movimiento['tipo_movimiento'] ?? '') === 'TRANSFERENCIA') {
+                    $resumen['numero_transferencias']++;
+                }
+            }
+        }
+
+        jsonResponse([
+            'success' => true,
+            'lote' => $lote,
+            'documento_origen' => $documentoOrigen,
+            'movimientos' => $movimientos,
+            'resumen' => $resumen
+        ]);
+    }
+
     if ($action === 'bom') {
         $idProducto = (int) ($_GET['id_producto'] ?? 0);
         if ($idProducto <= 0) {
@@ -96,9 +155,11 @@ function manejarGet($db)
     $stmt = $db->query("
         SELECT
             l.id_lote_wip,
+            l.id_lote_padre,
             l.codigo_lote,
             l.referencia_externa,
             l.estado_lote,
+            l.id_area_actual,
             l.cantidad_docenas,
             l.cantidad_unidades,
             l.cantidad_base_unidades,
@@ -123,10 +184,26 @@ function manejarPost($db)
     $data = json_decode(file_get_contents('php://input'), true);
     $action = $data['action'] ?? 'crear_lote';
 
-    if ($action !== 'crear_lote') {
-        jsonResponse(['success' => false, 'message' => 'Acción no válida'], 400);
+    if ($action === 'crear_lote') {
+        crearLoteWip($db, $data);
+        return;
     }
 
+    if ($action === 'transferir_lote') {
+        transferirLoteWip($db, $data);
+        return;
+    }
+
+    if ($action === 'transferir_parcial') {
+        transferirParcialLoteWip($db, $data);
+        return;
+    }
+
+    jsonResponse(['success' => false, 'message' => 'Acción no válida'], 400);
+}
+
+function crearLoteWip($db, $data)
+{
     $idProducto = (int) ($data['id_producto'] ?? 0);
     $cantidadDocenasIn = (int) ($data['cantidad_docenas'] ?? 0);
     $cantidadUnidadesIn = (int) ($data['cantidad_unidades'] ?? 0);
@@ -368,10 +445,10 @@ function manejarPost($db)
 
         $stmtMovWip = $db->prepare("
             INSERT INTO movimientos_wip (
-                id_lote_wip, tipo_movimiento, cantidad_docenas, cantidad_unidades,
+                id_lote_wip, id_lote_relacionado, tipo_movimiento, cantidad_docenas, cantidad_unidades,
                 id_area_origen, id_area_destino, id_documento_inventario,
                 referencia_externa, fecha, usuario, observaciones
-            ) VALUES (?, 'CREACION', ?, ?, NULL, ?, ?, ?, NOW(), ?, ?)
+            ) VALUES (?, NULL, 'CREACION', ?, ?, NULL, ?, ?, ?, NOW(), ?, ?)
         ");
 
         $stmtMovWip->execute([
@@ -404,6 +481,272 @@ function manejarPost($db)
                     'subtotal' => $item['subtotal']
                 ];
             }, $componentesProcesados)
+        ]);
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+
+function transferirLoteWip($db, $data)
+{
+    $idLoteWip = (int) ($data['id_lote_wip'] ?? 0);
+    $idAreaDestino = (int) ($data['id_area_destino'] ?? 0);
+    $cantidadDocenasIn = (int) ($data['cantidad_docenas'] ?? 0);
+    $cantidadUnidadesIn = (int) ($data['cantidad_unidades'] ?? 0);
+    $observaciones = trim($data['observaciones'] ?? '');
+
+    if ($idLoteWip <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Lote WIP requerido'], 400);
+    }
+
+    if ($idAreaDestino <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Área destino requerida'], 400);
+    }
+
+    $cantidades = normalizarCantidades($cantidadDocenasIn, $cantidadUnidadesIn);
+    if ($cantidades['cantidad_base_unidades'] <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Debe registrar una cantidad válida para transferir'], 400);
+    }
+
+    $db->beginTransaction();
+
+    try {
+        $lote = obtenerLoteWipBloqueado($db, $idLoteWip);
+        if (!$lote) {
+            throw new InvalidArgumentException('Lote WIP no encontrado');
+        }
+
+        if (in_array($lote['estado_lote'], ['CERRADO', 'ANULADO'], true)) {
+            throw new InvalidArgumentException('No se puede transferir un lote cerrado o anulado');
+        }
+
+        $idAreaOrigen = (int) $lote['id_area_actual'];
+        if ($idAreaOrigen === $idAreaDestino) {
+            throw new InvalidArgumentException('No se puede transferir a la misma área');
+        }
+
+        $areaDestino = obtenerAreaProduccion($db, $idAreaDestino);
+        if (!$areaDestino) {
+            throw new InvalidArgumentException('Área destino no válida o inactiva');
+        }
+
+        if (
+            (int) $lote['cantidad_docenas'] !== $cantidades['cantidad_docenas'] ||
+            (int) $lote['cantidad_unidades'] !== $cantidades['cantidad_unidades'] ||
+            (int) $lote['cantidad_base_unidades'] !== $cantidades['cantidad_base_unidades']
+        ) {
+            throw new InvalidArgumentException('FASE 1 solo admite transferencia total del lote; la transferencia parcial queda bloqueada');
+        }
+
+        $stmtUpd = $db->prepare("
+            UPDATE lote_wip
+            SET id_area_actual = ?
+            WHERE id_lote_wip = ?
+        ");
+        $stmtUpd->execute([$idAreaDestino, $idLoteWip]);
+
+        $stmtMov = $db->prepare("
+            INSERT INTO movimientos_wip (
+                id_lote_wip, id_lote_relacionado, tipo_movimiento, cantidad_docenas, cantidad_unidades,
+                id_area_origen, id_area_destino, id_documento_inventario,
+                referencia_externa, fecha, usuario, observaciones
+            ) VALUES (?, NULL, 'TRANSFERENCIA', ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+        ");
+
+        $obs = $observaciones !== ''
+            ? $observaciones
+            : 'Transferencia interna WIP de ' . ($lote['area_actual_nombre'] ?? 'área origen') . ' a ' . $areaDestino['nombre'];
+
+        $stmtMov->execute([
+            $idLoteWip,
+            (int) $lote['cantidad_docenas'],
+            (int) $lote['cantidad_unidades'],
+            $idAreaOrigen,
+            $idAreaDestino,
+            !empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null,
+            $lote['referencia_externa'],
+            $_SESSION['user_id'] ?? null,
+            $obs
+        ]);
+
+        $db->commit();
+
+        jsonResponse([
+            'success' => true,
+            'message' => 'Lote WIP transferido correctamente',
+            'id_lote_wip' => $idLoteWip,
+            'codigo_lote' => $lote['codigo_lote'],
+            'area_origen' => $lote['area_actual_nombre'] ?? null,
+            'area_destino' => $areaDestino['nombre'],
+            'transferencia_parcial' => false
+        ]);
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
+}
+
+function transferirParcialLoteWip($db, $data)
+{
+    $idLoteWip = (int) ($data['id_lote_wip'] ?? 0);
+    $idAreaDestino = (int) ($data['id_area_destino'] ?? 0);
+    $cantidadDocenasIn = (int) ($data['cantidad_docenas'] ?? 0);
+    $cantidadUnidadesIn = (int) ($data['cantidad_unidades'] ?? 0);
+    $observaciones = trim($data['observaciones'] ?? '');
+
+    if ($idLoteWip <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Lote WIP requerido'], 400);
+    }
+
+    if ($idAreaDestino <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Área destino requerida'], 400);
+    }
+
+    $cantidades = normalizarCantidades($cantidadDocenasIn, $cantidadUnidadesIn);
+    if ($cantidades['cantidad_base_unidades'] <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Debe registrar una cantidad válida para el split'], 400);
+    }
+
+    $db->beginTransaction();
+
+    try {
+        $lote = obtenerLoteWipBloqueado($db, $idLoteWip);
+        if (!$lote) {
+            throw new InvalidArgumentException('Lote WIP no encontrado');
+        }
+
+        if (in_array($lote['estado_lote'], ['CERRADO', 'ANULADO'], true)) {
+            throw new InvalidArgumentException('No se puede dividir un lote cerrado o anulado');
+        }
+
+        $idAreaOrigen = (int) $lote['id_area_actual'];
+        if ($idAreaOrigen === $idAreaDestino) {
+            throw new InvalidArgumentException('No se puede transferir a la misma área');
+        }
+
+        $areaDestino = obtenerAreaProduccion($db, $idAreaDestino);
+        if (!$areaDestino) {
+            throw new InvalidArgumentException('Área destino no válida o inactiva');
+        }
+
+        $baseDisponible = (int) $lote['cantidad_base_unidades'];
+        if ($cantidades['cantidad_base_unidades'] >= $baseDisponible) {
+            throw new InvalidArgumentException('La transferencia parcial debe ser menor al saldo total del lote');
+        }
+
+        $restanteBase = $baseDisponible - $cantidades['cantidad_base_unidades'];
+        if ($restanteBase <= 0) {
+            throw new InvalidArgumentException('El lote original no puede quedar sin saldo en un split parcial');
+        }
+        $restante = normalizarCantidades(0, $restanteBase);
+
+        $costoOriginal = (float) $lote['costo_mp_acumulado'];
+        $costoUnitarioPromedio = (float) $lote['costo_unitario_promedio'];
+        if ($costoUnitarioPromedio <= 0 && $baseDisponible > 0) {
+            $costoUnitarioPromedio = round($costoOriginal / $baseDisponible, 6);
+        }
+
+        $costoDerivado = round($costoUnitarioPromedio * $cantidades['cantidad_base_unidades'], 4);
+        $costoRestante = round($costoOriginal - $costoDerivado, 4);
+        if ($costoRestante < 0) {
+            $costoRestante = 0;
+        }
+
+        $codigoLoteDerivado = generarCodigoLoteDerivado($db, $lote['codigo_lote']);
+        $referenciaDerivada = generarReferenciaDerivada($db, $lote['referencia_externa']);
+
+        $stmtUpdateOrigen = $db->prepare("
+            UPDATE lote_wip
+            SET cantidad_docenas = ?, cantidad_unidades = ?, cantidad_base_unidades = ?,
+                costo_mp_acumulado = ?, costo_unitario_promedio = ?
+            WHERE id_lote_wip = ?
+        ");
+        $stmtUpdateOrigen->execute([
+            $restante['cantidad_docenas'],
+            $restante['cantidad_unidades'],
+            $restante['cantidad_base_unidades'],
+            $costoRestante,
+            $restante['cantidad_base_unidades'] > 0 ? $costoUnitarioPromedio : 0,
+            $idLoteWip
+        ]);
+
+        $stmtCrearDerivado = $db->prepare("
+            INSERT INTO lote_wip (
+                id_lote_padre, codigo_lote, id_producto, id_linea_produccion,
+                cantidad_docenas, cantidad_unidades, cantidad_base_unidades,
+                id_area_actual, estado_lote, costo_mp_acumulado, costo_unitario_promedio,
+                id_documento_consumo, referencia_externa, fecha_inicio, creado_por
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?, ?, ?, ?, NOW(), ?)
+        ");
+        $stmtCrearDerivado->execute([
+            $idLoteWip,
+            $codigoLoteDerivado,
+            $lote['id_producto'],
+            $lote['id_linea_produccion'],
+            $cantidades['cantidad_docenas'],
+            $cantidades['cantidad_unidades'],
+            $cantidades['cantidad_base_unidades'],
+            $idAreaDestino,
+            $costoDerivado,
+            $costoUnitarioPromedio,
+            $lote['id_documento_consumo'],
+            $referenciaDerivada,
+            $_SESSION['user_id'] ?? null
+        ]);
+        $idLoteDerivado = (int) $db->lastInsertId();
+
+        $stmtMov = $db->prepare("
+            INSERT INTO movimientos_wip (
+                id_lote_wip, id_lote_relacionado, tipo_movimiento, cantidad_docenas, cantidad_unidades,
+                id_area_origen, id_area_destino, id_documento_inventario,
+                referencia_externa, fecha, usuario, observaciones
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+        ");
+
+        $stmtMov->execute([
+            $idLoteWip,
+            $idLoteDerivado,
+            'TRANSFERENCIA',
+            $cantidades['cantidad_docenas'],
+            $cantidades['cantidad_unidades'],
+            $idAreaOrigen,
+            $idAreaDestino,
+            !empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null,
+            $lote['referencia_externa'],
+            $_SESSION['user_id'] ?? null,
+            $observaciones !== '' ? $observaciones : 'Split parcial hacia lote derivado ' . $codigoLoteDerivado
+        ]);
+
+        $stmtMov->execute([
+            $idLoteDerivado,
+            $idLoteWip,
+            'CREACION',
+            $cantidades['cantidad_docenas'],
+            $cantidades['cantidad_unidades'],
+            $idAreaOrigen,
+            $idAreaDestino,
+            !empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null,
+            $referenciaDerivada,
+            $_SESSION['user_id'] ?? null,
+            'Lote derivado creado por split parcial desde ' . $lote['codigo_lote']
+        ]);
+
+        $db->commit();
+
+        jsonResponse([
+            'success' => true,
+            'message' => 'Split parcial ejecutado correctamente',
+            'id_lote_origen' => $idLoteWip,
+            'codigo_lote_origen' => $lote['codigo_lote'],
+            'id_lote_derivado' => $idLoteDerivado,
+            'codigo_lote_derivado' => $codigoLoteDerivado,
+            'referencia_derivada' => $referenciaDerivada,
+            'cantidad_transferida' => $cantidades,
+            'area_destino' => $areaDestino['nombre'],
+            'costo_transferido' => $costoDerivado,
+            'costo_restante' => $costoRestante,
+            'transferencia_parcial' => true
         ]);
     } catch (Exception $e) {
         $db->rollBack();
@@ -451,6 +794,151 @@ function obtenerBomActivo($db, $idProducto)
     $stmtDet->execute([$bom['id_bom']]);
     $bom['detalles'] = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
     return $bom;
+}
+
+function obtenerLoteWipBloqueado($db, $idLoteWip)
+{
+    $stmt = $db->prepare("
+        SELECT
+            l.*,
+            ao.nombre AS area_actual_nombre
+        FROM lote_wip l
+        LEFT JOIN areas_produccion ao ON ao.id_area = l.id_area_actual
+        WHERE l.id_lote_wip = ?
+        FOR UPDATE
+    ");
+    $stmt->execute([$idLoteWip]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function obtenerAreaProduccion($db, $idArea)
+{
+    $stmt = $db->prepare("
+        SELECT id_area, codigo, nombre
+        FROM areas_produccion
+        WHERE id_area = ? AND activo = 1
+        LIMIT 1
+    ");
+    $stmt->execute([$idArea]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function obtenerHistorialCabeceraLote($db, $idLoteWip)
+{
+    $stmt = $db->prepare("
+        SELECT
+            l.id_lote_wip,
+            l.id_lote_padre,
+            l.codigo_lote,
+            l.id_producto,
+            p.codigo_producto,
+            p.descripcion_completa,
+            l.id_linea_produccion,
+            lp.nombre AS linea_produccion_nombre,
+            l.id_area_actual,
+            a.nombre AS area_actual_nombre,
+            l.estado_lote,
+            l.cantidad_docenas,
+            l.cantidad_unidades,
+            l.cantidad_base_unidades,
+            l.costo_mp_acumulado,
+            l.costo_unitario_promedio,
+            l.id_documento_consumo,
+            l.referencia_externa,
+            l.fecha_inicio,
+            l.fecha_actualizacion,
+            l.creado_por,
+            u.nombre_completo AS creado_por_nombre,
+            lpadr.codigo_lote AS codigo_lote_padre
+        FROM lote_wip l
+        INNER JOIN productos_tejidos p ON p.id_producto = l.id_producto
+        LEFT JOIN lineas_produccion_erp lp ON lp.id_linea_produccion = l.id_linea_produccion
+        LEFT JOIN areas_produccion a ON a.id_area = l.id_area_actual
+        LEFT JOIN usuarios u ON u.id_usuario = l.creado_por
+        LEFT JOIN lote_wip lpadr ON lpadr.id_lote_wip = l.id_lote_padre
+        WHERE l.id_lote_wip = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$idLoteWip]);
+    $lote = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$lote) {
+        return null;
+    }
+    $stmtHijos = $db->prepare("
+        SELECT id_lote_wip, codigo_lote, estado_lote
+        FROM lote_wip
+        WHERE id_lote_padre = ?
+        ORDER BY id_lote_wip
+    ");
+    $stmtHijos->execute([$idLoteWip]);
+    $lote['lotes_hijos'] = $stmtHijos->fetchAll(PDO::FETCH_ASSOC);
+    return $lote;
+}
+
+function obtenerDocumentoOrigenLote($db, $idLoteWip)
+{
+    $stmt = $db->prepare("
+        SELECT
+            d.id_documento,
+            d.numero_documento,
+            d.tipo_documento,
+            s.nombre AS subtipo_documental,
+            d.fecha_creacion,
+            d.referencia_externa
+        FROM lote_wip l
+        INNER JOIN documentos_inventario d ON d.id_documento = l.id_documento_consumo
+        LEFT JOIN inv_doc_subtipos s ON s.id_subtipo = d.id_doc_subtipo
+        WHERE l.id_lote_wip = ?
+        LIMIT 1
+    ");
+    $stmt->execute([$idLoteWip]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function obtenerMovimientosHistorialLote($db, $idLoteWip)
+{
+    $stmt = $db->prepare("
+        SELECT
+            mw.fecha,
+            mw.tipo_movimiento,
+            mw.id_lote_relacionado,
+            lr.codigo_lote AS lote_relacionado_codigo,
+            ao.nombre AS area_origen_nombre,
+            ad.nombre AS area_destino_nombre,
+            mw.cantidad_docenas,
+            mw.cantidad_unidades,
+            mw.usuario,
+            u.nombre_completo AS usuario_nombre,
+            mw.observaciones,
+            mw.referencia_externa
+        FROM movimientos_wip mw
+        LEFT JOIN lote_wip lr ON lr.id_lote_wip = mw.id_lote_relacionado
+        LEFT JOIN areas_produccion ao ON ao.id_area = mw.id_area_origen
+        LEFT JOIN areas_produccion ad ON ad.id_area = mw.id_area_destino
+        LEFT JOIN usuarios u ON u.id_usuario = mw.usuario
+        WHERE mw.id_lote_wip = ?
+        ORDER BY mw.fecha ASC, mw.id_movimiento ASC
+    ");
+    $stmt->execute([$idLoteWip]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function generarCodigoLoteDerivado($db, $codigoPadre)
+{
+    $base = substr($codigoPadre, 0, 24);
+    $stmt = $db->prepare("SELECT COUNT(*) FROM lote_wip WHERE codigo_lote LIKE ?");
+    $stmt->execute([$base . '-D%']);
+    $correlativo = (int) $stmt->fetchColumn() + 1;
+    return $base . '-D' . str_pad((string) $correlativo, 2, '0', STR_PAD_LEFT);
+}
+
+function generarReferenciaDerivada($db, $referenciaPadre)
+{
+    $base = substr($referenciaPadre !== '' ? $referenciaPadre : 'WIP-SPLIT', 0, 44);
+    $stmt = $db->prepare("SELECT COUNT(*) FROM lote_wip WHERE referencia_externa LIKE ?");
+    $stmt->execute([$base . '-P%']);
+    $correlativo = (int) $stmt->fetchColumn() + 1;
+    return $base . '-P' . str_pad((string) $correlativo, 2, '0', STR_PAD_LEFT);
 }
 
 function normalizarCantidades($docenas, $unidades)

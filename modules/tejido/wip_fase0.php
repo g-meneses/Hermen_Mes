@@ -81,10 +81,11 @@ require_once '../../includes/header.php';
                     <th>Costo MP</th>
                     <th>Estado</th>
                     <th>Fecha</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody id="bodyLotes">
-                <tr><td colspan="7" class="text-center">Cargando lotes...</td></tr>
+                <tr><td colspan="8" class="text-center">Cargando lotes...</td></tr>
             </tbody>
         </table>
     </div>
@@ -222,6 +223,131 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
+<div id="modalTransferencia" class="modal">
+    <div class="modal-content" style="max-width: 620px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-right-left"></i> Transferir Lote WIP</h3>
+            <button class="close-modal" onclick="cerrarModalTransferencia()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="info-producto compact">
+                <h4 id="transferenciaCodigoLote"></h4>
+                <p id="transferenciaProductoDetalle"></p>
+            </div>
+            <div class="form-group full" style="margin-bottom: 14px;">
+                <label>Modo de transferencia</label>
+                <div style="display:flex; gap:16px; padding-top:8px;">
+                    <label><input type="radio" name="transferenciaModo" value="total" checked onchange="actualizarModoTransferencia()"> Total</label>
+                    <label><input type="radio" name="transferenciaModo" value="parcial" onchange="actualizarModoTransferencia()"> Parcial con lote derivado</label>
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="transferenciaAreaOrigen">Área actual</label>
+                    <input type="text" id="transferenciaAreaOrigen" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="transferenciaAreaDestino">Área destino</label>
+                    <select id="transferenciaAreaDestino"></select>
+                </div>
+                <div class="form-group">
+                    <label for="transferenciaDocenas">Docenas</label>
+                    <input type="number" id="transferenciaDocenas">
+                </div>
+                <div class="form-group">
+                    <label for="transferenciaUnidades">Unidades</label>
+                    <input type="number" id="transferenciaUnidades" min="0" max="11" step="1">
+                </div>
+                <div class="form-group full">
+                    <label for="transferenciaObservaciones">Observaciones</label>
+                    <textarea id="transferenciaObservaciones" rows="3" placeholder="Motivo de la transferencia interna"></textarea>
+                </div>
+            </div>
+            <div class="info-producto compact" style="margin-top: 12px; border-left-color:#d97706;">
+                <p id="transferenciaModoMensaje"><strong>FASE 1:</strong> transferencia total del lote.</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="cerrarModalTransferencia()">Cancelar</button>
+            <button class="btn-primary" onclick="transferirLoteWip()">Transferir lote</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalHistorial" class="modal">
+    <div class="modal-content" style="max-width: 1100px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-route"></i> Trazabilidad del Lote WIP</h3>
+            <button class="close-modal" onclick="cerrarModalHistorial()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="info-producto">
+                <h4 id="historialCodigoLote"></h4>
+                <p id="historialProductoDetalle"></p>
+            </div>
+
+            <div class="stats-container" style="padding: 0 0 16px 0;">
+                <div class="stat-card stat-primary">
+                    <div class="stat-value" id="historialAreaActual">-</div>
+                    <div class="stat-label">Área Actual</div>
+                </div>
+                <div class="stat-card stat-info">
+                    <div class="stat-value" id="historialTransferencias">0</div>
+                    <div class="stat-label">Transferencias</div>
+                </div>
+                <div class="stat-card stat-success">
+                    <div class="stat-value" id="historialEstado">-</div>
+                    <div class="stat-label">Estado</div>
+                </div>
+                <div class="stat-card stat-warning">
+                    <div class="stat-value" id="historialUltimoMov">-</div>
+                    <div class="stat-label">Último Movimiento</div>
+                </div>
+            </div>
+
+            <div class="form-grid" style="margin-bottom: 18px;">
+                <div class="form-group"><label>ID Lote</label><input type="text" id="historialIdLote" readonly></div>
+                <div class="form-group"><label>Línea</label><input type="text" id="historialLinea" readonly></div>
+                <div class="form-group"><label>Cantidad</label><input type="text" id="historialCantidad" readonly></div>
+                <div class="form-group"><label>Referencia</label><input type="text" id="historialReferencia" readonly></div>
+                <div class="form-group"><label>Costo MP</label><input type="text" id="historialCostoMp" readonly></div>
+                <div class="form-group"><label>Costo Unitario</label><input type="text" id="historialCostoUnitario" readonly></div>
+                <div class="form-group"><label>Fecha Inicio</label><input type="text" id="historialFechaInicio" readonly></div>
+                <div class="form-group"><label>Actualizado</label><input type="text" id="historialFechaActualizacion" readonly></div>
+                <div class="form-group full"><label>Creado por</label><input type="text" id="historialCreadoPor" readonly></div>
+                <div class="form-group"><label>Lote padre</label><input type="text" id="historialLotePadre" readonly></div>
+                <div class="form-group"><label>Lotes hijos</label><input type="text" id="historialLotesHijos" readonly></div>
+            </div>
+
+            <div class="info-producto compact" style="margin-bottom: 16px; border-left-color:#059669;">
+                <h4 style="margin-bottom:8px;">Documento Origen</h4>
+                <p id="historialDocumentoOrigen">Sin documento asociado</p>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Movimiento</th>
+                            <th>Área Origen</th>
+                            <th>Área Destino</th>
+                            <th>Cantidad</th>
+                            <th>Usuario</th>
+                            <th>Observaciones</th>
+                            <th>Referencia</th>
+                            <th>Lote Rel.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyHistorialMovimientos">
+                        <tr><td colspan="9" class="text-center">Cargando historial...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
 .stats-container { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; padding:20px; }
 .stat-card { border-radius:14px; color:#fff; padding:18px; box-shadow:0 10px 24px rgba(0,0,0,.08); }
@@ -268,12 +394,16 @@ let productos = [];
 let productosFiltrados = [];
 let componentesMp = [];
 let lotesRecientes = [];
+let areasProduccion = [];
 let productoActual = null;
 let bomActual = null;
 let detallesBomActual = [];
+let loteActual = null;
+let historialActual = null;
+let transferenciaModo = 'total';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await Promise.all([cargarLineas(), cargarComponentesMp(), cargarProductos(), cargarLotes()]);
+    await Promise.all([cargarLineas(), cargarComponentesMp(), cargarProductos(), cargarLotes(), cargarAreasProduccion()]);
     document.getElementById('buscarProducto').addEventListener('input', filtrarProductos);
     document.getElementById('filtroLinea').addEventListener('change', filtrarProductos);
     document.getElementById('filtroEstado').addEventListener('change', filtrarProductos);
@@ -317,12 +447,20 @@ async function cargarLotes() {
     const response = await fetch(baseUrl + '/api/wip.php');
     const data = await response.json();
     if (!data.success) {
-        document.getElementById('bodyLotes').innerHTML = '<tr><td colspan="7" class="text-center">No se pudieron cargar los lotes</td></tr>';
+        document.getElementById('bodyLotes').innerHTML = '<tr><td colspan="8" class="text-center">No se pudieron cargar los lotes</td></tr>';
         return;
     }
 
     lotesRecientes = data.lotes || [];
     renderLotes();
+}
+
+async function cargarAreasProduccion() {
+    const response = await fetch(baseUrl + '/api/wip.php?action=areas');
+    const data = await response.json();
+    if (data.success) {
+        areasProduccion = data.areas || [];
+    }
 }
 
 function actualizarEstadisticas() {
@@ -383,7 +521,7 @@ function renderProductos(lista) {
 function renderLotes() {
     const tbody = document.getElementById('bodyLotes');
     if (!lotesRecientes.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Todavía no hay lotes WIP registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">Todavía no hay lotes WIP registrados</td></tr>';
         return;
     }
 
@@ -396,6 +534,10 @@ function renderLotes() {
             <td>Bs. ${Number(lote.costo_mp_acumulado || 0).toFixed(2)}</td>
             <td><span class="badge-ok">${lote.estado_lote || 'ACTIVO'}</span></td>
             <td>${lote.fecha_inicio || '-'}</td>
+            <td>
+                <button class="btn-icon btn-primary" title="Ver historial" onclick="abrirModalHistorial(${lote.id_lote_wip})"><i class="fas fa-route"></i></button>
+                <button class="btn-icon btn-primary" title="Transferir lote" onclick="abrirModalTransferencia(${lote.id_lote_wip})"><i class="fas fa-right-left"></i></button>
+            </td>
         </tr>
     `).join('');
 }
@@ -608,9 +750,162 @@ async function registrarLoteWip() {
 function cerrarModalBom() { document.getElementById('modalBom').classList.remove('show'); }
 function cerrarModalComponente() { document.getElementById('modalComponente').classList.remove('show'); }
 function cerrarModalLote() { document.getElementById('modalLote').classList.remove('show'); }
+function cerrarModalTransferencia() { document.getElementById('modalTransferencia').classList.remove('show'); }
+function cerrarModalHistorial() { document.getElementById('modalHistorial').classList.remove('show'); }
+
+function abrirModalTransferencia(idLoteWip) {
+    loteActual = lotesRecientes.find(lote => String(lote.id_lote_wip) === String(idLoteWip));
+    if (!loteActual) {
+        mostrarErrorVisible('No se encontró el lote seleccionado');
+        return;
+    }
+
+    document.getElementById('transferenciaCodigoLote').textContent = loteActual.codigo_lote;
+    document.getElementById('transferenciaProductoDetalle').textContent = `${loteActual.codigo_producto} - ${loteActual.descripcion_completa || ''}`;
+    document.getElementById('transferenciaAreaOrigen').value = loteActual.area_actual_nombre || '';
+    document.getElementById('transferenciaDocenas').value = loteActual.cantidad_docenas || 0;
+    document.getElementById('transferenciaUnidades').value = loteActual.cantidad_unidades || 0;
+    document.getElementById('transferenciaObservaciones').value = '';
+    document.querySelector('input[name="transferenciaModo"][value="total"]').checked = true;
+    transferenciaModo = 'total';
+
+    const select = document.getElementById('transferenciaAreaDestino');
+    select.innerHTML = '<option value="">Seleccione área destino</option>' + areasProduccion
+        .filter(area => String(area.id_area) !== String(loteActual.id_area_actual))
+        .map(area => `<option value="${area.id_area}">${area.nombre}</option>`)
+        .join('');
+
+    actualizarModoTransferencia();
+    document.getElementById('modalTransferencia').classList.add('show');
+}
+
+function actualizarModoTransferencia() {
+    const selected = document.querySelector('input[name="transferenciaModo"]:checked');
+    transferenciaModo = selected ? selected.value : 'total';
+
+    if (!loteActual) return;
+
+    const inputDocenas = document.getElementById('transferenciaDocenas');
+    const inputUnidades = document.getElementById('transferenciaUnidades');
+    const mensaje = document.getElementById('transferenciaModoMensaje');
+
+    if (transferenciaModo === 'parcial') {
+        inputDocenas.readOnly = false;
+        inputUnidades.readOnly = false;
+        inputDocenas.max = loteActual.cantidad_docenas || 0;
+        inputUnidades.max = 11;
+        mensaje.innerHTML = '<strong>FASE 2B:</strong> el split parcial crea un lote derivado en el área destino y deja saldo en el lote original.';
+    } else {
+        inputDocenas.readOnly = true;
+        inputUnidades.readOnly = true;
+        inputDocenas.value = loteActual.cantidad_docenas || 0;
+        inputUnidades.value = loteActual.cantidad_unidades || 0;
+        mensaje.innerHTML = '<strong>FASE 1:</strong> transferencia total del lote.';
+    }
+}
+
+async function transferirLoteWip() {
+    if (!loteActual) {
+        mostrarErrorVisible('No hay lote seleccionado para transferir');
+        return;
+    }
+
+    const payload = {
+        action: transferenciaModo === 'parcial' ? 'transferir_parcial' : 'transferir_lote',
+        id_lote_wip: loteActual.id_lote_wip,
+        id_area_destino: parseInt(document.getElementById('transferenciaAreaDestino').value || '0', 10),
+        cantidad_docenas: parseInt(document.getElementById('transferenciaDocenas').value || '0', 10),
+        cantidad_unidades: parseInt(document.getElementById('transferenciaUnidades').value || '0', 10),
+        observaciones: document.getElementById('transferenciaObservaciones').value.trim()
+    };
+
+    const response = await fetch(baseUrl + '/api/wip.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+    const data = await response.json();
+
+    if (!data.success) {
+        mostrarErrorVisible(data.message || 'No se pudo transferir el lote WIP');
+        return;
+    }
+
+    cerrarModalTransferencia();
+    if (data.transferencia_parcial === false) {
+        mostrarExitoVisible(`${data.message}: ${data.codigo_lote} -> ${data.area_destino}`);
+    } else {
+        mostrarExitoVisible(`${data.message}: ${data.codigo_lote_origen} => ${data.codigo_lote_derivado} (${data.area_destino})`);
+    }
+    await cargarLotes();
+}
+
+async function abrirModalHistorial(idLoteWip) {
+    const response = await fetch(baseUrl + '/api/wip.php?action=historial&id_lote_wip=' + idLoteWip);
+    const data = await response.json();
+
+    if (!data.success) {
+        mostrarErrorVisible(data.message || 'No se pudo cargar el historial del lote');
+        return;
+    }
+
+    historialActual = data;
+    renderHistorial(data);
+    document.getElementById('modalHistorial').classList.add('show');
+}
+
+function renderHistorial(data) {
+    const lote = data.lote || {};
+    const documento = data.documento_origen || null;
+    const movimientos = data.movimientos || [];
+    const resumen = data.resumen || {};
+
+    document.getElementById('historialCodigoLote').textContent = lote.codigo_lote || '-';
+    document.getElementById('historialProductoDetalle').textContent = `${lote.codigo_producto || ''} - ${lote.descripcion_completa || ''}`;
+    document.getElementById('historialAreaActual').textContent = resumen.area_actual || '-';
+    document.getElementById('historialTransferencias').textContent = resumen.numero_transferencias || 0;
+    document.getElementById('historialEstado').textContent = lote.estado_lote || '-';
+    document.getElementById('historialUltimoMov').textContent = resumen.ultima_fecha_movimiento || '-';
+
+    document.getElementById('historialIdLote').value = lote.id_lote_wip || '';
+    document.getElementById('historialLinea').value = lote.linea_produccion_nombre || '-';
+    document.getElementById('historialCantidad').value = `${lote.cantidad_docenas || 0} doc / ${lote.cantidad_unidades || 0} und / ${lote.cantidad_base_unidades || 0} base`;
+    document.getElementById('historialReferencia').value = lote.referencia_externa || '-';
+    document.getElementById('historialCostoMp').value = `Bs. ${Number(lote.costo_mp_acumulado || 0).toFixed(4)}`;
+    document.getElementById('historialCostoUnitario').value = `Bs. ${Number(lote.costo_unitario_promedio || 0).toFixed(6)}`;
+    document.getElementById('historialFechaInicio').value = lote.fecha_inicio || '-';
+    document.getElementById('historialFechaActualizacion').value = lote.fecha_actualizacion || '-';
+    document.getElementById('historialCreadoPor').value = lote.creado_por_nombre || lote.creado_por || '-';
+    document.getElementById('historialLotePadre').value = resumen.lote_padre || '-';
+    document.getElementById('historialLotesHijos').value = (lote.lotes_hijos || []).map(item => item.codigo_lote).join(', ') || '-';
+
+    document.getElementById('historialDocumentoOrigen').textContent = documento
+        ? `#${documento.id_documento} | ${documento.numero_documento} | ${documento.tipo_documento || '-'} | ${documento.subtipo_documental || '-'} | ${documento.fecha_creacion || '-'} | Ref: ${documento.referencia_externa || '-'}`
+        : 'Sin documento asociado';
+
+    const tbody = document.getElementById('bodyHistorialMovimientos');
+    if (!movimientos.length) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center">No hay movimientos WIP registrados para este lote</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = movimientos.map(mov => `
+        <tr>
+            <td>${mov.fecha || '-'}</td>
+            <td>${mov.tipo_movimiento || '-'}</td>
+            <td>${mov.area_origen_nombre || '-'}</td>
+            <td>${mov.area_destino_nombre || '-'}</td>
+            <td>${Number(mov.cantidad_docenas || 0)} doc / ${Number(mov.cantidad_unidades || 0)} und</td>
+            <td>${mov.usuario_nombre || mov.usuario || '-'}</td>
+            <td>${mov.observaciones || '-'}</td>
+            <td>${mov.referencia_externa || '-'}</td>
+            <td>${mov.lote_relacionado_codigo || '-'}</td>
+        </tr>
+    `).join('');
+}
 
 window.onclick = function (event) {
-    ['modalBom', 'modalComponente', 'modalLote'].forEach(id => {
+    ['modalBom', 'modalComponente', 'modalLote', 'modalTransferencia', 'modalHistorial'].forEach(id => {
         const modal = document.getElementById(id);
         if (event.target === modal) {
             modal.classList.remove('show');

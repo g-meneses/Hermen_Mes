@@ -64,7 +64,7 @@ try {
                         um.abreviatura AS unidad_abreviatura,
                         um.nombre AS unidad_nombre
                     FROM bom_productos_detalle d
-                    INNER JOIN inventarios i ON i.id_inventario = d.id_inventario
+                    LEFT JOIN inventarios i ON i.id_inventario = d.id_inventario
                     LEFT JOIN unidades_medida um ON um.id_unidad = i.id_unidad
                     WHERE d.id_bom = ?
                     ORDER BY d.orden_visual, d.es_principal DESC, i.nombre
@@ -214,6 +214,9 @@ try {
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
 
+
+                $idInventariosSet = [];
+                $sumaPorcentajes = 0.0;
                 $orden = 1;
                 foreach ($detalles as $detalle) {
                     $idInventario = (int) ($detalle['id_inventario'] ?? 0);
@@ -229,6 +232,22 @@ try {
                         throw new Exception('Cada componente requiere inventario y gramos por docena mayores a cero');
                     }
 
+                    if (in_array($idInventario, $idInventariosSet, true)) {
+                        throw new Exception("El componente con ID $idInventario está duplicado en la receta técnica");
+                    }
+                    $idInventariosSet[] = $idInventario;
+
+                    if ($mermaDetalle < 0) {
+                        throw new Exception('La merma no puede ser negativa');
+                    }
+
+                    if ($porcentaje !== null) {
+                        if ($porcentaje < 0) {
+                            throw new Exception('El porcentaje del componente no puede ser negativo');
+                        }
+                        $sumaPorcentajes += $porcentaje;
+                    }
+
                     $stmtInsDet->execute([
                         $idBom,
                         $idInventario,
@@ -239,6 +258,10 @@ try {
                         $orden++,
                         $obsDetalle ?: null
                     ]);
+                }
+
+                if ($sumaPorcentajes > 100.001) { // Tolerancia por punto flotante
+                    throw new Exception('La suma de porcentajes de componentes no puede exceder el 100%');
                 }
 
                 $db->commit();

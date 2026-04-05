@@ -849,13 +849,16 @@ function obtenerHistorialCabeceraLote($db, $idLoteWip)
             l.fecha_actualizacion,
             l.creado_por,
             u.nombre_completo AS creado_por_nombre,
-            lpadr.codigo_lote AS codigo_lote_padre
+            lpadr.codigo_lote AS codigo_lote_padre,
+            lpadr.id_area_actual AS id_area_padre,
+            apadr.nombre AS area_padre_nombre
         FROM lote_wip l
         INNER JOIN productos_tejidos p ON p.id_producto = l.id_producto
         LEFT JOIN lineas_produccion_erp lp ON lp.id_linea_produccion = l.id_linea_produccion
         LEFT JOIN areas_produccion a ON a.id_area = l.id_area_actual
         LEFT JOIN usuarios u ON u.id_usuario = l.creado_por
         LEFT JOIN lote_wip lpadr ON lpadr.id_lote_wip = l.id_lote_padre
+        LEFT JOIN areas_produccion apadr ON apadr.id_area = lpadr.id_area_actual
         WHERE l.id_lote_wip = ?
         LIMIT 1
     ");
@@ -865,10 +868,16 @@ function obtenerHistorialCabeceraLote($db, $idLoteWip)
         return null;
     }
     $stmtHijos = $db->prepare("
-        SELECT id_lote_wip, codigo_lote, estado_lote
-        FROM lote_wip
-        WHERE id_lote_padre = ?
-        ORDER BY id_lote_wip
+        SELECT 
+            l.id_lote_wip, 
+            l.codigo_lote, 
+            l.estado_lote,
+            l.id_area_actual,
+            a.nombre AS area_actual_nombre
+        FROM lote_wip l
+        LEFT JOIN areas_produccion a ON a.id_area = l.id_area_actual
+        WHERE l.id_lote_padre = ?
+        ORDER BY l.id_lote_wip
     ");
     $stmtHijos->execute([$idLoteWip]);
     $lote['lotes_hijos'] = $stmtHijos->fetchAll(PDO::FETCH_ASSOC);

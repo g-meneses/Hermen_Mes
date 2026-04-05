@@ -314,9 +314,9 @@ require_once '../../includes/header.php';
                 <div class="form-group"><label>Costo Unitario</label><input type="text" id="historialCostoUnitario" readonly></div>
                 <div class="form-group"><label>Fecha Inicio</label><input type="text" id="historialFechaInicio" readonly></div>
                 <div class="form-group"><label>Actualizado</label><input type="text" id="historialFechaActualizacion" readonly></div>
-                <div class="form-group full"><label>Creado por</label><input type="text" id="historialCreadoPor" readonly></div>
-                <div class="form-group"><label>Lote padre</label><input type="text" id="historialLotePadre" readonly></div>
-                <div class="form-group"><label>Lotes hijos</label><input type="text" id="historialLotesHijos" readonly></div>
+                <div class="form-group"><label>Creado por</label><input type="text" id="historialCreadoPor" readonly></div>
+                <div class="form-group"><label>Lote padre</label><div id="historialLotePadre" style="padding:10px 0;">-</div></div>
+                <div class="form-group"><label>Lotes hijos</label><div id="historialLotesHijos" style="padding:10px 0;">-</div></div>
             </div>
 
             <div class="info-producto compact" style="margin-bottom: 16px; border-left-color:#059669;">
@@ -385,6 +385,11 @@ require_once '../../includes/header.php';
 .notification-success { background:#059669; }
 .notification-error { background:#dc2626; }
 .notification-warning { background:#d97706; }
+.lote-link { color:#2563eb; font-weight:700; cursor:pointer; text-decoration:underline; display:inline-block; padding:2px 4px; border-radius:4px; transition:background .2s; }
+.lote-link:hover { background:#dbeafe; }
+.badge-lote { font-size:11px; padding:3px 8px; border-radius:6px; margin-left:6px; font-weight:600; text-transform:uppercase; }
+.badge-lote-area { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+.badge-lote-estado { background:#dcfce7; color:#166534; }
 @media (max-width: 768px) { .form-grid { grid-template-columns:1fr; } }
 </style>
 
@@ -554,14 +559,17 @@ async function abrirBom(idProducto) {
     const response = await fetch(baseUrl + '/api/bom_wip.php?id_producto=' + idProducto);
     const data = await response.json();
 
-    if (data.success) {
+    if (data.success && data.bom) {
         bomActual = data.bom;
         detallesBomActual = data.detalles || [];
         document.getElementById('bomMermaGlobal').value = bomActual.merma_pct || 0;
         document.getElementById('bomObservaciones').value = bomActual.observaciones || '';
     } else {
+        // Si no hay BOM o no hubo éxito, inicializar como nuevo
         bomActual = { id_bom: null, id_producto: idProducto };
         detallesBomActual = [];
+        document.getElementById('bomMermaGlobal').value = 0;
+        document.getElementById('bomObservaciones').value = '';
     }
 
     renderBom();
@@ -851,7 +859,9 @@ async function abrirModalHistorial(idLoteWip) {
 
     historialActual = data;
     renderHistorial(data);
-    document.getElementById('modalHistorial').classList.add('show');
+    const modal = document.getElementById('modalHistorial');
+    modal.classList.add('show');
+    modal.querySelector('.modal-content').scrollTop = 0;
 }
 
 function renderHistorial(data) {
@@ -876,8 +886,36 @@ function renderHistorial(data) {
     document.getElementById('historialFechaInicio').value = lote.fecha_inicio || '-';
     document.getElementById('historialFechaActualizacion').value = lote.fecha_actualizacion || '-';
     document.getElementById('historialCreadoPor').value = lote.creado_por_nombre || lote.creado_por || '-';
-    document.getElementById('historialLotePadre').value = resumen.lote_padre || '-';
-    document.getElementById('historialLotesHijos').value = (lote.lotes_hijos || []).map(item => item.codigo_lote).join(', ') || '-';
+
+    // Navegación Lote Padre
+    const contPadre = document.getElementById('historialLotePadre');
+    if (lote.id_lote_padre) {
+        contPadre.innerHTML = `
+            <span class="lote-link" onclick="abrirModalHistorial(${lote.id_lote_padre})">
+                #${lote.id_lote_padre} - ${lote.codigo_lote_padre}
+            </span>
+            <span class="badge-lote badge-lote-area">${lote.area_padre_nombre || 'Desconocida'}</span>
+        `;
+    } else {
+        contPadre.innerHTML = '<span style="color:#94a3b8; font-style:italic;">Lote Raíz (Sin padre)</span>';
+    }
+
+    // Navegación Lotes Hijos
+    const contHijos = document.getElementById('historialLotesHijos');
+    const hijos = lote.lotes_hijos || [];
+    if (hijos.length > 0) {
+        contHijos.innerHTML = hijos.map(hijo => `
+            <div style="margin-bottom:6px;">
+                <span class="lote-link" onclick="abrirModalHistorial(${hijo.id_lote_wip})">
+                    #${hijo.id_lote_wip} - ${hijo.codigo_lote}
+                </span>
+                <span class="badge-lote badge-lote-estado">${hijo.estado_lote}</span>
+                <span class="badge-lote badge-lote-area">${hijo.area_actual_nombre || 'N/A'}</span>
+            </div>
+        `).join('');
+    } else {
+        contHijos.innerHTML = '<span style="color:#94a3b8; font-style:italic;">Sin lotes hijos</span>';
+    }
 
     document.getElementById('historialDocumentoOrigen').textContent = documento
         ? `#${documento.id_documento} | ${documento.numero_documento} | ${documento.tipo_documento || '-'} | ${documento.subtipo_documental || '-'} | ${documento.fecha_creacion || '-'} | Ref: ${documento.referencia_externa || '-'}`

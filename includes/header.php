@@ -774,9 +774,10 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                     <li><a href="#" class="menu-link"><i class="fas fa-project-diagram"></i><span
                                                 class="menu-text">Config. Flujos</span><span
                                                 class="menu-badge badge-new">Nuevo</span></a></li>
-                                    <li><a href="#" class="menu-link"><i class="fas fa-flask"></i><span
+                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/wip_fase0.php"
+                                            class="menu-link <?php echo $currentPage === 'wip_fase0' ? 'active' : ''; ?>"><i class="fas fa-flask"></i><span
                                                 class="menu-text">Recetas (BOM)</span><span
-                                                class="menu-badge badge-soon">Pronto</span></a></li>
+                                                class="menu-badge badge-new">WIP</span></a></li>
                                     <li><a href="<?php echo SITE_URL; ?>/modules/tejido/plan_generico.php"
                                             class="menu-link <?php echo $currentPage === 'plan_generico' ? 'active' : ''; ?>"><i
                                                 class="fas fa-clipboard-list"></i><span class="menu-text">Plan

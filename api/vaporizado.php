@@ -106,7 +106,7 @@ function listarVaporizados($db) {
             v.codigo_lote_vaporizado,
             v.fecha_vaporizado,
             v.id_turno,
-            t.nombre_turno,
+            t.nombre AS nombre_turno,
             v.tiempo_vapor,
             u.nombre_completo as operario,
             v.observaciones,
@@ -222,7 +222,7 @@ function obtenerDetalle($db) {
     $stmt = $db->prepare("
         SELECT 
             v.*,
-            t.nombre_turno,
+            t.nombre AS nombre_turno,
             u.nombre_completo as operario
         FROM produccion_vaporizado v
         INNER JOIN turnos t ON v.id_turno = t.id_turno

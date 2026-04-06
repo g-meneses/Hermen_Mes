@@ -82,6 +82,18 @@ try {
 
                     echo json_encode(['success' => true, 'documento' => $doc, 'lineas' => $lineas]);
                     break;
+                case 'siguiente_numero':
+                    $tipo = $_GET['tipo'] ?? 'PRODUCCION';
+                    $destino = $_GET['destino'] ?? '';
+
+                    $_GET['tipo_inventario'] = '7';
+                    $_GET['operacion'] = 'SALIDA';
+                    $_GET['tipo_movimiento'] = $tipo;
+                    $_GET['destino'] = $destino;
+                    $_GET['modo'] = 'preview';
+
+                    include 'obtener_siguiente_numero.php';
+                    exit;
             }
             break;
 
@@ -91,7 +103,8 @@ try {
 
             switch ($action) {
                 case 'crear':
-                    $tipoSalida = $input['tipo_salida'] ?? 'PRODUCCION'; // o CONSUMO
+                    $tipoSalida = $input['tipo_salida'] ?? 'PRODUCCION';
+                    $tipoConsumo = $input['tipo_consumo'] ?? null;
                     $lineas = $input['lineas'] ?? [];
                     if (empty($lineas))
                         throw new Exception("No hay líneas");
@@ -99,9 +112,31 @@ try {
                     $db->beginTransaction();
 
                     try {
-                        $codigos = ['CONSUMO' => 'C', 'MANTENIMIENTO' => 'M', 'AJUSTE' => 'A'];
-                        $letra = $codigos[$tipoSalida] ?? 'U'; // U de Uso
-                        $prefijo = "OUT-REP-$letra";
+                        $prefijo = null;
+
+                        // Lógica especial para SAL-TEJ, SAL-COS, SAL-TEN (WIP FASE 0)
+                        if ($tipoSalida === 'PRODUCCION' && !empty($tipoConsumo)) {
+                            $mapDestinos = [
+                                'TEJIDO' => 'SAL-TEJ',
+                                'COSTURA' => 'SAL-COS',
+                                'TENIDO' => 'SAL-TEN'
+                            ];
+                            if (isset($mapDestinos[$tipoConsumo])) {
+                                $prefijo = $mapDestinos[$tipoConsumo];
+                            }
+                        }
+
+                        if (!$prefijo) {
+                            $codigos = [
+                                'PRODUCCION' => 'P',
+                                'VENTA' => 'V',
+                                'MUESTRAS' => 'M',
+                                'AJUSTE' => 'A',
+                                'DEVOLUCION' => 'R'
+                            ];
+                            $letra = $codigos[$tipoSalida] ?? 'X';
+                            $prefijo = "OUT-REP-$letra";
+                        }
                         $numeroDoc = generarNumeroDocumento($db, 'SALIDA', $prefijo);
 
                         $total = 0;
@@ -109,9 +144,18 @@ try {
                             $total += ($l['cantidad'] * $l['costo_unitario']);
 
                         $stmtDoc = $db->prepare("INSERT INTO documentos_inventario (
-                            id_tipo_inventario, tipo_documento, numero_documento, fecha_documento, observaciones, estado, total_documento, creado_por, created_at, tipo_ingreso
-                        ) VALUES (?, 'SALIDA', ?, ?, ?, 'CONFIRMADO', ?, ?, NOW(), ?)");
-                        $stmtDoc->execute([$TIPO_INVENTARIO_REP, $numeroDoc, $input['fecha'] ?? date('Y-m-d'), $input['observaciones'] ?? '', $total, $_SESSION['user_id'] ?? 1, $tipoSalida]);
+                            id_tipo_inventario, tipo_documento, tipo_salida, tipo_consumo, numero_documento, fecha_documento, observaciones, estado, total_documento, creado_por, created_at
+                        ) VALUES (?, 'SALIDA', ?, ?, ?, ?, ?, 'CONFIRMADO', ?, ?, NOW())");
+                        $stmtDoc->execute([
+                            $TIPO_INVENTARIO_REP,
+                            $tipoSalida,
+                            $tipoConsumo,
+                            $numeroDoc,
+                            $input['fecha'] ?? date('Y-m-d'),
+                            $input['observaciones'] ?? '',
+                            $total,
+                            $_SESSION['user_id'] ?? 1
+                        ]);
                         $idDoc = $db->lastInsertId();
 
                         $stmtMov = $db->prepare("INSERT INTO movimientos_inventario (

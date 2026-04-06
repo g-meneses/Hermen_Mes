@@ -135,11 +135,13 @@ try {
                 case 'siguiente_numero':
                     // REDIRIGIR a API centralizada con modo preview
                     $tipo = $_GET['tipo'] ?? 'PRODUCCION';
+                    $destino = $_GET['destino'] ?? '';
 
                     // Configurar parámetros para la API centralizada
                     $_GET['tipo_inventario'] = '4'; // Accesorios
                     $_GET['operacion'] = 'SALIDA';
                     $_GET['tipo_movimiento'] = $tipo;
+                    $_GET['destino'] = $destino;
                     $_GET['modo'] = 'preview';
 
                     include 'obtener_siguiente_numero.php';
@@ -225,6 +227,7 @@ try {
                 case 'crear':
                     // Validaciones
                     $tipoSalida = $data['tipo_salida'] ?? 'PRODUCCION';
+                    $tipoConsumo = $data['tipo_consumo'] ?? null;
                     $idTipoSalida = $data['id_tipo_salida'] ?? null;
 
                     // ✅ Validación de fecha futura
@@ -307,8 +310,25 @@ try {
                             'AJUSTE_NEG' => 'A',
                             'DEVOLUCION_PROV' => 'R'
                         ];
-                        $codigoTipo = $codigosTipo[$tipoSalida] ?? 'X';
-                        $prefijo = "OUT-ACC-$codigoTipo";
+                        
+                        $prefijo = null;
+                        
+                        // Lógica especial para SAL-TEJ, SAL-COS, SAL-TEN
+                        if ($tipoSalida === 'PRODUCCION' && !empty($tipoConsumo)) {
+                            $mapDestinos = [
+                                'TEJIDO' => 'SAL-TEJ',
+                                'COSTURA' => 'SAL-COS',
+                                'TENIDO' => 'SAL-TEN'
+                            ];
+                            if (isset($mapDestinos[$tipoConsumo])) {
+                                $prefijo = $mapDestinos[$tipoConsumo];
+                            }
+                        }
+
+                        if (!$prefijo) {
+                            $codigoTipo = $codigosTipo[$tipoSalida] ?? 'X';
+                            $prefijo = "OUT-ACC-$codigoTipo";
+                        }
 
                         $numeroDoc = generarNumeroDocumento($db, 'SALIDA', $prefijo);
 
@@ -322,18 +342,19 @@ try {
                         // Insertar documento
                         $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
-                                tipo_documento, tipo_salida,
+                                tipo_documento, tipo_salida, tipo_consumo,
                                 numero_documento, fecha_documento,
                                 id_tipo_inventario, referencia_externa,
                                 moneda, subtotal, total,
                                 observaciones, estado, creado_por
                             ) VALUES (
-                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
+                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
                             )
                         ");
 
                         $stmt->execute([
                             $tipoSalida,
+                            $tipoConsumo,
                             $numeroDoc,
                             $fecha,
                             $TIPO_INVENTARIO_ACC,

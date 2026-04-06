@@ -1674,12 +1674,29 @@ async function filtrarProductosSalida() {
     renderLineasSalida();
 }
 
+function cambioTipoSalida() {
+    const tipo = document.getElementById('salidaTipo').value;
+    const seccionDestino = document.getElementById('seccionDestinoProduccion');
+    const selectDestino = document.getElementById('salidaDestino');
+
+    if (tipo === 'PRODUCCION') {
+        if (seccionDestino) seccionDestino.style.display = 'block';
+        // No limpiar destino aquí para permitir que actualizarNumeroSalida use el valor si ya está seleccionado
+    } else {
+        if (seccionDestino) seccionDestino.style.display = 'none';
+        if (selectDestino) selectDestino.value = '';
+        actualizarNumeroSalida(); // Actualizar número inmediatamente para tipos no-PRODUCCION
+    }
+}
+
 async function actualizarNumeroSalida() {
     const tipo = document.getElementById('salidaTipo').value;
+    const destino = document.getElementById('salidaDestino') ? document.getElementById('salidaDestino').value : '';
+    const docInput = document.getElementById('salidaDocumento');
+    const motivoObligatorio = document.getElementById('motivoObligatorio');
 
     // Si no hay tipo seleccionado, no hacer nada
     if (!tipo) {
-        const docInput = document.getElementById('salidaDocumento');
         if (docInput) {
             docInput.value = '';
             docInput.placeholder = 'Seleccione tipo de salida...';
@@ -1688,67 +1705,140 @@ async function actualizarNumeroSalida() {
         return;
     }
 
-    // ⭐ VERIFICAR CACHÉ: Si ya tenemos un número para este tipo, usarlo
-    if (window.numerosSalidaCache[tipo]) {
-        const docInput = document.getElementById('salidaDocumento');
+    // Si es PRODUCCION pero no hay destino, pedir destino
+    if (tipo === 'PRODUCCION' && !destino) {
         if (docInput) {
-            docInput.value = window.numerosSalidaCache[tipo];
+            docInput.value = '';
+            docInput.placeholder = 'Seleccione destino de producción...';
+            docInput.disabled = true;
+        }
+        return;
+    }
+
+    // Identificador de caché único por tipo + destino
+    const cacheKey = destino ? `${tipo}_${destino}` : tipo;
+
+    // ⭐ VERIFICAR CACHÉ
+    if (window.numerosSalidaCache[cacheKey]) {
+        if (docInput) {
+            docInput.value = window.numerosSalidaCache[cacheKey];
             docInput.disabled = false;
         }
-        console.log(`📋 Usando número en caché para salida ${tipo}:`, numerosSalidaCache[tipo]);
-
-        // Actualizar indicador de motivo
-        const motivoObligatorio = document.getElementById('motivoObligatorio');
         if (motivoObligatorio) {
             motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
         }
         return;
     }
 
+    // 🛡️ IMPLEMENTACIÓN ROBUSTA CON AbortController Y GESTIÓN DE SESIÓN
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 seg de timeout
+
     try {
-        // Mostrar indicador de carga
-        const docInput = document.getElementById('salidaDocumento');
         if (docInput) {
             docInput.value = '⏳ Generando...';
             docInput.disabled = true;
         }
 
-        const r = await fetch(`${BASE_URL_API}/salidas_mp.php?action=siguiente_numero&tipo=${tipo}`);
+        const url = `${BASE_URL_API}/salidas_mp.php?action=siguiente_numero&tipo=${tipo}&destino=${destino}`;
+        const r = await fetch(url, { signal: controller.signal });
+        
+        clearTimeout(timeoutId);
+
+        // 1. Manejar error de autorización HTTP
+        if (r.status === 401) {
+            throw new Error('SESIÓN_EXPIRADA');
+        }
+
         const d = await r.json();
 
+        // 2. Manejar éxito
         if (d.success) {
-            // ⭐ GUARDAR EN CACHÉ
-            window.numerosSalidaCache[tipo] = d.numero;
+            window.numerosSalidaCache[cacheKey] = d.numero;
             if (docInput) {
                 docInput.value = d.numero;
                 docInput.disabled = false;
-                console.log(`✅ Número de salida generado y cacheado para ${tipo}:`, d.numero);
+                console.log(`✅ Número de salida generado (${cacheKey}):`, d.numero);
             }
+        } else {
+            // 3. Manejar error lógico del servidor (ej. No autorizado en JSON)
+            if (d.message && (d.message.includes('autorizado') || d.message.includes('No autorizado'))) {
+                throw new Error('SESIÓN_EXPIRADA');
+            }
+            throw new Error(d.message || 'Error desconocido del servidor');
         }
+
     } catch (e) {
-        console.error('Error al obtener número de salida:', e);
-        // Fallback local por si falla la API
-        const prefijos = {
-            'PRODUCCION': 'OUT-MP-P',
-            'VENTA': 'OUT-MP-V',
-            'MUESTRAS': 'OUT-MP-M',
-            'AJUSTE': 'OUT-MP-A',
-            'DEVOLUCION': 'OUT-MP-R'
-        };
-        const prefijo = prefijos[tipo] || 'OUT-MP-X';
-        const docInput = document.getElementById('salidaDocumento');
-        if (docInput) {
-            const numero = generarNumeroDoc(prefijo);
-            window.numerosSalidaCache[tipo] = numero;
-            docInput.value = numero;
+        clearTimeout(timeoutId);
+        
+        if (e.name === 'AbortError') {
+            console.error('❌ Timeout al generar número de salida (8s)');
+            ejecutarFallbackLocalSalida(tipo, destino, 'Timeout de red');
+        } else if (e.message === 'SESIÓN_EXPIRADA') {
+            console.error('❌ Sesión expirada al intentar generar número');
+            Swal.fire({
+                title: 'Sesión Expirada',
+                text: 'Su sesión ha terminado o no tiene autorización. Por favor, reingrese al sistema.',
+                icon: 'warning',
+                confirmButtonText: 'Ir al Login'
+            }).then(() => {
+                window.location.href = `${window.baseUrl || baseUrl}/index.php`;
+            });
+            
+            if (docInput) {
+                docInput.value = '';
+                docInput.placeholder = 'SESIÓN EXPIRADA';
+                docInput.disabled = true;
+            }
+        } else {
+            console.error('❌ Error técnico en actualizarNumeroSalida:', e.message);
+            ejecutarFallbackLocalSalida(tipo, destino, e.message);
+        }
+    } finally {
+        // Asegurar estado consistente (quitar cargando si falló todo)
+        if (docInput && docInput.value === '⏳ Generando...') {
+            docInput.value = '';
             docInput.disabled = false;
         }
+
+        if (motivoObligatorio) {
+            motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
+        }
+    }
+}
+
+/**
+ * Fallback local cuando falla el servidor por motivos técnicos
+ */
+function ejecutarFallbackLocalSalida(tipo, destino, motivo) {
+    const prefijosBase = {
+        'PRODUCCION': 'OUT-MP-P',
+        'VENTA': 'OUT-MP-V',
+        'MUESTRAS': 'OUT-MP-M',
+        'AJUSTE': 'OUT-MP-A',
+        'DEVOLUCION': 'OUT-MP-R'
+    };
+
+    const prefijosDestino = {
+        'TEJIDO': 'SAL-TEJ',
+        'COSTURA': 'SAL-COS',
+        'TENIDO': 'SAL-TEN'
+    };
+
+    let prefijo = prefijosBase[tipo] || 'OUT-MP-X';
+    if (tipo === 'PRODUCCION' && destino && prefijosDestino[destino]) {
+        prefijo = prefijosDestino[destino];
     }
 
-    // Mostrar/ocultar indicador de motivo obligatorio
-    const motivoObligatorio = document.getElementById('motivoObligatorio');
-    if (motivoObligatorio) {
-        motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
+    const docInput = document.getElementById('salidaDocumento');
+    const cacheKey = destino ? `${tipo}_${destino}` : tipo;
+    
+    if (docInput) {
+        const numero = generarNumeroDoc(prefijo);
+        window.numerosSalidaCache[cacheKey] = numero;
+        docInput.value = numero;
+        docInput.disabled = false;
+        console.warn(`⚠️ Generado número local por error técnico (${motivo}) para ${cacheKey}:`, numero);
     }
 }
 
@@ -1873,6 +1963,17 @@ function recalcularSalida() {
 async function guardarSalida() {
     // Validaciones
     const tipo = document.getElementById('salidaTipo').value;
+    const destino = document.getElementById('salidaDestino') ? document.getElementById('salidaDestino').value : '';
+
+    if (!tipo) {
+        alert('⚠️ Seleccione el tipo de salida');
+        return;
+    }
+
+    if (tipo === 'PRODUCCION' && !destino) {
+        alert('⚠️ Debe seleccionar el destino de producción (Tejido, Costura, etc.)');
+        return;
+    }
 
     if (lineasSalida.length === 0) {
         alert('⚠️ Agregue al menos una línea');
@@ -1909,6 +2010,7 @@ async function guardarSalida() {
         action: 'crear',
         fecha: document.getElementById('salidaFecha').value,
         tipo_salida: tipo,
+        tipo_consumo: destino,
         referencia: document.getElementById('salidaReferencia').value,
         observaciones: document.getElementById('salidaObservaciones').value,
         lineas: lineasSalida.map(l => ({

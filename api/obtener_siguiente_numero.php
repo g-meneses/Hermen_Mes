@@ -96,6 +96,7 @@ try {
     $tipoInventario = $_GET['tipo_inventario'] ?? null;
     $operacion = $_GET['operacion'] ?? null; // 'INGRESO' o 'SALIDA'
     $tipoMovimiento = $_GET['tipo_movimiento'] ?? null; // 'PRODUCCION', 'VENTA', etc.
+    $destino = $_GET['destino'] ?? null; // 'TEJIDO', 'COSTURA', 'TENIDO'
     $modo = $_GET['modo'] ?? 'commit'; // 'preview' o 'commit'
 
     if (!$tipoInventario || !$operacion || !$tipoMovimiento) {
@@ -132,17 +133,32 @@ try {
     $codigoInv = $codigosInventario[$tipoInventario] ?? 'INV';
     $codigoMov = $codigosMovimiento[$tipoMovimiento] ?? 'X';
 
-    // Construir prefijo según operación
-    if (strtoupper($operacion) === 'INGRESO') {
-        $prefijo = "IN-{$codigoInv}-{$codigoMov}";
-        $tipoDoc = 'INGRESO';
-    } else {
-        $prefijo = "OUT-{$codigoInv}-{$codigoMov}";
-        $tipoDoc = 'SALIDA';
+    $prefijo = null;
+
+    // Lógica especial para SAL-TEJ, SAL-COS, SAL-TEN
+    if (strtoupper($operacion) === 'SALIDA' && $tipoMovimiento === 'PRODUCCION' && !empty($destino)) {
+        $mapDestinos = [
+            'TEJIDO' => 'SAL-TEJ',
+            'COSTURA' => 'SAL-COS',
+            'TENIDO' => 'SAL-TEN'
+        ];
+        if (isset($mapDestinos[$destino])) {
+            $prefijo = $mapDestinos[$destino];
+        }
+    }
+
+    // Si no hay prefijo especial, usar el formato estándar
+    if (!$prefijo) {
+        if (strtoupper($operacion) === 'INGRESO') {
+            $prefijo = "IN-{$codigoInv}-{$codigoMov}";
+        } else {
+            $prefijo = "OUT-{$codigoInv}-{$codigoMov}";
+        }
     }
 
     // Generar número usando la función centralizada
     $esPreview = (strtolower($modo) === 'preview');
+    $tipoDoc = strtoupper($operacion);
     $numero = generarNumeroDocumento($db, $tipoDoc, $prefijo, $esPreview);
 
     // ob_clean(); // Comentado para evitar conflictos cuando se incluye
@@ -154,7 +170,8 @@ try {
         'debug' => [
             'tipo_inventario' => $tipoInventario,
             'operacion' => $operacion,
-            'tipo_movimiento' => $tipoMovimiento
+            'tipo_movimiento' => $tipoMovimiento,
+            'destino' => $destino
         ]
     ]);
 

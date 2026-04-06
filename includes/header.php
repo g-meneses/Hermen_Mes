@@ -807,6 +807,10 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                             <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
                                                         class="menu-text">Órdenes</span><span
                                                         class="menu-badge badge-soon">Pronto</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/produccion/registrar_produccion_tejido.php"
+                                                    class="menu-link <?php echo $currentPage === 'registrar_produccion_tejido' ? 'active' : ''; ?>"><i class="fas fa-industry"></i><span
+                                                        class="menu-text">Registrar Producción</span><span
+                                                        class="menu-badge badge-new">WIP</span></a></li>
                                             <li><a href="#" class="menu-link"><i class="fas fa-clock"></i><span
                                                         class="menu-text">Por Turno</span><span
                                                         class="menu-badge badge-soon">Pronto</span></a></li>

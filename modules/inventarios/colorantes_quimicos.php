@@ -1748,13 +1748,22 @@ require_once '../../includes/permisos_inventario.php';
             <div class="form-row">
                 <div class="form-group">
                     <label>Tipo de Salida</label>
-                    <select id="salidaTipo" onchange="actualizarNumeroSalida()">
+                    <select id="salidaTipo" onchange="cambioTipoSalida()">
                         <option value="" selected disabled>Seleccione tipo de salida</option>
-                        <option value="PRODUCCION">📦 Producción (entrega a tejido)</option>
+                        <option value="PRODUCCION">📦 Producción (Entrega a Taller)</option>
                         <option value="VENTA">💰 Venta de Materias Primas</option>
                         <option value="MUESTRAS">🔬 Desarrollo de Muestras/Prototipos</option>
                         <option value="AJUSTE">⚙️ Ajuste de Inventario</option>
                         <option value="DEVOLUCION">↩️ Devolución a Proveedor</option>
+                    </select>
+                </div>
+                <div class="form-group" id="seccionDestinoProduccion" style="display:none;">
+                    <label>🏭 Destino de Producción <span style="color:red;">*</span></label>
+                    <select id="salidaDestino" onchange="actualizarNumeroSalida()">
+                        <option value="">Seleccione destino...</option>
+                        <option value="TEJIDO">🧶 TEJIDO (SAL-TEJ)</option>
+                        <option value="COSTURA">🧵 COSTURA (SAL-COS)</option>
+                        <option value="TENIDO">🧪 TEÑIDO (SAL-TEN)</option>
                     </select>
                 </div>
                 <div class="form-group">

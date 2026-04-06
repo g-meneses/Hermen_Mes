@@ -69,7 +69,19 @@ try {
             
         case 'turnos':
             // Turnos de trabajo
-            $stmt = $db->query("SELECT id_turno, nombre_turno, hora_inicio, hora_fin, activo FROM turnos WHERE activo = 1 ORDER BY hora_inicio");
+            $stmt = $db->query("
+                SELECT
+                    id_turno,
+                    codigo,
+                    nombre,
+                    nombre AS nombre_turno,
+                    hora_inicio,
+                    hora_fin,
+                    activo
+                FROM turnos
+                WHERE activo = 1
+                ORDER BY hora_inicio
+            ");
             $turnos = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             ob_clean();

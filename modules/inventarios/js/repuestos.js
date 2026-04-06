@@ -1,7 +1,7 @@
 /**
- * JavaScript para módulo Materias Primas  
+ * JavaScript para mÃ³dulo Materias Primas  
  * Sistema MES Hermen Ltda. v1.9
- * VERSIÓN CORREGIDA CON TODAS LAS FUNCIONES
+ * VERSIÃ“N CORREGIDA CON TODAS LAS FUNCIONES
  */
 
 const BASE_URL_API = window.location.origin + '/mes_hermen/api';
@@ -20,7 +20,7 @@ const codigoTipo = 'REP'; // Prefijo para Repuestos
 let subcategoriasModal = [];
 
 
-// ⭐ CACHE DE NÚMEROS DE SALIDA POR SESIÓN (accesible desde HTML onchange)
+// â­ CACHE DE NÃšMEROS DE SALIDA POR SESIÃ“N (accesible desde HTML onchange)
 window.numerosSalidaCache = {};
 window.numerosIngresoCache = {};
 
@@ -29,18 +29,18 @@ let modoConFactura = false;
 let contadorDocIngreso = 0;
 
 // ========== BLINDAJE DE UNICIDAD - Variables ==========
-let codigoValidado = true; // Estado de validación del código (true por defecto para edición)
+let codigoValidado = true; // Estado de validaciÃ³n del cÃ³digo (true por defecto para ediciÃ³n)
 
 // ========== BLINDAJE DE UNICIDAD - Funciones ==========
 /**
- * Verificar si un código ya existe en la base de datos
- * @param {string} codigo - Código a verificar
- * @param {string|null} excludeId - ID a excluir (para edición)
- * @returns {Promise<boolean>} - true si el código está disponible
+ * Verificar si un cÃ³digo ya existe en la base de datos
+ * @param {string} codigo - CÃ³digo a verificar
+ * @param {string|null} excludeId - ID a excluir (para ediciÃ³n)
+ * @returns {Promise<boolean>} - true si el cÃ³digo estÃ¡ disponible
  */
 async function verificarCodigoDuplicado(codigo, excludeId = null) {
     if (!codigo || codigo.trim() === '') {
-        actualizarBannerCodigo('loading', 'Seleccione categoría y subcategoría...');
+        actualizarBannerCodigo('loading', 'Seleccione categorÃ­a y subcategorÃ­a...');
         codigoValidado = false;
         actualizarEstadoBotonGuardar();
         return false;
@@ -58,19 +58,19 @@ async function verificarCodigoDuplicado(codigo, excludeId = null) {
         const d = await r.json();
 
         if (d.existe) {
-            actualizarBannerCodigo('error', `❌ ERROR: Código duplicado detectado. Ya existe en: "${d.producto_existente}". Por favor, ajuste el sufijo.`);
+            actualizarBannerCodigo('error', `âŒ ERROR: CÃ³digo duplicado detectado. Ya existe en: "${d.producto_existente}". Por favor, ajuste el sufijo.`);
             codigoValidado = false;
             actualizarEstadoBotonGuardar();
             return false;
         } else {
-            actualizarBannerCodigo('ok', '✅ Código disponible');
+            actualizarBannerCodigo('ok', 'âœ… CÃ³digo disponible');
             codigoValidado = true;
             actualizarEstadoBotonGuardar();
             return true;
         }
     } catch (e) {
-        console.error('Error verificando código:', e);
-        actualizarBannerCodigo('error', '⚠️ Error al verificar código. Intente nuevamente.');
+        console.error('Error verificando cÃ³digo:', e);
+        actualizarBannerCodigo('error', 'âš ï¸ Error al verificar cÃ³digo. Intente nuevamente.');
         codigoValidado = false;
         actualizarEstadoBotonGuardar();
         return false;
@@ -121,7 +121,7 @@ function ocultarBannerCodigo() {
     }
 }
 
-// ========== INICIALIZACIÓN ==========
+// ========== INICIALIZACIÃ“N ==========
 document.addEventListener('DOMContentLoaded', cargarDatos);
 
 async function cargarDatos() {
@@ -173,12 +173,12 @@ async function cargarKPIs() {
     } catch (e) { console.error('Error KPIs:', e); }
 }
 
-// ========== CATEGORÍAS ==========
+// ========== CATEGORÃAS ==========
 async function cargarCategorias() {
     try {
         const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias&tipo_id=${TIPO_ID}`);
         const d = await r.json();
-        console.log('Respuesta Categorías:', d);
+        console.log('Respuesta CategorÃ­as:', d);
 
         if (d.success && d.categorias) {
             categorias = d.categorias.map(cat => ({
@@ -214,13 +214,13 @@ async function cargarCategorias() {
         } else {
             document.getElementById('kpiCategorias').textContent = 0;
         }
-    } catch (e) { console.error('Error categorías:', e); }
+    } catch (e) { console.error('Error categorÃ­as:', e); }
 }
 
 function renderCategorias() {
     const grid = document.getElementById('categoriasGrid');
     if (categorias.length === 0) {
-        grid.innerHTML = '<p style="padding:20px;text-align:center;">No hay categorías</p>';
+        grid.innerHTML = '<p style="padding:20px;text-align:center;">No hay categorÃ­as</p>';
         return;
     }
 
@@ -283,7 +283,7 @@ async function seleccionarCategoria(idCategoria) {
             if (sinSubcategoria.total_items > 0) {
                 subcategorias.unshift({
                     id_subcategoria: 0,
-                    nombre: '📦 Sin Clasificar',
+                    nombre: 'ðŸ“¦ Sin Clasificar',
                     total_items: sinSubcategoria.total_items,
                     valor_total: sinSubcategoria.valor_total,
                     alertas: sinSubcategoria.alertas
@@ -293,7 +293,7 @@ async function seleccionarCategoria(idCategoria) {
             const catData = categorias.find(c => c.id_categoria == idCategoria);
             subcategorias.unshift({
                 id_subcategoria: -1,
-                nombre: '👁️ Ver Todos',
+                nombre: 'ðŸ‘ï¸ Ver Todos',
                 total_items: catData?.total_items || 0,
                 valor_total: catData?.valor_total || 0,
                 alertas: catData?.alertas || 0
@@ -305,7 +305,7 @@ async function seleccionarCategoria(idCategoria) {
             cargarProductosCategoria(idCategoria);
         }
     } catch (e) {
-        console.error('Error subcategorías:', e);
+        console.error('Error subcategorÃ­as:', e);
         document.getElementById('subcategoriasSection').style.display = 'none';
         cargarProductosCategoria(idCategoria);
     }
@@ -318,21 +318,21 @@ async function verDetalleDocumento(docNumero) {
         const d = await r.json();
 
         if (d.success) {
-            // CORRECCIÓN CRITICA: Usar d.lineas si existe, si no d.detalle
+            // CORRECCIÃ“N CRITICA: Usar d.lineas si existe, si no d.detalle
             mostrarDetalleDocumento(d.cabecera, d.lineas || d.detalle);
         } else {
             Swal.fire('Error', d.message || 'No se pudo cargar el detalle', 'error');
         }
     } catch (e) {
         console.error('Error cargando detalle:', e);
-        Swal.fire('Error', 'Error de conexión al cargar detalle', 'error');
+        Swal.fire('Error', 'Error de conexiÃ³n al cargar detalle', 'error');
     }
 }
 
 function mostrarDetalleDocumento(doc, detalle) {
     const contenedor = document.getElementById('detalleContenido');
 
-    // Color según tipo
+    // Color segÃºn tipo
     let color = '#6c757d';
     if (doc.tipo_movimiento && doc.tipo_movimiento.includes('ENTRADA')) color = '#28a745';
     else if (doc.tipo_movimiento && doc.tipo_movimiento.includes('SALIDA')) color = '#dc3545';
@@ -361,7 +361,7 @@ function mostrarDetalleDocumento(doc, detalle) {
             <table class="tabla-lineas" style="font-size:0.9rem;">
                 <thead style="background:#2c3e50; color:white;">
                     <tr>
-                        <th style="padding:10px;">Código</th>
+                        <th style="padding:10px;">CÃ³digo</th>
                         <th>Producto</th>
                         <th style="text-align:right">Cant.</th>
                         <th style="text-align:right">Costo U.</th>
@@ -399,7 +399,7 @@ function mostrarDetalleDocumento(doc, detalle) {
 
     contenedor.innerHTML = html;
 
-    // Configurar botón de anular
+    // Configurar botÃ³n de anular
     const btnAnular = document.getElementById('btnAnularDetalle');
     if (btnAnular) {
         if (doc.estado === 'ACTIVO' || doc.estado === 'CONFIRMADO') {
@@ -521,7 +521,7 @@ function renderProductos() {
 
         let estado = 'ok', estadoTxt = 'OK';
         if (stock <= 0) { estado = 'sin-stock'; estadoTxt = 'Sin Stock'; }
-        else if (stock <= stockMin) { estado = 'critico'; estadoTxt = 'Crítico'; }
+        else if (stock <= stockMin) { estado = 'critico'; estadoTxt = 'CrÃ­tico'; }
         else if (stock <= stockMin * 1.5) { estado = 'bajo'; estadoTxt = 'Bajo'; }
 
         return `<tr>
@@ -627,7 +627,7 @@ function abrirModalNuevoItem() {
     document.getElementById('modalItemTitulo').textContent = 'Nuevo Item de Repuesto';
     poblarSelects();
 
-    // Resetear a modo automático
+    // Resetear a modo automÃ¡tico
     modoManual = false;
     document.getElementById('codigoAutomaticoView').style.display = 'block';
     document.getElementById('codigoManualView').style.display = 'none';
@@ -635,7 +635,7 @@ function abrirModalNuevoItem() {
     document.getElementById('sufijoPersonalizadoRow').style.display = 'none';
     document.getElementById('itemSufijo').value = '';
 
-    // ========== BLINDAJE: Resetear estado de validación ==========
+    // ========== BLINDAJE: Resetear estado de validaciÃ³n ==========
     codigoValidado = false;
     ocultarBannerCodigo();
     actualizarEstadoBotonGuardar();
@@ -643,7 +643,7 @@ function abrirModalNuevoItem() {
     // Listeners
     document.getElementById('itemSubcategoria').onchange = actualizarCodigoSugerido;
 
-    // ========== BLINDAJE: Listener para código manual ==========
+    // ========== BLINDAJE: Listener para cÃ³digo manual ==========
     const codigoManual = document.getElementById('itemCodigoManual');
     if (codigoManual) {
         codigoManual.addEventListener('blur', function () {
@@ -657,7 +657,7 @@ function abrirModalNuevoItem() {
 
 async function editarItem(id) {
     const item = productosCompletos.find(p => p.id_inventario == id);
-    if (!item) { Swal.fire('Error', '❌ No se encontró el item', 'error'); return; }
+    if (!item) { Swal.fire('Error', 'âŒ No se encontrÃ³ el item', 'error'); return; }
 
     poblarSelects();
     document.getElementById('itemId').value = item.id_inventario;
@@ -672,7 +672,7 @@ async function editarItem(id) {
     document.getElementById('itemCosto').value = item.costo_unitario || item.costo_promedio || 0;
     document.getElementById('itemDescripcion').value = item.descripcion || '';
 
-    // Configurar modo manual para edición
+    // Configurar modo manual para ediciÃ³n
     modoManual = true;
     document.getElementById('codigoPreviewSection').style.display = 'none';
     document.getElementById('codigoAutomaticoView').style.display = 'none';
@@ -682,9 +682,9 @@ async function editarItem(id) {
 
     document.getElementById('modalItemTitulo').textContent = 'Editar Item: ' + item.codigo;
 
-    // ========== BLINDAJE: En edición, código ya existe - permitir guardar ==========
+    // ========== BLINDAJE: En ediciÃ³n, cÃ³digo ya existe - permitir guardar ==========
     codigoValidado = true;
-    actualizarBannerCodigo('ok', '✅ Editando item existente: ' + item.codigo);
+    actualizarBannerCodigo('ok', 'âœ… Editando item existente: ' + item.codigo);
     actualizarEstadoBotonGuardar();
 
     document.getElementById('modalItem').classList.add('show');
@@ -693,7 +693,7 @@ async function editarItem(id) {
 async function cargarSubcategoriasItem() {
     const catId = document.getElementById('itemCategoria').value;
     const subSelect = document.getElementById('itemSubcategoria');
-    subSelect.innerHTML = '<option value="">Sin subcategoría</option>';
+    subSelect.innerHTML = '<option value="">Sin subcategorÃ­a</option>';
     subcategoriasModal = []; // Reset
 
     if (!catId) {
@@ -706,15 +706,15 @@ async function cargarSubcategoriasItem() {
         const d = await r.json();
 
         // Limpiar de nuevo para asegurar
-        subSelect.innerHTML = '<option value="">Sin subcategoría</option>';
+        subSelect.innerHTML = '<option value="">Sin subcategorÃ­a</option>';
 
         if (d.success && d.subcategorias) {
             subcategoriasModal = d.subcategorias;
             d.subcategorias.forEach(s => {
                 subSelect.innerHTML += `<option value="${s.id_subcategoria}">${s.nombre}</option>`;
             });
-            // Si el item tenía una subcategoría seleccionada (en edición), re-seleccionarla
-            // Pero aquí estamos en 'cargarSubcategoriasItem' que se llama al cambiar categoría.
+            // Si el item tenÃ­a una subcategorÃ­a seleccionada (en ediciÃ³n), re-seleccionarla
+            // Pero aquÃ­ estamos en 'cargarSubcategoriasItem' que se llama al cambiar categorÃ­a.
             // En 'editarItem', llamamos a cargarSubcategoriasItem y luego setteamos valor.
         }
 
@@ -746,9 +746,9 @@ function poblarSelects() {
 async function guardarItem() {
     const id = document.getElementById('itemId').value;
 
-    // ========== BLINDAJE: Verificar validación de código ==========
+    // ========== BLINDAJE: Verificar validaciÃ³n de cÃ³digo ==========
     if (!codigoValidado && !id) {
-        Swal.fire('Error', '❌ El código no ha sido validado o está duplicado. Verifique antes de guardar.', 'error');
+        Swal.fire('Error', 'âŒ El cÃ³digo no ha sido validado o estÃ¡ duplicado. Verifique antes de guardar.', 'error');
         return;
     }
 
@@ -763,19 +763,19 @@ async function guardarItem() {
     }
 
     if (!nombre) {
-        Swal.fire('Atención', 'El nombre es obligatorio', 'warning');
+        Swal.fire('AtenciÃ³n', 'El nombre es obligatorio', 'warning');
         return;
     }
     if (!categoria) {
-        Swal.fire('Atención', 'La categoría es obligatoria', 'warning');
+        Swal.fire('AtenciÃ³n', 'La categorÃ­a es obligatoria', 'warning');
         return;
     }
     if (!unidad) {
-        Swal.fire('Atención', 'La unidad de medida es obligatoria', 'warning');
+        Swal.fire('AtenciÃ³n', 'La unidad de medida es obligatoria', 'warning');
         return;
     }
     if (!codigoFinal) {
-        Swal.fire('Atención', 'El código es obligatorio', 'warning');
+        Swal.fire('AtenciÃ³n', 'El cÃ³digo es obligatorio', 'warning');
         return;
     }
 
@@ -798,14 +798,14 @@ async function guardarItem() {
 
 
     try {
-        // CORRECCIÓN: Usar API general con POST y action determinado
+        // CORRECCIÃ“N: Usar API general con POST y action determinado
         const r = await fetch(`${baseUrl}/api/centro_inventarios.php`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
 
-        // Verificar si la respuesta es JSON válido
+        // Verificar si la respuesta es JSON vÃ¡lido
         const text = await r.text();
 
         let d;
@@ -813,13 +813,13 @@ async function guardarItem() {
             d = JSON.parse(text);
         } catch (e) {
             console.error('Error parseando JSON:', e);
-            throw new Error('Respuesta inválida del servidor');
+            throw new Error('Respuesta invÃ¡lida del servidor');
         }
 
         if (d.success) {
             Swal.fire({
                 icon: 'success',
-                title: '¡Guardado con éxito!',
+                title: 'Â¡Guardado con Ã©xito!',
                 text: d.message || 'El item ha sido registrado correctamente.',
                 showConfirmButton: true,
                 confirmButtonText: 'Aceptar',
@@ -835,7 +835,7 @@ async function guardarItem() {
         }
     } catch (e) {
         console.error('Error en guardarItem:', e);
-        Swal.fire('Error', 'Ocurrió un error al procesar la solicitud. Ver consola.', 'error');
+        Swal.fire('Error', 'OcurriÃ³ un error al procesar la solicitud. Ver consola.', 'error');
     }
 }
 
@@ -901,7 +901,7 @@ function actualizarInfoProveedor() {
     const pago = opt.dataset.pago;
 
     document.getElementById('infoProveedorTipo').className = `badge-tipo ${tipo === 'LOCAL' ? 'local' : 'import'}`;
-    document.getElementById('infoProveedorTipo').textContent = tipo === 'LOCAL' ? '🇧🇴 LOCAL' : '🌎 IMPORTACIÓN';
+    document.getElementById('infoProveedorTipo').textContent = tipo === 'LOCAL' ? 'ðŸ‡§ðŸ‡´ LOCAL' : 'ðŸŒŽ IMPORTACIÃ“N';
 
     document.getElementById('infoProveedorMoneda').className = `badge-moneda ${moneda === 'USD' ? 'usd' : 'bob'}`;
     document.getElementById('infoProveedorMoneda').textContent = moneda || 'BOB';
@@ -912,9 +912,9 @@ function actualizarInfoProveedor() {
 
 function poblarFiltrosCategorias() {
     const selectCat = document.getElementById('ingresoFiltroCat');
-    selectCat.innerHTML = '<option value="">Todas las categorías</option>' +
+    selectCat.innerHTML = '<option value="">Todas las categorÃ­as</option>' +
         categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
-    document.getElementById('ingresoFiltroSubcat').innerHTML = '<option value="">Todas las subcategorías</option>';
+    document.getElementById('ingresoFiltroSubcat').innerHTML = '<option value="">Todas las subcategorÃ­as</option>';
 }
 
 async function filtrarProductosIngreso() {
@@ -928,17 +928,17 @@ async function filtrarProductosIngreso() {
             if (d.success && d.subcategorias) {
                 const selectSubcat = document.getElementById('ingresoFiltroSubcat');
                 selectSubcat.innerHTML =
-                    '<option value="">Todas las subcategorías</option>' +
+                    '<option value="">Todas las subcategorÃ­as</option>' +
                     d.subcategorias.map(s => `<option value="${s.id_subcategoria}">${s.nombre}</option>`).join('');
 
-                // CORRECCIÓN: Restaurar el valor seleccionado después de recargar opciones
+                // CORRECCIÃ“N: Restaurar el valor seleccionado despuÃ©s de recargar opciones
                 if (subcatId) {
                     selectSubcat.value = subcatId;
                 }
             }
         } catch (e) { console.error(e); }
     } else {
-        document.getElementById('ingresoFiltroSubcat').innerHTML = '<option value="">Todas las subcategorías</option>';
+        document.getElementById('ingresoFiltroSubcat').innerHTML = '<option value="">Todas las subcategorÃ­as</option>';
     }
 
     productosFiltrados = productosCompletos.filter(p => {
@@ -975,22 +975,22 @@ function renderLineasIngreso() {
 
     // Validar que hay un tipo de ingreso seleccionado
     if (!tipoIngresoActual) {
-        console.warn('⚠️ No hay tipo de ingreso seleccionado');
+        console.warn('âš ï¸ No hay tipo de ingreso seleccionado');
         tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px;">Seleccione un tipo de ingreso</td></tr>';
         return;
     }
 
-    // Obtener configuración de columnas
+    // Obtener configuraciÃ³n de columnas
     const configColumnas = obtenerConfiguracionColumnas();
     if (!configColumnas) {
-        console.error('❌ No se pudo obtener configuración de columnas');
+        console.error('âŒ No se pudo obtener configuraciÃ³n de columnas');
         return;
     }
 
 
 
     const columnas = configColumnas.columnas;
-    console.log('📋 Renderizando con', columnas.length, 'columnas para tipo:', tipoIngresoActual.codigo);
+    console.log('ðŸ“‹ Renderizando con', columnas.length, 'columnas para tipo:', tipoIngresoActual.codigo);
 
     // 1. ACTUALIZAR ENCABEZADO (thead)
     thead.innerHTML = `
@@ -1006,20 +1006,20 @@ function renderLineasIngreso() {
         </tr>
     `;
 
-    // 2. Si no hay líneas, agregar una
+    // 2. Si no hay lÃ­neas, agregar una
     if (lineasIngreso.length === 0) {
         agregarLineaIngreso();
         return;
     }
 
-    // 3. RENDERIZAR FILAS (tbody) según el tipo de ingreso
+    // 3. RENDERIZAR FILAS (tbody) segÃºn el tipo de ingreso
     tbody.innerHTML = lineasIngreso.map((l, i) => {
         const prod = productosCompletos.find(p => p.id_inventario == l.id_inventario);
         const unidad = prod ? (prod.unidad_abrev || prod.abreviatura || prod.unidad || 'kg') : '-';
         const cantidad = toNum(l.cantidad);
         const valorTotal = toNum(l.valor_total_item);
 
-        // Estilo común para inputs
+        // Estilo comÃºn para inputs
         const inputStyle = "width:100%; padding:6px; font-weight:600; text-align:right; border:1px solid #ddd; border-radius:4px;";
 
         // =======================================
@@ -1098,7 +1098,7 @@ function renderLineasIngreso() {
         }
 
         // =======================================
-        // TIPO: DEVOLUCIÓN DE PRODUCCIÓN
+        // TIPO: DEVOLUCIÃ“N DE PRODUCCIÃ“N
         // =======================================
         else if (tipoIngresoActual.codigo === 'DEVOLUCION_PROD') {
             const costoPromedio = prod ? (toNum(prod.costo_promedio) || toNum(prod.costo_unitario)) : 0;
@@ -1160,7 +1160,7 @@ function renderLineasIngreso() {
 }
 
 // ========================================
-// NUEVAS FUNCIONES DE CÁLCULO POR TIPO
+// NUEVAS FUNCIONES DE CÃLCULO POR TIPO
 // ========================================
 
 /**
@@ -1186,7 +1186,7 @@ function calcularLineaIngresoInicial(index) {
 }
 
 /**
- * Calcular para DEVOLUCIÓN DE PRODUCCIÓN
+ * Calcular para DEVOLUCIÃ“N DE PRODUCCIÃ“N
  * Usuario ingresa: Cantidad
  * Sistema usa: Costo Promedio del producto (readonly)
  * Sistema calcula: Valor Total
@@ -1194,7 +1194,7 @@ function calcularLineaIngresoInicial(index) {
 function calcularLineaIngresoDevolucion(index) {
     const cantidad = toNum(document.getElementById(`ingCant_${index}`).value);
 
-    console.log('🔢 Cantidad ingresada:', cantidad);
+    console.log('ðŸ”¢ Cantidad ingresada:', cantidad);
 
     lineasIngreso[index].cantidad = cantidad;
 
@@ -1202,32 +1202,32 @@ function calcularLineaIngresoDevolucion(index) {
     const idProd = lineasIngreso[index].id_inventario;
 
     if (!idProd) {
-        console.warn('⚠️ Seleccione un producto primero');
+        console.warn('âš ï¸ Seleccione un producto primero');
         return;
     }
 
     const prod = productosCompletos.find(p => p.id_inventario == idProd);
     const costoPromedio = prod ? (toNum(prod.costo_promedio) || toNum(prod.costo_unitario)) : 0;
 
-    console.log(`📊 Producto: ${prod?.nombre || 'N/A'}`);
-    console.log(`💰 CPP usado: ${costoPromedio}`);
+    console.log(`ðŸ“Š Producto: ${prod?.nombre || 'N/A'}`);
+    console.log(`ðŸ’° CPP usado: ${costoPromedio}`);
 
     lineasIngreso[index].costo_unitario = costoPromedio;
     lineasIngreso[index].valor_total_item = cantidad * costoPromedio;
 
-    console.log(`💵 Valor Total = ${cantidad} × ${costoPromedio} = ${cantidad * costoPromedio}`);
+    console.log(`ðŸ’µ Valor Total = ${cantidad} Ã— ${costoPromedio} = ${cantidad * costoPromedio}`);
 
     // Actualizar celdas en la tabla
     const elCPP = document.getElementById(`res_cpp_${index}`);
     if (elCPP) {
         elCPP.textContent = formatNum(costoPromedio, 4);
-        console.log('✅ CPP actualizado en tabla');
+        console.log('âœ… CPP actualizado en tabla');
     }
 
     const elTotal = document.getElementById(`res_total_${index}`);
     if (elTotal) {
         elTotal.textContent = formatNum(cantidad * costoPromedio, 2);
-        console.log('✅ Total actualizado en tabla');
+        console.log('âœ… Total actualizado en tabla');
     }
 
     recalcularIngreso();
@@ -1241,14 +1241,14 @@ function calcularLineaIngresoDevolucion(index) {
 function calcularLineaIngresoAjuste(index) {
     const cantidad = toNum(document.getElementById(`ingCant_${index}`).value);
 
-    console.log('🔢 Cantidad ingresada (Ajuste):', cantidad);
+    console.log('ðŸ”¢ Cantidad ingresada (Ajuste):', cantidad);
 
     lineasIngreso[index].cantidad = cantidad;
 
     const idProd = lineasIngreso[index].id_inventario;
 
     if (!idProd) {
-        console.warn('⚠️ Seleccione un producto primero');
+        console.warn('âš ï¸ Seleccione un producto primero');
         return;
     }
 
@@ -1266,25 +1266,25 @@ function calcularLineaIngresoAjuste(index) {
         }
     }
 
-    console.log(`📊 Producto (Ajuste): ${prod?.nombre || 'N/A'}`);
-    console.log(`💰 CPP usado (Ajuste): ${costoPromedio}`);
+    console.log(`ðŸ“Š Producto (Ajuste): ${prod?.nombre || 'N/A'}`);
+    console.log(`ðŸ’° CPP usado (Ajuste): ${costoPromedio}`);
 
     lineasIngreso[index].costo_unitario = costoPromedio;
     lineasIngreso[index].valor_total_item = cantidad * costoPromedio;
 
-    console.log(`💵 Valor Total = ${cantidad} × ${costoPromedio} = ${cantidad * costoPromedio}`);
+    console.log(`ðŸ’µ Valor Total = ${cantidad} Ã— ${costoPromedio} = ${cantidad * costoPromedio}`);
 
     // Actualizar celdas
     const elCPP = document.getElementById(`res_cpp_${index}`);
     if (elCPP) {
         elCPP.textContent = formatNum(costoPromedio, 4);
-        console.log('✅ CPP actualizado en tabla');
+        console.log('âœ… CPP actualizado en tabla');
     }
 
     const elTotal = document.getElementById(`res_total_${index}`);
     if (elTotal) {
         elTotal.textContent = formatNum(cantidad * costoPromedio, 2);
-        console.log('✅ Total actualizado en tabla');
+        console.log('âœ… Total actualizado en tabla');
     }
 
     recalcularIngreso();
@@ -1292,35 +1292,35 @@ function calcularLineaIngresoAjuste(index) {
 
 
 // ========================================
-// NUEVA FUNCIÓN: Navegación con TAB
+// NUEVA FUNCIÃ“N: NavegaciÃ³n con TAB
 // ========================================
 
 function handleTabNavigation(event, index, field) {
     // Solo actuar si es la tecla TAB
     if (event.key !== 'Tab' && event.keyCode !== 9) return;
 
-    // Detener el salto automático del navegador
+    // Detener el salto automÃ¡tico del navegador
     event.preventDefault();
 
     setTimeout(() => {
         if (field === 'cantidad') {
-            // Ir al siguiente campo según el tipo
+            // Ir al siguiente campo segÃºn el tipo
             let nextField = null;
 
             if (tipoIngresoActual.codigo === 'COMPRA') {
-                // COMPRA: Cantidad → Valor
+                // COMPRA: Cantidad â†’ Valor
                 nextField = document.getElementById(`ingValor_${index}`);
             } else if (tipoIngresoActual.codigo === 'INICIAL') {
-                // INVENTARIO INICIAL: Cantidad → Costo
+                // INVENTARIO INICIAL: Cantidad â†’ Costo
                 nextField = document.getElementById(`ingCosto_${index}`);
             } else if (tipoIngresoActual.codigo === 'AJUSTE_POS') {
-                // AJUSTE POSITIVO: Cantidad → Siguiente línea (como devolución)
+                // AJUSTE POSITIVO: Cantidad â†’ Siguiente lÃ­nea (como devoluciÃ³n)
                 nextField = document.getElementById(`ingCant_${index + 1}`);
                 if (!nextField) {
                     nextField = document.getElementById(`ingCant_0`);
                 }
             } else if (tipoIngresoActual.codigo === 'DEVOLUCION_PROD') {
-                // DEVOLUCIÓN: Cantidad → Siguiente línea (no hay más campos)
+                // DEVOLUCIÃ“N: Cantidad â†’ Siguiente lÃ­nea (no hay mÃ¡s campos)
                 nextField = document.getElementById(`ingCant_${index + 1}`);
                 if (!nextField) {
                     // Si no hay siguiente, volver a la primera
@@ -1334,7 +1334,7 @@ function handleTabNavigation(event, index, field) {
             }
 
         } else if (field === 'valor' || field === 'costo') {
-            // Desde Valor o Costo → ir a Cantidad de la siguiente fila
+            // Desde Valor o Costo â†’ ir a Cantidad de la siguiente fila
             const nextCantField = document.getElementById(`ingCant_${index + 1}`);
 
             if (nextCantField) {
@@ -1353,11 +1353,11 @@ function handleTabNavigation(event, index, field) {
                 }
             }
         }
-    }, 50); // 50ms como en la versión original que funcionaba
+    }, 50); // 50ms como en la versiÃ³n original que funcionaba
 }
 
 
-// NUEVA FUNCIÓN: Formatear input al perder foco
+// NUEVA FUNCIÃ“N: Formatear input al perder foco
 function formatearInputNumerico(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -1372,7 +1372,7 @@ function formatearInputNumerico(inputId) {
     input.value = formatNum(valor, 2);
 }
 
-// NUEVA FUNCIÓN: Limpiar formato al enfocar (para editar)
+// NUEVA FUNCIÃ“N: Limpiar formato al enfocar (para editar)
 function limpiarFormatoInput(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -1429,9 +1429,9 @@ function seleccionarProductoIngreso(index) {
 
     lineasIngreso[index].id_inventario = idInventario;
 
-    console.log('📦 Producto seleccionado ID:', idInventario);
+    console.log('ðŸ“¦ Producto seleccionado ID:', idInventario);
 
-    // Para Devolución y Ajuste Positivo, cargar CPP automáticamente
+    // Para DevoluciÃ³n y Ajuste Positivo, cargar CPP automÃ¡ticamente
     if (tipoIngresoActual && (tipoIngresoActual.codigo === 'DEVOLUCION_PROD' || tipoIngresoActual.codigo === 'AJUSTE_POS') && idInventario) {
         const prod = productosCompletos.find(p => p.id_inventario == idInventario);
 
@@ -1447,12 +1447,12 @@ function seleccionarProductoIngreso(index) {
             }
 
             lineasIngreso[index].costo_unitario = cpp;
-            console.log('💰 CPP cargado:', cpp);
+            console.log('ðŸ’° CPP cargado:', cpp);
 
             const cantidad = toNum(lineasIngreso[index].cantidad);
             if (cantidad > 0) {
                 lineasIngreso[index].valor_total_item = cantidad * cpp;
-                console.log('💵 Valor calculado:', cantidad * cpp);
+                console.log('ðŸ’µ Valor calculado:', cantidad * cpp);
             }
         }
     }
@@ -1462,7 +1462,7 @@ function seleccionarProductoIngreso(index) {
 
 function eliminarLineaIngreso(index) {
     if (lineasIngreso.length === 1) {
-        Swal.fire('Atención', 'Debe haber al menos una línea', 'warning');
+        Swal.fire('AtenciÃ³n', 'Debe haber al menos una lÃ­nea', 'warning');
         return;
 
     }
@@ -1504,16 +1504,16 @@ async function guardarIngreso() {
             return;
         }
 
-        // 2. Obtener configuración del tipo
+        // 2. Obtener configuraciÃ³n del tipo
         const config = tiposIngresoConfig[tipoId];
         if (!config) {
-            mostrarAlerta('Configuración del tipo de ingreso no encontrada', 'error');
+            mostrarAlerta('ConfiguraciÃ³n del tipo de ingreso no encontrada', 'error');
             return;
         }
 
-        console.log('💾 Guardando ingreso tipo:', config.nombre);
+        console.log('ðŸ’¾ Guardando ingreso tipo:', config.nombre);
 
-        // 3. VALIDACIONES DINÁMICAS según tipo
+        // 3. VALIDACIONES DINÃMICAS segÃºn tipo
 
         // 3.1 Validar PROVEEDOR (Solo para COMPRAS)
         if (config.codigo === 'COMPRA') {
@@ -1524,11 +1524,11 @@ async function guardarIngreso() {
             }
         }
 
-        // 3.2 Validar ÁREA DE PRODUCCIÓN (solo si es requerido)
+        // 3.2 Validar ÃREA DE PRODUCCIÃ“N (solo si es requerido)
         if (config.requiere_area_produccion) {
             const areaId = document.getElementById('ingresoArea').value;
             if (!areaId) {
-                mostrarAlerta('Seleccione el área que devuelve', 'error');
+                mostrarAlerta('Seleccione el Ã¡rea que devuelve', 'error');
                 return;
             }
         }
@@ -1542,11 +1542,11 @@ async function guardarIngreso() {
             }
         }
 
-        // 3.4 Validar AUTORIZACIÓN (solo si es requerido)
+        // 3.4 Validar AUTORIZACIÃ“N (solo si es requerido)
         if (config.requiere_autorizacion && config.codigo !== 'AJUSTE_POS') {
             const autorizadoPor = document.getElementById('ingresoAutorizadoPor').value;
             if (!autorizadoPor) {
-                mostrarAlerta('Seleccione quién autoriza', 'error');
+                mostrarAlerta('Seleccione quiÃ©n autoriza', 'error');
                 return;
             }
         }
@@ -1555,18 +1555,18 @@ async function guardarIngreso() {
         if (config.observaciones_obligatorias) {
             const obs = document.getElementById('ingresoObservaciones').value.trim();
             if (!obs || obs.length < config.minimo_caracteres_obs) {
-                mostrarAlerta(`Las observaciones son obligatorias (mínimo ${config.minimo_caracteres_obs} caracteres)`, 'error');
+                mostrarAlerta(`Las observaciones son obligatorias (mÃ­nimo ${config.minimo_caracteres_obs} caracteres)`, 'error');
                 return;
             }
         }
 
-        // 4. Validar que haya líneas
+        // 4. Validar que haya lÃ­neas
         if (!lineasIngreso || lineasIngreso.length === 0) {
-            mostrarAlerta('Debe agregar al menos una línea de productos', 'error');
+            mostrarAlerta('Debe agregar al menos una lÃ­nea de productos', 'error');
             return;
         }
 
-        // 5. Construir objeto de datos según tipo
+        // 5. Construir objeto de datos segÃºn tipo
         const datosIngreso = {
             action: 'crear',
             id_tipo_ingreso: tipoId,
@@ -1575,7 +1575,7 @@ async function guardarIngreso() {
             lineas: lineasIngreso
         };
         //datosIngreso.tipo_ingreso = config.codigo;
-        // 6. Agregar campos específicos según tipo
+        // 6. Agregar campos especÃ­ficos segÃºn tipo
 
         // 6.1 COMPRA A PROVEEDOR
         if (config.codigo === 'COMPRA') {
@@ -1591,7 +1591,7 @@ async function guardarIngreso() {
             datosIngreso.responsable_conteo = document.getElementById('ingresoResponsableConteo').value || null;
         }
 
-        // 6.3 DEVOLUCIÓN DE PRODUCCIÓN
+        // 6.3 DEVOLUCIÃ“N DE PRODUCCIÃ“N
         else if (config.codigo === 'DEVOLUCION_PROD') {
             datosIngreso.id_area_produccion = parseInt(document.getElementById('ingresoArea').value);
             datosIngreso.motivo_ingreso = document.getElementById('ingresoMotivo').value;
@@ -1604,7 +1604,7 @@ async function guardarIngreso() {
             // No enviar autorizado_por
         }
 
-        console.log('📦 Datos a enviar:', datosIngreso);
+        console.log('ðŸ“¦ Datos a enviar:', datosIngreso);
 
         // 7. Enviar al servidor
         const response = await fetch(`${BASE_URL_API}/ingresos_rep.php`, {
@@ -1620,7 +1620,7 @@ async function guardarIngreso() {
         if (resultado.success) {
             cerrarModal('modalIngreso');
             Swal.fire({
-                title: '¡Registrado!',
+                title: 'Â¡Registrado!',
                 text: `Ingreso ${resultado.numero_documento || ''} registrado exitosamente.`,
                 icon: 'success',
                 confirmButtonText: 'Continuar'
@@ -1632,7 +1632,7 @@ async function guardarIngreso() {
         }
 
     } catch (error) {
-        console.error('❌ Error en guardarIngreso:', error);
+        console.error('âŒ Error en guardarIngreso:', error);
         mostrarAlerta('Error al procesar el ingreso: ' + error.message, 'error');
     }
 }
@@ -1648,14 +1648,14 @@ function cerrarModal(modalId) {
 }
 
 // ========== MODALES SALIDA, HISTORIAL, DETALLE, KARDEX ==========
-// (Aquí irían las funciones de los otros modales - las omito por espacio pero están en el original)
+// (AquÃ­ irÃ­an las funciones de los otros modales - las omito por espacio pero estÃ¡n en el original)
 
 // ========== MODAL SALIDA ==========
 
 let productosFiltradosSalida = [];
 
 function abrirModalSalida() {
-    // Tipo por defecto vacío
+    // Tipo por defecto vacÃ­o
     document.getElementById('salidaTipo').value = '';
 
     // Limpiar documento
@@ -1673,10 +1673,10 @@ function abrirModalSalida() {
     document.getElementById('salidaReferencia').value = '';
     document.getElementById('salidaObservaciones').value = '';
 
-    // Poblar filtros de categorías
+    // Poblar filtros de categorÃ­as
     poblarFiltrosCategoriasSalida();
 
-    // Reset líneas
+    // Reset lÃ­neas
     lineasSalida = [];
     productosFiltradosSalida = productosCompletos.filter(p => toNum(p.stock_actual) > 0);
 
@@ -1692,7 +1692,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (selectTipo) {
         selectTipo.addEventListener('change', function () {
             if (this.value === 'DEVOLUCION') {
-                // Cerrar modal normal y abrir modal de devolución
+                // Cerrar modal normal y abrir modal de devoluciÃ³n
                 cerrarModal('modalSalida');
                 setTimeout(() => abrirModalDevolucion(), 300);
             }
@@ -1702,17 +1702,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function poblarFiltrosCategoriasSalida() {
     const selectCat = document.getElementById('salidaFiltroCat');
-    selectCat.innerHTML = '<option value="">Todas las categorías</option>' +
+    selectCat.innerHTML = '<option value="">Todas las categorÃ­as</option>' +
         categorias.map(c => `<option value="${c.id_categoria}">${c.nombre}</option>`).join('');
 
-    document.getElementById('salidaFiltroSubcat').innerHTML = '<option value="">Todas las subcategorías</option>';
+    document.getElementById('salidaFiltroSubcat').innerHTML = '<option value="">Todas las subcategorÃ­as</option>';
 }
 
 async function filtrarProductosSalida() {
     const catId = document.getElementById('salidaFiltroCat').value;
     const subcatId = document.getElementById('salidaFiltroSubcat').value;
 
-    // Si cambia categoría, actualizar subcategorías
+    // Si cambia categorÃ­a, actualizar subcategorÃ­as
     if (catId) {
         try {
             const r = await fetch(`${baseUrl}/api/centro_inventarios.php?action=subcategorias&categoria_id=${catId}`);
@@ -1720,7 +1720,7 @@ async function filtrarProductosSalida() {
             if (d.success && d.subcategorias) {
                 const selectSubcat = document.getElementById('salidaFiltroSubcat');
                 selectSubcat.innerHTML =
-                    '<option value="">Todas las subcategorías</option>' +
+                    '<option value="">Todas las subcategorÃ­as</option>' +
                     d.subcategorias.map(s => `<option value="${s.id_subcategoria}">${s.nombre}</option>`).join('');
 
                 // Restaurar valor si existe
@@ -1730,7 +1730,7 @@ async function filtrarProductosSalida() {
             }
         } catch (e) { console.error(e); }
     } else {
-        document.getElementById('salidaFiltroSubcat').innerHTML = '<option value="">Todas las subcategorías</option>';
+        document.getElementById('salidaFiltroSubcat').innerHTML = '<option value="">Todas las subcategorÃ­as</option>';
     }
 
     // Filtrar productos con stock > 0
@@ -1744,11 +1744,27 @@ async function filtrarProductosSalida() {
     renderLineasSalida();
 }
 
+function cambioTipoSalida() {
+    const tipo = document.getElementById('salidaTipo').value;
+    const seccionDestino = document.getElementById('seccionDestinoProduccion');
+    const selectDestino = document.getElementById('salidaDestino');
+
+    if (tipo === 'PRODUCCION') {
+        if (seccionDestino) seccionDestino.style.display = 'block';
+    } else {
+        if (seccionDestino) seccionDestino.style.display = 'none';
+        if (selectDestino) selectDestino.value = '';
+        actualizarNumeroSalida();
+    }
+}
+
 async function actualizarNumeroSalida() {
     const tipo = document.getElementById('salidaTipo').value;
+    const destino = document.getElementById('salidaDestino') ? document.getElementById('salidaDestino').value : '';
+    const docInput = document.getElementById('salidaDocumento');
+    const motivoObligatorio = document.getElementById('motivoObligatorio');
 
     if (!tipo) {
-        const docInput = document.getElementById('salidaDocumento');
         if (docInput) {
             docInput.value = '';
             docInput.placeholder = 'Seleccione tipo de salida...';
@@ -1757,54 +1773,91 @@ async function actualizarNumeroSalida() {
         return;
     }
 
-    if (window.numerosSalidaCache[tipo]) {
-        const docInput = document.getElementById('salidaDocumento');
+    // Si es PRODUCCION pero no hay destino, pedir destino
+    if (tipo === 'PRODUCCION' && !destino) {
         if (docInput) {
-            docInput.value = window.numerosSalidaCache[tipo];
+            docInput.value = '';
+            docInput.placeholder = 'Seleccione destino...';
+            docInput.disabled = true;
+        }
+        return;
+    }
+
+    const cacheKey = destino ? `${tipo}_${destino}` : tipo;
+
+    if (window.numerosSalidaCache[cacheKey]) {
+        if (docInput) {
+            docInput.value = window.numerosSalidaCache[cacheKey];
             docInput.disabled = false;
         }
-
-        const motivoObligatorio = document.getElementById('motivoObligatorio');
         if (motivoObligatorio) {
             motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
         }
         return;
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     try {
-        const docInput = document.getElementById('salidaDocumento');
         if (docInput) {
-            docInput.value = '⏳ Generando...';
+            docInput.value = 'â³ Generando...';
             docInput.disabled = true;
         }
 
-        const r = await fetch(`${BASE_URL_API}/salidas_rep.php?action=siguiente_numero&tipo=${tipo}`);
+        const url = `${BASE_URL_API}/salidas_rep.php?action=siguiente_numero&tipo=${tipo}&destino=${destino}`;
+        const r = await fetch(url, { signal: controller.signal, headers: { 'Accept': 'application/json' } });
+        clearTimeout(timeoutId);
+
+        if (r.status === 401) throw new Error('SESIÃ“N_EXPIRADA');
+
         const d = await r.json();
 
         if (d.success) {
-            window.numerosSalidaCache[tipo] = d.numero;
-            document.getElementById('salidaDocumento').value = d.numero;
-            document.getElementById('salidaDocumento').disabled = false;
+            window.numerosSalidaCache[cacheKey] = d.numero;
+            if (docInput) {
+                docInput.value = d.numero;
+                docInput.disabled = false;
+            }
+        } else {
+            if (d.message && (d.message.includes('autorizado') || d.message.includes('No autorizado'))) throw new Error('SESIÃ“N_EXPIRADA');
+            throw new Error(d.message || 'Error servidor');
         }
     } catch (e) {
-        console.error('Error al obtener número de salida:', e);
-        const prefijos = {
-            'PRODUCCION': 'OUT-REP-P',
-            'VENTA': 'OUT-REP-V',
-            'MUESTRAS': 'OUT-REP-M',
-            'AJUSTE': 'OUT-REP-A',
-            'DEVOLUCION': 'OUT-REP-R'
-        };
-        const prefijo = prefijos[tipo] || 'OUT-REP-X';
-        const numero = generarNumeroDoc(prefijo);
-        window.numerosSalidaCache[tipo] = numero;
-        document.getElementById('salidaDocumento').value = numero;
-        document.getElementById('salidaDocumento').disabled = false;
+        clearTimeout(timeoutId);
+        if (e.name === 'AbortError') {
+            ejecutarFallbackLocalSalida(tipo, destino, 'Timeout');
+        } else if (e.message === 'SESIÃ“N_EXPIRADA') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: 'SesiÃ³n Expirada', text: 'Por favor reingrese.', icon: 'warning' }).then(() => { window.location.href = 'index.php'; });
+            }
+            if (docInput) { docInput.value = ''; docInput.disabled = true; }
+        } else {
+            ejecutarFallbackLocalSalida(tipo, destino, e.message);
+        }
+    } finally {
+        if (docInput && docInput.value === 'â³ Generando...') { docInput.value = ''; docInput.disabled = false; }
+        if (motivoObligatorio) motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
+    }
+}
+
+function ejecutarFallbackLocalSalida(tipo, destino, motivo) {
+    const prefijosBase = { 'PRODUCCION': 'OUT-REP-P', 'VENTA': 'OUT-REP-V', 'MUESTRAS': 'OUT-REP-M', 'AJUSTE': 'OUT-REP-A', 'DEVOLUCION': 'OUT-REP-R' };
+    const prefijosDestino = { 'TEJIDO': 'SAL-TEJ', 'COSTURA': 'SAL-COS', 'TENIDO': 'SAL-TEN' };
+
+    let prefijo = prefijosBase[tipo] || 'OUT-REP-X';
+    if (tipo === 'PRODUCCION' && destino && prefijosDestino[destino]) {
+        prefijo = prefijosDestino[destino];
     }
 
-    const motivoObligatorio = document.getElementById('motivoObligatorio');
-    if (motivoObligatorio) {
-        motivoObligatorio.style.display = tipo === 'AJUSTE' ? 'inline' : 'none';
+    const cacheKey = destino ? `${tipo}_${destino}` : tipo;
+    const docInput = document.getElementById('salidaDocumento');
+    if (docInput) {
+        const numero = generarNumeroDoc(prefijo);
+        window.numerosSalidaCache[cacheKey] = numero;
+        docInput.value = numero;
+        docInput.disabled = false;
+        console.warn('Fallback REP:', numero);
     }
 }
 
@@ -1894,7 +1947,7 @@ function calcularLineaSalida(index) {
     const stockDisp = lineasSalida[index].stock_disponible || 0;
 
     if (cantidad > stockDisp) {
-        Swal.fire('Atención', `Stock insuficiente. Disponible: ${formatNum(stockDisp)}`, 'warning');
+        Swal.fire('AtenciÃ³n', `Stock insuficiente. Disponible: ${formatNum(stockDisp)}`, 'warning');
         document.getElementById(`salCant_${index}`).value = stockDisp;
         lineasSalida[index].cantidad = stockDisp;
     } else {
@@ -1906,7 +1959,7 @@ function calcularLineaSalida(index) {
 
 function eliminarLineaSalida(index) {
     if (lineasSalida.length === 1) {
-        Swal.fire('Atención', 'Debe haber al menos una línea', 'warning');
+        Swal.fire('AtenciÃ³n', 'Debe haber al menos una lÃ­nea', 'warning');
         return;
     }
     lineasSalida.splice(index, 1);
@@ -1928,18 +1981,18 @@ async function guardarSalida() {
     const tipo = document.getElementById('salidaTipo').value;
 
     if (lineasSalida.length === 0) {
-        Swal.fire('Atención', 'Agregue al menos una línea', 'warning');
+        Swal.fire('AtenciÃ³n', 'Agregue al menos una lÃ­nea', 'warning');
         return;
     }
 
-    // Validar que todas las líneas tengan producto y cantidad
+    // Validar que todas las lÃ­neas tengan producto y cantidad
     for (let i = 0; i < lineasSalida.length; i++) {
         if (!lineasSalida[i].id_inventario) {
-            Swal.fire('Atención', `Seleccione un producto en la línea ${i + 1}`, 'warning');
+            Swal.fire('AtenciÃ³n', `Seleccione un producto en la lÃ­nea ${i + 1}`, 'warning');
             return;
         }
         if (lineasSalida[i].cantidad <= 0) {
-            Swal.fire('Atención', `Ingrese cantidad mayor a 0 en la línea ${i + 1}`, 'warning');
+            Swal.fire('AtenciÃ³n', `Ingrese cantidad mayor a 0 en la lÃ­nea ${i + 1}`, 'warning');
             return;
         }
 
@@ -1960,7 +2013,7 @@ async function guardarSalida() {
 
     // Validar motivo para ajustes
     if (tipo === 'AJUSTE' && !document.getElementById('salidaObservaciones').value.trim()) {
-        Swal.fire('Atención', 'El motivo es obligatorio para ajustes de inventario', 'warning');
+        Swal.fire('AtenciÃ³n', 'El motivo es obligatorio para ajustes de inventario', 'warning');
         return;
     }
 
@@ -1991,7 +2044,7 @@ async function guardarSalida() {
         if (d.success) {
             await Swal.fire({
                 icon: 'success',
-                title: '¡Salida Registrada!',
+                title: 'Â¡Salida Registrada!',
                 text: d.message,
                 timer: 2000,
                 showConfirmButton: false
@@ -2009,7 +2062,7 @@ async function guardarSalida() {
 
 // ========== MODAL HISTORIAL ==========
 async function abrirModalHistorial() {
-    // Fechas por defecto: Últimos 30 días
+    // Fechas por defecto: Ãšltimos 30 dÃ­as
     const hoy = new Date();
     const hace30dias = new Date();
     hace30dias.setDate(hoy.getDate() - 30);
@@ -2100,21 +2153,21 @@ async function verDetalleDocumento(docNumero) {
         const d = await r.json();
 
         if (d.success) {
-            // CORRECCIÓN CRITICA: Usar d.lineas si existe, si no d.detalle
+            // CORRECCIÃ“N CRITICA: Usar d.lineas si existe, si no d.detalle
             mostrarDetalleDocumento(d.cabecera, d.lineas || d.detalle);
         } else {
             Swal.fire('Error', d.message || 'No se pudo cargar el detalle', 'error');
         }
     } catch (e) {
         console.error('Error cargando detalle:', e);
-        Swal.fire('Error', 'Error de conexión al cargar detalle', 'error');
+        Swal.fire('Error', 'Error de conexiÃ³n al cargar detalle', 'error');
     }
 }
 
 function mostrarDetalleDocumento(doc, detalle) {
     const contenedor = document.getElementById('detalleContenido');
 
-    // Color según tipo
+    // Color segÃºn tipo
     let color = '#6c757d';
     const tipoStr = (doc.tipo_movimiento || '').toUpperCase();
     if (tipoStr.includes('ENTRADA')) color = '#28a745';
@@ -2144,7 +2197,7 @@ function mostrarDetalleDocumento(doc, detalle) {
             <table class="tabla-lineas" style="font-size:0.9rem;">
                 <thead style="background:#2c3e50; color:white;">
                     <tr>
-                        <th style="padding:10px;">Código</th>
+                        <th style="padding:10px;">CÃ³digo</th>
                         <th>Producto</th>
                         <th style="text-align:right">Cant.</th>
                         <th style="text-align:right">Costo U.</th>
@@ -2182,7 +2235,7 @@ function mostrarDetalleDocumento(doc, detalle) {
 
     contenedor.innerHTML = html;
 
-    // Configurar botón de anular
+    // Configurar botÃ³n de anular
     const btnAnular = document.getElementById('btnAnularDetalle');
     if (btnAnular) {
         if (doc.estado === 'ACTIVO' || doc.estado === 'CONFIRMADO') {
@@ -2198,15 +2251,15 @@ function mostrarDetalleDocumento(doc, detalle) {
 
 async function anularDocumento(docNumero) {
     const { value: motivo } = await Swal.fire({
-        title: '¿Anular Documento?',
-        text: "Esta acción revertirá los movimientos de inventario. Ingrese el motivo:",
+        title: 'Â¿Anular Documento?',
+        text: "Esta acciÃ³n revertirÃ¡ los movimientos de inventario. Ingrese el motivo:",
         input: 'text',
-        inputPlaceholder: 'Motivo de anulación...',
+        inputPlaceholder: 'Motivo de anulaciÃ³n...',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, anular',
+        confirmButtonText: 'SÃ­, anular',
         inputValidator: (value) => {
             if (!value) return 'El motivo es obligatorio';
         }
@@ -2226,7 +2279,7 @@ async function anularDocumento(docNumero) {
             const d = await r.json();
 
             if (d.success) {
-                Swal.fire('¡Anulado!', d.message, 'success');
+                Swal.fire('Â¡Anulado!', d.message, 'success');
                 cerrarModal('modalDetalle');
                 buscarHistorial();
                 cargarDatos();
@@ -2235,7 +2288,7 @@ async function anularDocumento(docNumero) {
             }
         } catch (e) {
             console.error(e);
-            Swal.fire('Error', 'Error al procesar la anulación', 'error');
+            Swal.fire('Error', 'Error al procesar la anulaciÃ³n', 'error');
         }
     }
 }
@@ -2255,9 +2308,9 @@ function generarNumeroDoc(prefijo) {
     return `${prefijo}-${anio}${mes}${dia}-${rand}`;
 }
 
-console.log('✅ Módulo Repuestos v2.0 Corregido y Optimizado');
+console.log('âœ… MÃ³dulo Repuestos v2.0 Corregido y Optimizado');
 
-// ========== FUNCIONES DE GENERACIÓN DE CÓDIGO ==========
+// ========== FUNCIONES DE GENERACIÃ“N DE CÃ“DIGO ==========
 
 async function actualizarCodigoSugerido() {
     const catId = document.getElementById('itemCategoria').value;
@@ -2269,16 +2322,16 @@ async function actualizarCodigoSugerido() {
         return;
     }
 
-    // Mostrar sección de preview
+    // Mostrar secciÃ³n de preview
     document.getElementById('codigoPreviewSection').style.display = 'block';
 
     // En modo manual, ocultamos el sufijo personalizado row para no confundir,
-    // pero el preview sigue siendo útil.
+    // pero el preview sigue siendo Ãºtil.
     if (!modoManual) {
         document.getElementById('sufijoPersonalizadoRow').style.display = 'flex';
     }
 
-    // Obtener códigos de categoría y subcategoría
+    // Obtener cÃ³digos de categorÃ­a y subcategorÃ­a
     const categoria = categorias.find(c => c.id_categoria == catId);
     const codigoCat = categoria ? (categoria.codigo || 'XXX') : 'XXX';
 
@@ -2288,7 +2341,7 @@ async function actualizarCodigoSugerido() {
         const sub = subcategoriasModal.find(s => s.id_subcategoria == subcatId);
         codigoSubcat = sub ? (sub.codigo || '') : '';
 
-        // Si el codigo tiene guiones (ej: REP-CAT-SUB), tomamos la última parte
+        // Si el codigo tiene guiones (ej: REP-CAT-SUB), tomamos la Ãºltima parte
         if (codigoSubcat.includes('-')) {
             const partes = codigoSubcat.split('-');
             codigoSubcat = partes[partes.length - 1];
@@ -2301,7 +2354,7 @@ async function actualizarCodigoSugerido() {
         ? `${codigoTipo}-${codigoCat}-${codigoSubcat}-`
         : `${codigoTipo}-${codigoCat}-`;
 
-    // Obtener siguiente correlativo si estamos en modo automático y NO hemos fijado un sufijo manualmente
+    // Obtener siguiente correlativo si estamos en modo automÃ¡tico y NO hemos fijado un sufijo manualmente
     // O si solo queremos sugerirlo. 
     // Lo mejor es siempre consultar el siguiente disponible para el prefijo dado.
     const siguienteNum = await obtenerSiguienteCorrelativo(prefijo);
@@ -2315,11 +2368,11 @@ async function actualizarCodigoSugerido() {
     // document.getElementById('labelNum').textContent = siguienteNum; // Se actualiza en actualizarCodigoFinal
     document.getElementById('formatoSugerido').textContent = prefijo + 'XXX';
 
-    // Establecer sufijo por defecto SOLO si el campo está vacío o acabamos de cambiar prefijo
+    // Establecer sufijo por defecto SOLO si el campo estÃ¡ vacÃ­o o acabamos de cambiar prefijo
     // Para simplificar, lo seteamos siempre que calculamos, el usuario puede editarlo.
     document.getElementById('itemSufijo').value = siguienteNum;
 
-    // Actualizar código final
+    // Actualizar cÃ³digo final
     if (!modoManual) {
         actualizarCodigoFinal();
     }
@@ -2342,7 +2395,7 @@ function actualizarCodigoFinal() {
     const prefijo = document.getElementById('previewPrefijo').textContent;
     let sufijo = document.getElementById('itemSufijo').value;
 
-    // Pad a 3 digitos si es numérico
+    // Pad a 3 digitos si es numÃ©rico
     if (sufijo && !isNaN(sufijo)) {
         sufijo = String(sufijo).padStart(3, '0');
     }
@@ -2353,7 +2406,7 @@ function actualizarCodigoFinal() {
     document.getElementById('previewSufijo').textContent = sufijo;
     document.getElementById('labelNum').textContent = sufijo;
 
-    // ========== BLINDAJE: Verificar unicidad del código generado ==========
+    // ========== BLINDAJE: Verificar unicidad del cÃ³digo generado ==========
     verificarCodigoDuplicado(codigoFinal.toUpperCase(), document.getElementById('itemId').value);
 }
 
@@ -2389,13 +2442,13 @@ window.eliminarItem = eliminarItem;
 
 async function eliminarItem(id) {
     const result = await Swal.fire({
-        title: '¿Estás seguro?',
-        text: "Esta acción no se puede deshacer si el producto no tiene historial. Si tiene historial, se desactivará.",
+        title: 'Â¿EstÃ¡s seguro?',
+        text: "Esta acciÃ³n no se puede deshacer si el producto no tiene historial. Si tiene historial, se desactivarÃ¡.",
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar',
+        confirmButtonText: 'SÃ­, eliminar',
         cancelButtonText: 'Cancelar'
     });
 
@@ -2408,7 +2461,7 @@ async function eliminarItem(id) {
             });
             const d = await r.json();
             if (d.success) {
-                Swal.fire('¡Eliminado!', d.message, 'success');
+                Swal.fire('Â¡Eliminado!', d.message, 'success');
                 // Recargar dependiendo del contexto
                 if (subcategoriaSeleccionada && subcategoriaSeleccionada.id_subcategoria) {
                     seleccionarSubcategoria(subcategoriaSeleccionada.id_subcategoria);
@@ -2422,10 +2475,10 @@ async function eliminarItem(id) {
             }
         } catch (e) {
             console.error(e);
-            Swal.fire('Error', 'Error de conexión', 'error');
+            Swal.fire('Error', 'Error de conexiÃ³n', 'error');
         }
     }
 }
 
-console.log('✅ Módulo Repuestos v2.2 con Eliminación de Items');
+console.log('âœ… MÃ³dulo Repuestos v2.2 con EliminaciÃ³n de Items');
 

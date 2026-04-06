@@ -274,6 +274,8 @@ try {
 
                     // Validar motivo para ajustes
                     $tipoSalida = $data['tipo_salida'] ?? 'PRODUCCION';
+                    $tipoConsumo = $data['tipo_consumo'] ?? null;
+
                     if ($tipoSalida === 'AJUSTE' && empty(trim($data['observaciones'] ?? ''))) {
                         echo json_encode(['success' => false, 'message' => 'El motivo es obligatorio para ajustes de inventario']);
                         exit();
@@ -351,8 +353,25 @@ try {
                             'AJUSTE' => 'A',
                             'DEVOLUCION' => 'R'
                         ];
-                        $codigoTipo = $codigosTipo[$tipoSalida] ?? 'X';
-                        $prefijo = "OUT-MP-$codigoTipo";
+
+                        $prefijo = null;
+                        
+                        // Lógica especial para SAL-TEJ, SAL-COS, SAL-TEN
+                        if ($tipoSalida === 'PRODUCCION' && !empty($tipoConsumo)) {
+                            $mapDestinos = [
+                                'TEJIDO' => 'SAL-TEJ',
+                                'COSTURA' => 'SAL-COS',
+                                'TENIDO' => 'SAL-TEN'
+                            ];
+                            if (isset($mapDestinos[$tipoConsumo])) {
+                                $prefijo = $mapDestinos[$tipoConsumo];
+                            }
+                        }
+
+                        if (!$prefijo) {
+                            $codigoTipo = $codigosTipo[$tipoSalida] ?? 'X';
+                            $prefijo = "OUT-MP-$codigoTipo";
+                        }
 
                         $numeroDoc = generarNumeroDocumento($db, 'SALIDA', $prefijo);
 
@@ -392,13 +411,13 @@ try {
                         $stmt = $db->prepare("
                             INSERT INTO documentos_inventario (
                                 id_doc_tipo, id_doc_subtipo, id_doc_estado,
-                                tipo_documento, tipo_salida, numero_documento, fecha_documento,
+                                tipo_documento, tipo_salida, tipo_consumo, numero_documento, fecha_documento,
                                 id_tipo_inventario, id_proveedor, id_documento_origen,
                                 referencia_externa, subtotal, iva, total,
                                 observaciones, estado, creado_por
                             ) VALUES (
                                 2, ?, 2,
-                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
+                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
                             )
                         ");
 
@@ -410,6 +429,7 @@ try {
                         $stmt->execute([
                             $idDocSubtipo,
                             $tipoSalida,           // backup
+                            $tipoConsumo,
                             $numeroDoc,
                             $data['fecha'] ?? date('Y-m-d'),
                             $TIPO_INVENTARIO_MP,
@@ -667,11 +687,13 @@ try {
                 case 'siguiente_numero':
                     // REDIRIGIR a API centralizada con modo preview usando include
                     $tipo = $_GET['tipo'] ?? 'PRODUCCION';
+                    $destino = $_GET['destino'] ?? '';
 
                     // Configurar parámetros para la API centralizada
                     $_GET['tipo_inventario'] = '1';
                     $_GET['operacion'] = 'SALIDA';
                     $_GET['tipo_movimiento'] = $tipo;
+                    $_GET['destino'] = $destino;
                     $_GET['modo'] = 'preview';
 
                     include 'obtener_siguiente_numero.php';

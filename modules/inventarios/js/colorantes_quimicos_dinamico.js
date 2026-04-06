@@ -1,13 +1,13 @@
 /**
  * =====================================================
- * COLORANTES Y AUXILIARES QUÍMICOS - INGRESO DINÁMICO
+ * COLORANTES Y AUXILIARES QUÃMICOS - INGRESO DINÃMICO
  * Sistema MES Hermen v1.0
- * Adaptado del módulo de Materias Primas
+ * Adaptado del mÃ³dulo de Materias Primas
  * =====================================================
  */
 
 // ========================================
-// CONFIGURACIÓN DE RUTAS
+// CONFIGURACIÃ“N DE RUTAS
 // ========================================
 
 // const BASE_URL_API = window.location.origin + '/mes_hermen/api'; // Ya declarado en materias_primas.js
@@ -30,12 +30,12 @@ let unidadesMedida = [];
 let usuariosAutorizados = [];
 // let lineasIngreso = []; //
 
-// ⭐ CACHE DE NÚMEROS DE DOCUMENTO POR SESIÓN
+// â­ CACHE DE NÃšMEROS DE DOCUMENTO POR SESIÃ“N
 let numerosDocumentoCache = {};
 
 /**
- * Configuración de columnas por tipo de ingreso
- * Define qué columnas mostrar para cada tipo
+ * ConfiguraciÃ³n de columnas por tipo de ingreso
+ * Define quÃ© columnas mostrar para cada tipo
  */
 const COLUMNAS_CONFIG = {
     // COMPRA A PROVEEDOR - Complejo con factura/IVA
@@ -80,7 +80,7 @@ const COLUMNAS_CONFIG = {
         ]
     },
 
-    // DEVOLUCIÓN DE PRODUCCIÓN - Simplificado (solo cantidad devuelta)
+    // DEVOLUCIÃ“N DE PRODUCCIÃ“N - Simplificado (solo cantidad devuelta)
     'DEVOLUCION_PROD': {
         columnas: [
             { id: 'num', label: '#', width: '40px', align: 'center' },
@@ -116,7 +116,7 @@ function mostrarAlerta(mensaje, tipo = 'info') {
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             icon: tipo === 'error' ? 'error' : tipo === 'success' ? 'success' : 'info',
-            title: tipo === 'error' ? 'Error' : tipo === 'success' ? 'Éxito' : 'Información',
+            title: tipo === 'error' ? 'Error' : tipo === 'success' ? 'Ã‰xito' : 'InformaciÃ³n',
             text: mensaje,
             confirmButtonText: 'OK'
         });
@@ -126,19 +126,19 @@ function mostrarAlerta(mensaje, tipo = 'info') {
 }
 
 function logError(contexto, error) {
-    console.error(`❌ Error en ${contexto}:`, error);
+    console.error(`âŒ Error en ${contexto}:`, error);
     if (error.response) {
         console.error('Response:', error.response);
     }
 }
 
 // ========================================
-// INICIALIZACIÓN
+// INICIALIZACIÃ“N
 // ========================================
 
 document.addEventListener('DOMContentLoaded', function () {
-    console.log('🚀 Inicializando módulo de Colorantes y Aux. Químicos...');
-    console.log('📁 API Base URL:', BASE_URL_API);
+    console.log('ðŸš€ Inicializando mÃ³dulo de Colorantes y Aux. QuÃ­micos...');
+    console.log('ðŸ“ API Base URL:', BASE_URL_API);
 
     cargarTiposIngreso();
     cargarAreasProduccion();
@@ -152,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
 async function cargarTiposIngreso() {
     try {
         const url = `${BASE_URL_API}/tipos_ingreso.php?action=list`;
-        console.log('🔄 Cargando tipos desde:', url);
+        console.log('ðŸ”„ Cargando tipos desde:', url);
 
         const response = await fetch(url);
 
@@ -181,7 +181,7 @@ async function cargarTiposIngreso() {
                 });
             }
 
-            console.log('✅ Tipos de ingreso cargados:', Object.keys(tiposIngresoConfig).length);
+            console.log('âœ… Tipos de ingreso cargados:', Object.keys(tiposIngresoConfig).length);
         } else {
             logError('cargarTiposIngreso', data.message);
         }
@@ -189,14 +189,14 @@ async function cargarTiposIngreso() {
         logError('cargarTiposIngreso', error);
 
         if (error.message.includes('404')) {
-            console.error('⚠️  ARCHIVO NO ENCONTRADO');
-            console.log('📁 Verifica que tipos_ingreso.php esté en: C:\\xampp\\htdocs\\mes_hermen\\api\\tipos_ingreso.php');
+            console.error('âš ï¸  ARCHIVO NO ENCONTRADO');
+            console.log('ðŸ“ Verifica que tipos_ingreso.php estÃ© en: C:\\xampp\\htdocs\\mes_hermen\\api\\tipos_ingreso.php');
         }
     }
 }
 
 /**
- * Cargar áreas de producción
+ * Cargar Ã¡reas de producciÃ³n
  */
 async function cargarAreasProduccion() {
     try {
@@ -211,7 +211,7 @@ async function cargarAreasProduccion() {
 
         if (data.success) {
             areasProduccion = data.areas;
-            console.log('✅ Áreas de producción cargadas:', areasProduccion.length);
+            console.log('âœ… Ãreas de producciÃ³n cargadas:', areasProduccion.length);
         }
     } catch (error) {
         logError('cargarAreasProduccion', error);
@@ -230,10 +230,10 @@ async function cargarUnidadesMedida() {
             const data = await response.json();
             if (data.success) {
                 unidadesMedida = data.unidades;
-                console.log('✅ Unidades de medida cargadas:', unidadesMedida.length);
+                console.log('âœ… Unidades de medida cargadas:', unidadesMedida.length);
             }
         } else {
-            console.warn('⚠️  Endpoint de unidades no disponible, usando valores por defecto');
+            console.warn('âš ï¸  Endpoint de unidades no disponible, usando valores por defecto');
             unidadesMedida = [
                 { id_unidad: 1, codigo: 'KG', nombre: 'Kilogramo', abreviatura: 'kg' },
                 { id_unidad: 2, codigo: 'MT', nombre: 'Metro', abreviatura: 'm' },
@@ -256,13 +256,13 @@ async function cargarUnidadesMedida() {
 // ========================================
 
 async function abrirModalIngreso() {
-    console.log('📖 Abriendo modal de ingreso...');
+    console.log('ðŸ“– Abriendo modal de ingreso...');
 
     await cargarProveedores();
     await cargarCategoriasIngreso();
     resetearFormularioIngreso();
 
-    // ⭐ NO GENERAR NÚMERO AQUÍ
+    // â­ NO GENERAR NÃšMERO AQUÃ
     numerosDocumentoCache = {};
     const docInput = document.getElementById('ingresoDocumento');
     if (docInput) {
@@ -280,49 +280,79 @@ async function abrirModalIngreso() {
 }
 
 async function obtenerSiguienteNumero(tipo = null) {
-    try {
-        if (!tipo) {
-            const selectTipo = document.getElementById('ingresoTipoIngreso');
-            if (selectTipo && selectTipo.value) {
-                const tipoConfig = tiposIngresoConfig[selectTipo.value];
-                tipo = tipoConfig ? tipoConfig.codigo : null;
-            }
+    if (!tipo) {
+        const selectTipo = document.getElementById('ingresoTipoIngreso');
+        if (selectTipo && selectTipo.value) {
+            const tC = tiposIngresoConfig[selectTipo.value];
+            tipo = tC ? tC.codigo : null;
         }
+    }
+    if (!tipo) return;
 
-        if (!tipo) return;
-
-        if (numerosDocumentoCache[tipo]) {
-            const docInput = document.getElementById('ingresoDocumento');
-            if (docInput) {
-                docInput.value = numerosDocumentoCache[tipo];
-                docInput.disabled = false;
-            }
-            return;
-        }
-
-        const docInput = document.getElementById('ingresoDocumento');
+    const docInput = document.getElementById('ingresoDocumento');
+    if (numerosDocumentoCache[tipo]) {
         if (docInput) {
-            docInput.value = '⏳ Generando...';
+            docInput.value = numerosDocumentoCache[tipo];
+            docInput.disabled = false;
+        }
+        return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+        if (docInput) {
+            docInput.value = 'â³ Generando...';
             docInput.disabled = true;
         }
 
-        const url = `${BASE_URL_API}/ingresos_caq.php?action=siguiente_numero&tipo=${tipo}`;
-        const response = await fetch(url);
+        const url = ${BASE_URL_API}/ingresos_caq.php?action=siguiente_numero&tipo=;
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (response.status === 401) throw new Error('SESIÃ“N_EXPIRADA');
+
         const data = await response.json();
 
         if (data.success && docInput) {
             numerosDocumentoCache[tipo] = data.numero;
             docInput.value = data.numero;
             docInput.disabled = false;
+        } else {
+            if (data.message && (data.message.includes('autorizado') || data.message.includes('SesiÃ³n'))) throw new Error('SESIÃ“N_EXPIRADA');
+            throw new Error(data.message || 'Error servidor');
         }
     } catch (error) {
-        logError('obtenerSiguienteNumero', error);
-        const docInput = document.getElementById('ingresoDocumento');
-        if (docInput) {
-            docInput.value = '';
-            docInput.disabled = true;
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            ejecutarFallbackLocalIngreso(tipo, 'Timeout');
+        } else if (error.message === 'SESIÃ“N_EXPIRADA') {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: 'SesiÃ³n Expirada', text: 'Por favor reingrese.', icon: 'warning' }).then(() => { window.location.href = 'index.php'; });
+            }
+            if (docInput) { docInput.value = ''; docInput.disabled = true; }
+        } else {
+            ejecutarFallbackLocalIngreso(tipo, error.message);
         }
+    } finally {
+        if (docInput && docInput.value === 'â³ Generando...') { docInput.value = ''; docInput.disabled = false; }
     }
+}
+
+function ejecutarFallbackLocalIngreso(tipo, motivo) {
+    const docInput = document.getElementById('ingresoDocumento');
+    if (!docInput) return;
+    const codigosMovimiento = { 'COMPRA': 'C', 'INICIAL': 'I', 'DEVOLUCION_PROD': 'R', 'AJUSTE_POS': 'A' };
+    const hoy = new Date();
+    const fechaStr = hoy.toISOString().split('T')[0].replace(/-/g, '');
+    const rand = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    const movCode = codigosMovimiento[tipo] || 'X';
+    const numero = 'IN-CAQ-' + movCode + '-' + fechaStr + '-' + rand;
+    numerosDocumentoCache[tipo] = numero;
+    docInput.value = numero;
+    docInput.disabled = false;
+    console.warn('Fallback IN CAQ:', numero);
 }
 
 function resetearFormularioIngreso() {
@@ -335,7 +365,7 @@ function resetearFormularioIngreso() {
         'ingresoFecha': '',
         'ingresoObservaciones': '',
         'ingresoTipoProveedor': 'TODOS',
-        // 'ingresoProveedor': '',  ← ❌ QUITAR ESTA LÍNEA (no resetear proveedor aquí)
+        // 'ingresoProveedor': '',  â† âŒ QUITAR ESTA LÃNEA (no resetear proveedor aquÃ­)
         'ingresoReferencia': ''
     };
 
@@ -406,18 +436,18 @@ async function cambiarTipoIngreso() {
 
     const config = tiposIngresoConfig[tipoId];
     if (!config) {
-        console.error('❌ Configuración no encontrada para tipo:', tipoId);
+        console.error('âŒ ConfiguraciÃ³n no encontrada para tipo:', tipoId);
         return;
     }
 
     tipoIngresoActual = config;
-    console.log('🔄 Cambiando a tipo:', config.nombre, config);
+    console.log('ðŸ”„ Cambiando a tipo:', config.nombre, config);
 
     // 1. PROVEEDOR
     mostrarSeccion('seccionProveedor', config.requiere_proveedor);
     setRequired('ingresoProveedor', config.requiere_proveedor);
 
-    // ⭐ NUEVO: Poblar proveedores si es requerido
+    // â­ NUEVO: Poblar proveedores si es requerido
     if (config.requiere_proveedor) {
         poblarSelectProveedores();
     }
@@ -429,7 +459,7 @@ async function cambiarTipoIngreso() {
         if (checkbox) checkbox.checked = false;
     }
 
-    // 3. ÁREA DE PRODUCCIÓN
+    // 3. ÃREA DE PRODUCCIÃ“N
     if (config.requiere_area_produccion) {
         await mostrarSeccionArea();
     } else {
@@ -443,7 +473,7 @@ async function cambiarTipoIngreso() {
         mostrarSeccion('seccionMotivo', false);
     }
 
-    // 5. AUTORIZACIÓN
+    // 5. AUTORIZACIÃ“N
     if (config.requiere_autorizacion && config.codigo !== 'AJUSTE_POS') {
         mostrarSeccionAutorizacion();
     } else {
@@ -451,7 +481,7 @@ async function cambiarTipoIngreso() {
         setRequired('ingresoAutorizadoPor', false);
     }
 
-    // 6. UBICACIÓN (para inventario inicial)
+    // 6. UBICACIÃ“N (para inventario inicial)
     mostrarSeccion('seccionUbicacion', config.codigo === 'INICIAL');
 
     // 7. CONFIGURAR OBSERVACIONES
@@ -460,27 +490,27 @@ async function cambiarTipoIngreso() {
     // 8. ACTUALIZAR ENCABEZADOS DE TABLA
     actualizarEncabezadosTabla(config);
 
-    // ⭐ 9. REGENERAR NÚMERO DE DOCUMENTO CON EL NUEVO TIPO
+    // â­ 9. REGENERAR NÃšMERO DE DOCUMENTO CON EL NUEVO TIPO
     await obtenerSiguienteNumero(config.codigo);
 }
 
-// ⭐ NUEVA FUNCIÓN: Poblar select de proveedores
+// â­ NUEVA FUNCIÃ“N: Poblar select de proveedores
 function poblarSelectProveedores() {
     const selectProveedor = document.getElementById('ingresoProveedor');
 
     if (!selectProveedor) {
-        console.error('❌ Select de proveedor no encontrado');
+        console.error('âŒ Select de proveedor no encontrado');
         return;
     }
 
-    console.log('📋 Poblando select de proveedores...', proveedoresData.length);
+    console.log('ðŸ“‹ Poblando select de proveedores...', proveedoresData.length);
 
     // Limpiar opciones actuales
     selectProveedor.innerHTML = '<option value="">Seleccione proveedor...</option>';
 
     // Verificar que hay proveedores cargados
     if (!proveedoresData || proveedoresData.length === 0) {
-        console.warn('⚠️ No hay proveedores para mostrar');
+        console.warn('âš ï¸ No hay proveedores para mostrar');
         return;
     }
 
@@ -496,13 +526,13 @@ function poblarSelectProveedores() {
         selectProveedor.appendChild(option);
     });
 
-    console.log('✅ Select poblado con', selectProveedor.options.length - 1, 'proveedores');
+    console.log('âœ… Select poblado con', selectProveedor.options.length - 1, 'proveedores');
 }
 
 function mostrarSeccion(seccionId, mostrar) {
     const seccion = document.getElementById(seccionId);
     if (!seccion) {
-        console.warn(`⚠️  Sección ${seccionId} no encontrada`);
+        console.warn(`âš ï¸  SecciÃ³n ${seccionId} no encontrada`);
         return;
     }
 
@@ -530,7 +560,7 @@ async function mostrarSeccionArea() {
 
     const selectArea = document.getElementById('ingresoArea');
     if (selectArea && areasProduccion.length > 0) {
-        selectArea.innerHTML = '<option value="">Seleccione área...</option>';
+        selectArea.innerHTML = '<option value="">Seleccione Ã¡rea...</option>';
         areasProduccion.forEach(area => {
             selectArea.innerHTML += `<option value="${area.id_area}">${area.nombre}</option>`;
         });
@@ -540,13 +570,13 @@ async function mostrarSeccionArea() {
 
 
 async function mostrarSeccionMotivo(tipoId) {
-    console.log('🔄 Cargando motivos para tipo:', tipoId);
+    console.log('ðŸ”„ Cargando motivos para tipo:', tipoId);
 
-    // Cargar motivos si no están en caché
+    // Cargar motivos si no estÃ¡n en cachÃ©
     if (!motivosCache[tipoId]) {
         try {
             const url = `${BASE_URL_API}/tipos_ingreso.php?action=motivos&tipo_id=${tipoId}`;
-            console.log('📡 URL motivos:', url);
+            console.log('ðŸ“¡ URL motivos:', url);
 
             const response = await fetch(url);
 
@@ -555,24 +585,24 @@ async function mostrarSeccionMotivo(tipoId) {
             }
 
             const data = await response.json();
-            console.log('📦 Respuesta motivos:', data);
+            console.log('ðŸ“¦ Respuesta motivos:', data);
 
             if (data.success) {
                 motivosCache[tipoId] = data.motivos;
-                console.log('✅ Motivos cargados:', data.motivos.length);
+                console.log('âœ… Motivos cargados:', data.motivos.length);
             } else {
-                console.error('❌ Error en respuesta:', data.message);
+                console.error('âŒ Error en respuesta:', data.message);
                 motivosCache[tipoId] = [];
             }
         } catch (error) {
-            console.error('❌ Error al cargar motivos:', error);
+            console.error('âŒ Error al cargar motivos:', error);
             motivosCache[tipoId] = [];
         }
     } else {
-        console.log('📦 Motivos desde caché:', motivosCache[tipoId].length);
+        console.log('ðŸ“¦ Motivos desde cachÃ©:', motivosCache[tipoId].length);
     }
 
-    // Mostrar sección
+    // Mostrar secciÃ³n
     mostrarSeccion('seccionMotivo', true);
     setRequired('ingresoMotivo', true);
 
@@ -593,14 +623,14 @@ async function mostrarSeccionMotivo(tipoId) {
                 }
                 selectMotivo.appendChild(option);
             });
-            console.log('✅ Select poblado con', motivos.length, 'motivos');
+            console.log('âœ… Select poblado con', motivos.length, 'motivos');
         } else {
-            console.warn('⚠️ No hay motivos para este tipo');
-            // Agregar opción temporal
+            console.warn('âš ï¸ No hay motivos para este tipo');
+            // Agregar opciÃ³n temporal
             selectMotivo.innerHTML += '<option value="0">Sin motivo especificado (temporal)</option>';
         }
     } else {
-        console.error('❌ Select ingresoMotivo no encontrado en el DOM');
+        console.error('âŒ Select ingresoMotivo no encontrado en el DOM');
     }
 }
 
@@ -613,7 +643,7 @@ function configurarObservaciones(config) {
 
     if (config.observaciones_obligatorias && config.minimo_caracteres_obs > 0) {
         obsField.setAttribute('minlength', config.minimo_caracteres_obs);
-        obsField.placeholder = `Observaciones (mínimo ${config.minimo_caracteres_obs} caracteres) *`;
+        obsField.placeholder = `Observaciones (mÃ­nimo ${config.minimo_caracteres_obs} caracteres) *`;
     } else {
         obsField.removeAttribute('minlength');
         obsField.placeholder = 'Observaciones opcionales...';
@@ -625,17 +655,17 @@ function actualizarEncabezadosTabla(config) {
     const thead = document.getElementById('theadIngreso');
     if (!thead) return;
 
-    console.log('📋 Actualizando encabezados para tipo:', config.codigo);
+    console.log('ðŸ“‹ Actualizando encabezados para tipo:', config.codigo);
 
-    // Obtener configuración de columnas para este tipo
+    // Obtener configuraciÃ³n de columnas para este tipo
     const tipoConfig = COLUMNAS_CONFIG[config.codigo];
 
     if (!tipoConfig) {
-        console.warn('⚠️ No hay configuración de columnas para:', config.codigo);
+        console.warn('âš ï¸ No hay configuraciÃ³n de columnas para:', config.codigo);
         return;
     }
 
-    // Determinar qué set de columnas usar
+    // Determinar quÃ© set de columnas usar
     let columnasConfig;
 
     if (config.codigo === 'COMPRA') {
@@ -644,7 +674,7 @@ function actualizarEncabezadosTabla(config) {
         const conFactura = checkFactura && checkFactura.checked;
         columnasConfig = conFactura ? tipoConfig.conFactura : tipoConfig.sinFactura;
     } else {
-        // Para otros tipos, usar la configuración única
+        // Para otros tipos, usar la configuraciÃ³n Ãºnica
         columnasConfig = tipoConfig;
     }
 
@@ -664,7 +694,7 @@ function actualizarEncabezadosTabla(config) {
         </tr>
     `;
 
-    console.log('✅ Encabezados actualizados con', columnas.length, 'columnas');
+    console.log('âœ… Encabezados actualizados con', columnas.length, 'columnas');
 }
 
 function actualizarTotalesIngreso() {
@@ -680,7 +710,7 @@ function actualizarTotalesIngreso() {
 async function cargarProveedores() {
     try {
         const url = `${BASE_URL_API}/proveedores.php?action=list`;
-        console.log('🔄 Cargando proveedores desde:', url);
+        console.log('ðŸ”„ Cargando proveedores desde:', url);
 
         const response = await fetch(url);
 
@@ -692,7 +722,7 @@ async function cargarProveedores() {
 
         if (data.success && data.proveedores) {
             proveedoresData = data.proveedores;
-            console.log('✅ Proveedores cargados:', proveedoresData.length);
+            console.log('âœ… Proveedores cargados:', proveedoresData.length);
 
             // Poblar select de proveedores
             const selectProveedor = document.getElementById('ingresoProveedor');
@@ -711,7 +741,7 @@ async function cargarProveedores() {
                 });
             }
         } else {
-            console.warn('⚠️ No se encontraron proveedores');
+            console.warn('âš ï¸ No se encontraron proveedores');
             proveedoresData = [];
         }
     } catch (error) {
@@ -723,7 +753,7 @@ async function cargarProveedores() {
 async function cargarCategoriasIngreso() {
     try {
         const url = `${BASE_URL_API}/centro_inventarios.php?action=categorias&tipo_id=${window.TIPO_INVENTARIO_ID || 2}`;
-        console.log('🔄 Cargando categorías desde:', url);
+        console.log('ðŸ”„ Cargando categorÃ­as desde:', url);
 
         const response = await fetch(url);
 
@@ -735,18 +765,18 @@ async function cargarCategoriasIngreso() {
 
         if (data.success && data.categorias) {
             categoriasData = data.categorias;
-            console.log('✅ Categorías cargadas:', categoriasData.length);
+            console.log('âœ… CategorÃ­as cargadas:', categoriasData.length);
 
-            // Poblar select de filtro de categorías
+            // Poblar select de filtro de categorÃ­as
             const selectCat = document.getElementById('ingresoFiltroCat');
             if (selectCat) {
-                selectCat.innerHTML = '<option value="">Todas las categorías</option>';
+                selectCat.innerHTML = '<option value="">Todas las categorÃ­as</option>';
                 categoriasData.forEach(cat => {
                     selectCat.innerHTML += `<option value="${cat.id_categoria}">${cat.nombre}</option>`;
                 });
             }
         } else {
-            console.warn('⚠️ No se encontraron categorías');
+            console.warn('âš ï¸ No se encontraron categorÃ­as');
             categoriasData = [];
         }
     } catch (error) {
@@ -756,7 +786,7 @@ async function cargarCategoriasIngreso() {
 }
 
 /**
- * Filtrar proveedores por tipo (LOCAL o IMPORTACIÓN)
+ * Filtrar proveedores por tipo (LOCAL o IMPORTACIÃ“N)
  */
 function filtrarProveedoresIngreso() {
     const tipoEl = document.getElementById('ingresoTipoProveedor');
@@ -765,25 +795,25 @@ function filtrarProveedoresIngreso() {
 
     if (!select) return;
 
-    console.log('🔄 Filtrando proveedores por tipo:', tipo);
+    console.log('ðŸ”„ Filtrando proveedores por tipo:', tipo);
 
     // Limpiar select
     select.innerHTML = '<option value="">Seleccione proveedor...</option>';
 
     // Verificar que hay proveedores
     if (!proveedoresData || proveedoresData.length === 0) {
-        console.warn('⚠️ No hay proveedores para filtrar');
+        console.warn('âš ï¸ No hay proveedores para filtrar');
         return;
     }
 
-    // Filtrar según tipo
+    // Filtrar segÃºn tipo
     let proveedoresFiltrados = proveedoresData;
 
     if (tipo !== 'TODOS') {
         proveedoresFiltrados = proveedoresData.filter(p => p.tipo === tipo);
     }
 
-    console.log(`📋 Proveedores filtrados: ${proveedoresFiltrados.length} de ${proveedoresData.length}`);
+    console.log(`ðŸ“‹ Proveedores filtrados: ${proveedoresFiltrados.length} de ${proveedoresData.length}`);
 
     // Agregar cada proveedor filtrado
     proveedoresFiltrados.forEach(prov => {
@@ -797,11 +827,11 @@ function filtrarProveedoresIngreso() {
         select.appendChild(option);
     });
 
-    console.log('✅ Filtro aplicado');
+    console.log('âœ… Filtro aplicado');
 }
 
 /**
- * Actualizar información del proveedor seleccionado
+ * Actualizar informaciÃ³n del proveedor seleccionado
  */
 function actualizarInfoProveedor() {
     const select = document.getElementById('ingresoProveedor');
@@ -822,7 +852,7 @@ function actualizarInfoProveedor() {
     const tipoElement = document.getElementById('infoProveedorTipo');
     if (tipoElement) {
         tipoElement.className = `badge-tipo ${tipo === 'LOCAL' ? 'local' : 'import'}`;
-        tipoElement.textContent = tipo === 'LOCAL' ? '🇧🇴 LOCAL' : '🌎 IMPORTACIÓN';
+        tipoElement.textContent = tipo === 'LOCAL' ? 'ðŸ‡§ðŸ‡´ LOCAL' : 'ðŸŒŽ IMPORTACIÃ“N';
     }
 
     const monedaElement = document.getElementById('infoProveedorMoneda');
@@ -841,7 +871,7 @@ function actualizarInfoProveedor() {
 
 function obtenerConfiguracionColumnas() {
     if (!tipoIngresoActual) {
-        console.warn('⚠️ No hay tipo de ingreso seleccionado');
+        console.warn('âš ï¸ No hay tipo de ingreso seleccionado');
         return null;
     }
 
@@ -859,7 +889,7 @@ function obtenerConfiguracionColumnas() {
 async function cargarUsuariosAutorizados() {
     try {
         const url = `${BASE_URL_API}/tipos_ingreso.php?action=usuarios_autorizacion`;
-        console.log('🔄 Cargando usuarios autorizados desde:', url);
+        console.log('ðŸ”„ Cargando usuarios autorizados desde:', url);
 
         const response = await fetch(url);
 
@@ -868,20 +898,20 @@ async function cargarUsuariosAutorizados() {
         }
 
         const data = await response.json();
-        console.log('📦 Respuesta usuarios:', data);
+        console.log('ðŸ“¦ Respuesta usuarios:', data);
 
         if (data.success) {
             usuariosAutorizados = data.usuarios;
-            console.log('✅ Usuarios autorizados cargados:', usuariosAutorizados.length);
+            console.log('âœ… Usuarios autorizados cargados:', usuariosAutorizados.length);
         } else {
-            console.error('❌ Error:', data.message);
+            console.error('âŒ Error:', data.message);
             // Usar mock local
             usuariosAutorizados = [
                 { id_usuario: 1, nombre: 'Gary Meneses', rol: 'Gerente' }
             ];
         }
     } catch (error) {
-        console.error('❌ Error al cargar usuarios:', error);
+        console.error('âŒ Error al cargar usuarios:', error);
         // Usar mock local
         usuariosAutorizados = [
             { id_usuario: 1, nombre: 'Gary Meneses', rol: 'Gerente' }
@@ -895,7 +925,7 @@ async function cargarUsuariosAutorizados() {
 // ========================================
 
 function mostrarSeccionAutorizacion() {
-    console.log('🔄 Mostrando sección de autorización');
+    console.log('ðŸ”„ Mostrando secciÃ³n de autorizaciÃ³n');
 
     mostrarSeccion('seccionAutorizacion', true);
     setRequired('ingresoAutorizadoPor', true);
@@ -904,11 +934,11 @@ function mostrarSeccionAutorizacion() {
     const selectAutoriza = document.getElementById('ingresoAutorizadoPor');
 
     if (!selectAutoriza) {
-        console.error('❌ Select ingresoAutorizadoPor no encontrado');
+        console.error('âŒ Select ingresoAutorizadoPor no encontrado');
         return;
     }
 
-    selectAutoriza.innerHTML = '<option value="">Seleccione quién autoriza...</option>';
+    selectAutoriza.innerHTML = '<option value="">Seleccione quiÃ©n autoriza...</option>';
 
     if (usuariosAutorizados && usuariosAutorizados.length > 0) {
         usuariosAutorizados.forEach(usuario => {
@@ -917,10 +947,10 @@ function mostrarSeccionAutorizacion() {
             option.textContent = `${usuario.nombre} - ${usuario.rol}`;
             selectAutoriza.appendChild(option);
         });
-        console.log('✅ Select autorización poblado con', usuariosAutorizados.length, 'usuarios');
+        console.log('âœ… Select autorizaciÃ³n poblado con', usuariosAutorizados.length, 'usuarios');
     } else {
-        console.warn('⚠️ No hay usuarios autorizados cargados');
-        // Agregar opción temporal
+        console.warn('âš ï¸ No hay usuarios autorizados cargados');
+        // Agregar opciÃ³n temporal
         selectAutoriza.innerHTML += '<option value="1">Administrador (temporal)</option>';
     }
 }
@@ -937,15 +967,15 @@ window.filtrarProveedoresIngreso = filtrarProveedoresIngreso;
 window.mostrarSeccionMotivo = mostrarSeccionMotivo;
 window.mostrarSeccionAutorizacion = mostrarSeccionAutorizacion;
 
-console.log('✅ Sistema de configuración de columnas cargado');
+console.log('âœ… Sistema de configuraciÃ³n de columnas cargado');
 console.log('   Tipos configurados:', Object.keys(COLUMNAS_CONFIG).join(', '));
-console.log('✅ Funciones expuestas globalmente');
+console.log('âœ… Funciones expuestas globalmente');
 console.log('   - cambiarTipoIngreso');
 console.log('   - poblarSelectProveedores');
 console.log('   - abrirModalIngreso');
 console.log('   - actualizarInfoProveedor');
 console.log('   - filtrarProveedoresIngreso');
-console.log('✅ Módulo de tipos de ingreso dinámico cargado - VERSIÓN FINAL');
+console.log('âœ… MÃ³dulo de tipos de ingreso dinÃ¡mico cargado - VERSIÃ“N FINAL');
 console.log('   - mostrarSeccionMotivo');
 console.log('   - mostrarSeccionAutorizacion');
-console.log('📁 API Base:', BASE_URL_API);
+console.log('ðŸ“ API Base:', BASE_URL_API);

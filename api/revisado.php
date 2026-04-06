@@ -106,7 +106,7 @@ function listarRevisados($db) {
             r.codigo_lote_revisado,
             r.fecha_revisado,
             r.id_turno,
-            t.nombre_turno,
+            t.nombre AS nombre_turno,
             r.observaciones,
             COUNT(d.id_detalle_revisado) as total_productos,
             SUM(d.total_unidades_calculado) as total_unidades,
@@ -211,7 +211,7 @@ function obtenerDetalle($db) {
     $stmt = $db->prepare("
         SELECT 
             r.*,
-            t.nombre_turno
+            t.nombre AS nombre_turno
         FROM produccion_revisado_crudo r
         INNER JOIN turnos t ON r.id_turno = t.id_turno
         WHERE r.id_revisado = ?

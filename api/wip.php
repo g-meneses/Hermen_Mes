@@ -47,6 +47,11 @@ function manejarGet($db)
         ]);
     }
 
+    if ($action === 'get_documentos_salida_tejido') {
+        obtenerDocumentosSalidaTejido($db);
+        return;
+    }
+
     if ($action === 'historial') {
         $idLote = (int) ($_GET['id_lote_wip'] ?? 0);
         if ($idLote <= 0) {
@@ -77,7 +82,7 @@ function manejarGet($db)
                 if ($resumen['area_origen'] === null) {
                     $resumen['area_origen'] = $movimiento['area_origen_nombre'] ?? $movimiento['area_destino_nombre'] ?? null;
                 }
-                if (($movimiento['tipo_movimiento'] ?? '') === 'TRANSFERENCIA') {
+                if (($movimiento['tipo_movimiento'] ?? '') === 'TRANSFERENCIA_ETAPA') {
                     $resumen['numero_transferencias']++;
                 }
             }
@@ -115,14 +120,20 @@ function manejarGet($db)
         $stmt = $db->prepare("
             SELECT
                 l.*,
+                COALESCE(l.id_documento_salida, l.id_documento_consumo) AS id_documento_salida_resuelto,
                 p.codigo_producto,
                 p.descripcion_completa,
                 a.nombre AS area_actual_nombre,
-                lp.nombre AS linea_produccion_nombre
+                lp.nombre AS linea_produccion_nombre,
+                m.numero_maquina,
+                t.codigo AS turno_codigo,
+                t.nombre AS turno_nombre
             FROM lote_wip l
             INNER JOIN productos_tejidos p ON p.id_producto = l.id_producto
             LEFT JOIN areas_produccion a ON a.id_area = l.id_area_actual
             LEFT JOIN lineas_produccion_erp lp ON lp.id_linea_produccion = l.id_linea_produccion
+            LEFT JOIN maquinas m ON m.id_maquina = l.id_maquina
+            LEFT JOIN turnos t ON t.id_turno = l.id_turno
             WHERE l.id_lote_wip = ?
         ");
         $stmt->execute([$idLote]);
@@ -158,8 +169,11 @@ function manejarGet($db)
             l.id_lote_padre,
             l.codigo_lote,
             l.referencia_externa,
+            COALESCE(l.id_documento_salida, l.id_documento_consumo) AS id_documento_salida,
             l.estado_lote,
             l.id_area_actual,
+            l.id_maquina,
+            l.id_turno,
             l.cantidad_docenas,
             l.cantidad_unidades,
             l.cantidad_base_unidades,
@@ -168,10 +182,15 @@ function manejarGet($db)
             l.fecha_inicio,
             p.codigo_producto,
             p.descripcion_completa,
-            a.nombre AS area_actual_nombre
+            a.nombre AS area_actual_nombre,
+            m.numero_maquina,
+            t.codigo AS turno_codigo,
+            t.nombre AS turno_nombre
         FROM lote_wip l
         INNER JOIN productos_tejidos p ON p.id_producto = l.id_producto
         LEFT JOIN areas_produccion a ON a.id_area = l.id_area_actual
+        LEFT JOIN maquinas m ON m.id_maquina = l.id_maquina
+        LEFT JOIN turnos t ON t.id_turno = l.id_turno
         ORDER BY l.fecha_inicio DESC, l.id_lote_wip DESC
         LIMIT 100
     ");
@@ -183,6 +202,11 @@ function manejarPost($db)
 {
     $data = json_decode(file_get_contents('php://input'), true);
     $action = $data['action'] ?? 'crear_lote';
+
+    if ($action === 'registrar_produccion_tejido') {
+        registrarProduccionTejido($db, $data);
+        return;
+    }
 
     if ($action === 'crear_lote') {
         crearLoteWip($db, $data);
@@ -200,6 +224,198 @@ function manejarPost($db)
     }
 
     jsonResponse(['success' => false, 'message' => 'Acción no válida'], 400);
+}
+
+function obtenerDocumentosSalidaTejido($db)
+{
+    $stmt = $db->query("
+        SELECT
+            d.id_documento,
+            d.numero_documento,
+            d.fecha_documento,
+            d.estado,
+            d.tipo_consumo,
+            COUNT(dd.id_detalle) AS total_lineas,
+            COALESCE(SUM(dd.cantidad), 0) AS cantidad_total_salida
+        FROM documentos_inventario d
+        LEFT JOIN documentos_inventario_detalle dd ON dd.id_documento = d.id_documento
+        WHERE d.tipo_documento = 'SALIDA'
+          AND d.tipo_consumo = 'TEJIDO'
+        GROUP BY d.id_documento, d.numero_documento, d.fecha_documento, d.estado, d.tipo_consumo
+        ORDER BY d.fecha_documento DESC, d.id_documento DESC
+    ");
+
+    jsonResponse([
+        'success' => true,
+        'documentos' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ]);
+}
+
+function registrarProduccionTejido($db, $data)
+{
+    $idDocumentoSalida = (int) ($data['id_documento_salida'] ?? 0);
+    $observaciones = trim((string) ($data['observaciones'] ?? ''));
+    $lineas = $data['lineas_produccion'] ?? [];
+
+    if ($idDocumentoSalida <= 0) {
+        jsonResponse(['success' => false, 'message' => 'Documento SAL-TEJ requerido'], 400);
+    }
+
+    if (!is_array($lineas) || empty($lineas)) {
+        jsonResponse(['success' => false, 'message' => 'Debe registrar al menos una linea de produccion'], 400);
+    }
+
+    $documentoSalida = obtenerDocumentoSalidaTejidoPorId($db, $idDocumentoSalida);
+    if (!$documentoSalida) {
+        jsonResponse(['success' => false, 'message' => 'El documento indicado no existe o no es una salida a tejido'], 400);
+    }
+
+    $idAreaTejeduria = obtenerAreaTejeduriaId($db);
+    if (!$idAreaTejeduria) {
+        jsonResponse(['success' => false, 'message' => 'No se encontro el area TEJEDURIA'], 500);
+    }
+
+    $db->beginTransaction();
+
+    try {
+        $lotesCreados = [];
+        $consumoTeoricoTotal = [];
+        $costoMpTotal = 0.0;
+        $totalBase = 0;
+        $fechasProduccion = [];
+
+        foreach ($lineas as $indice => $linea) {
+            $lineaNormalizada = validarLineaProduccionTejido($db, $linea, $indice + 1);
+            $fechasProduccion[] = $lineaNormalizada['fecha'];
+
+            $bom = obtenerBomActivo($db, $lineaNormalizada['id_producto']);
+            if (!$bom || empty($bom['detalles'])) {
+                throw new InvalidArgumentException('El producto de la linea ' . ($indice + 1) . ' no tiene BOM activo');
+            }
+
+            $cantidadBase = $lineaNormalizada['cantidad_docenas'] * 12 + $lineaNormalizada['cantidad_unidades'];
+            if ($cantidadBase <= 0) {
+                throw new InvalidArgumentException('La linea ' . ($indice + 1) . ' debe registrar una cantidad mayor a cero');
+            }
+
+            $resumenBom = calcularConsumoTeoricoYCosto($bom, $cantidadBase);
+            foreach ($resumenBom['componentes'] as $componente) {
+                $nombreComponente = $componente['nombre'];
+                if (!isset($consumoTeoricoTotal[$nombreComponente])) {
+                    $consumoTeoricoTotal[$nombreComponente] = 0.0;
+                }
+                $consumoTeoricoTotal[$nombreComponente] += $componente['consumo_kg'];
+            }
+
+            $loteInsertado = insertarLoteProduccionTejido($db, [
+                'id_producto' => $lineaNormalizada['id_producto'],
+                'id_maquina' => $lineaNormalizada['id_maquina'],
+                'id_turno' => $lineaNormalizada['id_turno'],
+                'id_area_actual' => $idAreaTejeduria,
+                'id_documento_salida' => $idDocumentoSalida,
+                'cantidad_docenas' => $lineaNormalizada['cantidad_docenas'],
+                'cantidad_unidades' => $lineaNormalizada['cantidad_unidades'],
+                'cantidad_base_unidades' => $cantidadBase,
+                'costo_mp_acumulado' => $resumenBom['costo_total'],
+                'costo_unitario_promedio' => $resumenBom['costo_unitario'],
+                'fecha_produccion' => $lineaNormalizada['fecha']
+            ]);
+
+            $stmtMov = $db->prepare("
+                INSERT INTO movimientos_wip (
+                    id_lote_wip, id_lote_relacionado, tipo_movimiento, cantidad_docenas, cantidad_unidades,
+                    id_area_origen, id_area_destino, id_documento_inventario,
+                    referencia_externa, fecha, usuario, observaciones
+                ) VALUES (?, NULL, 'CREACION_EN_TEJIDO', ?, ?, NULL, NULL, ?, ?, ?, ?, ?)
+            ");
+            $stmtMov->execute([
+                $loteInsertado['id_lote_wip'],
+                $lineaNormalizada['cantidad_docenas'],
+                $lineaNormalizada['cantidad_unidades'],
+                $idDocumentoSalida,
+                $loteInsertado['codigo_lote'],
+                $lineaNormalizada['fecha'] . ' 00:00:00',
+                $_SESSION['user_id'] ?? null,
+                'Produccion registrada desde documento ' . $documentoSalida['numero_documento']
+            ]);
+
+            $lotesCreados[] = [
+                'id_lote_wip' => $loteInsertado['id_lote_wip'],
+                'codigo_lote' => $loteInsertado['codigo_lote'],
+                'fecha_produccion' => $lineaNormalizada['fecha'],
+                'turno' => $lineaNormalizada['turno_codigo'],
+                'maquina' => $lineaNormalizada['maquina_codigo'],
+                'tejedor' => $lineaNormalizada['nombre_tejedor'],
+                'producto' => $lineaNormalizada['producto_nombre'],
+                'cantidad' => $lineaNormalizada['cantidad_docenas'] . '|' . str_pad((string) $lineaNormalizada['cantidad_unidades'], 2, '0', STR_PAD_LEFT),
+                'cantidad_base' => $cantidadBase,
+                'consumo_teorico_kg' => round($resumenBom['consumo_total_kg'], 4),
+                'costo_mp' => round($resumenBom['costo_total'], 4),
+                'estado' => 'ACTIVO',
+                'id_documento_salida' => $idDocumentoSalida,
+                'documento_referencia' => $documentoSalida['numero_documento']
+            ];
+
+            $costoMpTotal += $resumenBom['costo_total'];
+            $totalBase += $cantidadBase;
+        }
+
+        sort($fechasProduccion);
+
+        $stmtPlanilla = $db->prepare("
+            INSERT INTO planillas_tejido (
+                id_documento_salida, fecha_inicio, fecha_fin, detalles_json,
+                registrado_por, observaciones, activo
+            ) VALUES (?, ?, ?, ?, ?, ?, 1)
+        ");
+        $stmtPlanilla->execute([
+            $idDocumentoSalida,
+            $fechasProduccion[0] ?? null,
+            $fechasProduccion[count($fechasProduccion) - 1] ?? null,
+            json_encode([
+                'documento_salida' => $documentoSalida['numero_documento'],
+                'lineas_produccion' => $lineas,
+                'lotes_creados' => $lotesCreados
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            $_SESSION['user_id'] ?? null,
+            $observaciones !== '' ? $observaciones : null
+        ]);
+
+        $salidaDocumento = obtenerSalidaDocumentoKg($db, $idDocumentoSalida);
+        $analisisDiferencia = construirAnalisisDiferencia($salidaDocumento, $consumoTeoricoTotal);
+
+        $db->commit();
+
+        jsonResponse([
+            'success' => true,
+            'message' => 'Produccion de tejido registrada exitosamente',
+            'documento_salida' => [
+                'id' => (int) $documentoSalida['id_documento'],
+                'numero' => $documentoSalida['numero_documento'],
+                'fecha' => $documentoSalida['fecha_documento'],
+                'tipo_consumo' => $documentoSalida['tipo_consumo']
+            ],
+            'lotes_creados' => $lotesCreados,
+            'analisis' => [
+                'documento_salida' => $salidaDocumento,
+                'consumo_teorico_total' => array_map(function ($valor) {
+                    return round($valor, 4);
+                }, $consumoTeoricoTotal),
+                'diferencia' => $analisisDiferencia
+            ],
+            'resumen' => [
+                'total_lotes_creados' => count($lotesCreados),
+                'cantidad_total_producida' => formatearCantidadBase($totalBase),
+                'costo_mp_total' => round($costoMpTotal, 4),
+                'periodo' => !empty($fechasProduccion)
+                    ? ($fechasProduccion[0] . ' a ' . $fechasProduccion[count($fechasProduccion) - 1])
+                    : null
+            ]
+        ]);
+    } catch (Exception $e) {
+        $db->rollBack();
+        throw $e;
+    }
 }
 
 function crearLoteWip($db, $data)
@@ -413,13 +629,13 @@ function crearLoteWip($db, $data)
 
         $stmtLote = $db->prepare("
             INSERT INTO lote_wip (
-                codigo_lote, id_producto, id_linea_produccion,
+                codigo_lote, id_producto, id_maquina, id_turno, id_linea_produccion,
                 cantidad_docenas, cantidad_unidades, cantidad_base_unidades,
                 id_area_actual, estado_lote,
                 costo_mp_acumulado, costo_unitario_promedio,
-                id_documento_consumo, referencia_externa,
+                id_documento_consumo, id_documento_salida, referencia_externa,
                 fecha_inicio, creado_por
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?, ?, ?, ?, NOW(), ?)
+            ) VALUES (?, ?, NULL, NULL, ?, ?, ?, ?, ?, 'ACTIVO', ?, ?, ?, ?, ?, NOW(), ?)
         ");
 
         $costoUnitarioPromedio = $cantidades['cantidad_base_unidades'] > 0
@@ -437,6 +653,7 @@ function crearLoteWip($db, $data)
             round($subtotalDocumento, 4),
             $costoUnitarioPromedio,
             $idDocumento,
+            $idDocumento,
             $referenciaExterna,
             $_SESSION['user_id'] ?? null
         ]);
@@ -448,7 +665,7 @@ function crearLoteWip($db, $data)
                 id_lote_wip, id_lote_relacionado, tipo_movimiento, cantidad_docenas, cantidad_unidades,
                 id_area_origen, id_area_destino, id_documento_inventario,
                 referencia_externa, fecha, usuario, observaciones
-            ) VALUES (?, NULL, 'CREACION', ?, ?, NULL, ?, ?, ?, NOW(), ?, ?)
+            ) VALUES (?, NULL, 'CREACION_EN_TEJIDO', ?, ?, NULL, ?, ?, ?, NOW(), ?, ?)
         ");
 
         $stmtMovWip->execute([
@@ -469,7 +686,7 @@ function crearLoteWip($db, $data)
             'message' => 'WIP FASE 0 registrado correctamente',
             'id_lote_wip' => $idLoteWip,
             'codigo_lote' => $referenciaExterna,
-            'id_documento_consumo' => $idDocumento,
+            'id_documento_salida' => $idDocumento,
             'numero_documento' => $numeroDocumento,
             'resumen_consumo' => array_map(function ($item) {
                 return [
@@ -551,7 +768,7 @@ function transferirLoteWip($db, $data)
                 id_lote_wip, id_lote_relacionado, tipo_movimiento, cantidad_docenas, cantidad_unidades,
                 id_area_origen, id_area_destino, id_documento_inventario,
                 referencia_externa, fecha, usuario, observaciones
-            ) VALUES (?, NULL, 'TRANSFERENCIA', ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+            ) VALUES (?, NULL, 'TRANSFERENCIA_ETAPA', ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
         ");
 
         $obs = $observaciones !== ''
@@ -564,7 +781,7 @@ function transferirLoteWip($db, $data)
             (int) $lote['cantidad_unidades'],
             $idAreaOrigen,
             $idAreaDestino,
-            !empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null,
+            !empty($lote['id_documento_salida']) ? (int) $lote['id_documento_salida'] : (!empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null),
             $lote['referencia_externa'],
             $_SESSION['user_id'] ?? null,
             $obs
@@ -676,8 +893,8 @@ function transferirParcialLoteWip($db, $data)
                 id_lote_padre, codigo_lote, id_producto, id_linea_produccion,
                 cantidad_docenas, cantidad_unidades, cantidad_base_unidades,
                 id_area_actual, estado_lote, costo_mp_acumulado, costo_unitario_promedio,
-                id_documento_consumo, referencia_externa, fecha_inicio, creado_por
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?, ?, ?, ?, NOW(), ?)
+                id_documento_consumo, id_documento_salida, referencia_externa, fecha_inicio, creado_por
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVO', ?, ?, ?, ?, ?, NOW(), ?)
         ");
         $stmtCrearDerivado->execute([
             $idLoteWip,
@@ -690,7 +907,8 @@ function transferirParcialLoteWip($db, $data)
             $idAreaDestino,
             $costoDerivado,
             $costoUnitarioPromedio,
-            $lote['id_documento_consumo'],
+            $lote['id_documento_consumo'] ?? $lote['id_documento_salida'],
+            $lote['id_documento_salida'] ?? $lote['id_documento_consumo'],
             $referenciaDerivada,
             $_SESSION['user_id'] ?? null
         ]);
@@ -707,26 +925,26 @@ function transferirParcialLoteWip($db, $data)
         $stmtMov->execute([
             $idLoteWip,
             $idLoteDerivado,
-            'TRANSFERENCIA',
+            'TRANSFERENCIA_ETAPA',
             $cantidades['cantidad_docenas'],
             $cantidades['cantidad_unidades'],
             $idAreaOrigen,
             $idAreaDestino,
-            !empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null,
+            !empty($lote['id_documento_salida']) ? (int) $lote['id_documento_salida'] : (!empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null),
             $lote['referencia_externa'],
             $_SESSION['user_id'] ?? null,
             $observaciones !== '' ? $observaciones : 'Split parcial hacia lote derivado ' . $codigoLoteDerivado
         ]);
 
-        $stmtMov->execute([
+            $stmtMov->execute([
             $idLoteDerivado,
             $idLoteWip,
-            'CREACION',
+            'CREACION_EN_TEJIDO',
             $cantidades['cantidad_docenas'],
             $cantidades['cantidad_unidades'],
             $idAreaOrigen,
             $idAreaDestino,
-            !empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null,
+            !empty($lote['id_documento_salida']) ? (int) $lote['id_documento_salida'] : (!empty($lote['id_documento_consumo']) ? (int) $lote['id_documento_consumo'] : null),
             $referenciaDerivada,
             $_SESSION['user_id'] ?? null,
             'Lote derivado creado por split parcial desde ' . $lote['codigo_lote']
@@ -783,6 +1001,8 @@ function obtenerBomActivo($db, $idProducto)
             i.nombre,
             i.id_tipo_inventario,
             i.id_unidad,
+            i.costo_promedio,
+            i.costo_unitario,
             um.codigo AS unidad_codigo,
             um.abreviatura AS unidad_abreviatura
         FROM bom_productos_detalle d
@@ -843,7 +1063,7 @@ function obtenerHistorialCabeceraLote($db, $idLoteWip)
             l.cantidad_base_unidades,
             l.costo_mp_acumulado,
             l.costo_unitario_promedio,
-            l.id_documento_consumo,
+            COALESCE(l.id_documento_salida, l.id_documento_consumo) AS id_documento_salida,
             l.referencia_externa,
             l.fecha_inicio,
             l.fecha_actualizacion,
@@ -851,11 +1071,16 @@ function obtenerHistorialCabeceraLote($db, $idLoteWip)
             u.nombre_completo AS creado_por_nombre,
             lpadr.codigo_lote AS codigo_lote_padre,
             lpadr.id_area_actual AS id_area_padre,
-            apadr.nombre AS area_padre_nombre
+            apadr.nombre AS area_padre_nombre,
+            m.numero_maquina,
+            t.codigo AS turno_codigo,
+            t.nombre AS turno_nombre
         FROM lote_wip l
         INNER JOIN productos_tejidos p ON p.id_producto = l.id_producto
         LEFT JOIN lineas_produccion_erp lp ON lp.id_linea_produccion = l.id_linea_produccion
         LEFT JOIN areas_produccion a ON a.id_area = l.id_area_actual
+        LEFT JOIN maquinas m ON m.id_maquina = l.id_maquina
+        LEFT JOIN turnos t ON t.id_turno = l.id_turno
         LEFT JOIN usuarios u ON u.id_usuario = l.creado_por
         LEFT JOIN lote_wip lpadr ON lpadr.id_lote_wip = l.id_lote_padre
         LEFT JOIN areas_produccion apadr ON apadr.id_area = lpadr.id_area_actual
@@ -895,7 +1120,7 @@ function obtenerDocumentoOrigenLote($db, $idLoteWip)
             d.fecha_creacion,
             d.referencia_externa
         FROM lote_wip l
-        INNER JOIN documentos_inventario d ON d.id_documento = l.id_documento_consumo
+        INNER JOIN documentos_inventario d ON d.id_documento = COALESCE(l.id_documento_salida, l.id_documento_consumo)
         LEFT JOIN inv_doc_subtipos s ON s.id_subtipo = d.id_doc_subtipo
         WHERE l.id_lote_wip = ?
         LIMIT 1
@@ -930,6 +1155,298 @@ function obtenerMovimientosHistorialLote($db, $idLoteWip)
     ");
     $stmt->execute([$idLoteWip]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+function obtenerDocumentoSalidaTejidoPorId($db, $idDocumentoSalida)
+{
+    $stmt = $db->prepare("
+        SELECT id_documento, numero_documento, fecha_documento, estado, tipo_consumo
+        FROM documentos_inventario
+        WHERE id_documento = ?
+          AND tipo_documento = 'SALIDA'
+          AND tipo_consumo = 'TEJIDO'
+        LIMIT 1
+    ");
+    $stmt->execute([$idDocumentoSalida]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function validarLineaProduccionTejido($db, $linea, $numeroLinea)
+{
+    $fecha = trim((string) ($linea['fecha'] ?? ''));
+    $idTurno = (int) ($linea['id_turno'] ?? 0);
+    $idMaquina = (int) ($linea['id_maquina'] ?? 0);
+    $idProducto = (int) ($linea['id_producto'] ?? 0);
+    $cantidadDocenas = max(0, (int) ($linea['cantidad_docenas'] ?? 0));
+    $cantidadUnidades = (int) ($linea['cantidad_unidades'] ?? 0);
+    $nombreTejedor = trim((string) ($linea['nombre_tejedor'] ?? ''));
+
+    if ($fecha === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
+        throw new InvalidArgumentException('La linea ' . $numeroLinea . ' tiene una fecha invalida');
+    }
+
+    if ($idTurno <= 0 || !obtenerTurnoPorId($db, $idTurno)) {
+        throw new InvalidArgumentException('La linea ' . $numeroLinea . ' tiene un turno invalido');
+    }
+
+    $maquina = obtenerMaquinaPorId($db, $idMaquina);
+    if ($idMaquina <= 0 || !$maquina) {
+        throw new InvalidArgumentException('La linea ' . $numeroLinea . ' tiene una maquina invalida');
+    }
+
+    $producto = obtenerProductoActivoPorId($db, $idProducto);
+    if ($idProducto <= 0 || !$producto) {
+        throw new InvalidArgumentException('La linea ' . $numeroLinea . ' tiene un producto invalido');
+    }
+
+    if ($cantidadUnidades < 0 || $cantidadUnidades > 11) {
+        throw new InvalidArgumentException('La linea ' . $numeroLinea . ' debe tener unidades entre 0 y 11');
+    }
+
+    if (($cantidadDocenas * 12 + $cantidadUnidades) <= 0) {
+        throw new InvalidArgumentException('La linea ' . $numeroLinea . ' debe registrar una cantidad mayor a cero');
+    }
+
+    $turno = obtenerTurnoPorId($db, $idTurno);
+
+    return [
+        'fecha' => $fecha,
+        'id_turno' => $idTurno,
+        'id_maquina' => $idMaquina,
+        'id_producto' => $idProducto,
+        'cantidad_docenas' => $cantidadDocenas,
+        'cantidad_unidades' => $cantidadUnidades,
+        'nombre_tejedor' => $nombreTejedor,
+        'maquina_codigo' => $maquina['numero_maquina'],
+        'turno_codigo' => $turno['codigo'] ?? ($turno['nombre'] ?? ''),
+        'producto_nombre' => $producto['descripcion_completa']
+    ];
+}
+
+function obtenerTurnoPorId($db, $idTurno)
+{
+    $stmt = $db->prepare("SELECT id_turno, codigo, nombre, hora_inicio, hora_fin FROM turnos WHERE id_turno = ? AND activo = 1 LIMIT 1");
+    $stmt->execute([$idTurno]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function obtenerMaquinaPorId($db, $idMaquina)
+{
+    $stmt = $db->prepare("SELECT id_maquina, numero_maquina, estado FROM maquinas WHERE id_maquina = ? LIMIT 1");
+    $stmt->execute([$idMaquina]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function obtenerProductoActivoPorId($db, $idProducto)
+{
+    $stmt = $db->prepare("SELECT id_producto, codigo_producto, descripcion_completa FROM productos_tejidos WHERE id_producto = ? AND activo = 1 LIMIT 1");
+    $stmt->execute([$idProducto]);
+    return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
+function calcularConsumoTeoricoYCosto($bom, $cantidadBase)
+{
+    $factorDocena = $cantidadBase / 12;
+    $componentes = [];
+    $costoTotal = 0.0;
+    $consumoTotalKg = 0.0;
+
+    foreach ($bom['detalles'] as $detalle) {
+        $gramosBase = (float) $detalle['gramos_por_docena'] * $factorDocena;
+        $mermaTotalPct = (float) $bom['merma_pct'] + (float) $detalle['merma_pct'];
+        $gramosConMerma = $gramosBase * (1 + ($mermaTotalPct / 100));
+        $consumoKg = round($gramosConMerma / 1000, 4);
+        $cpp = obtenerCppComponente($detalle);
+        $costoComponente = round($consumoKg * $cpp, 4);
+
+        $componentes[] = [
+            'id_inventario' => (int) $detalle['id_inventario'],
+            'nombre' => $detalle['nombre'],
+            'codigo' => $detalle['codigo'],
+            'consumo_kg' => $consumoKg,
+            'cpp' => $cpp,
+            'costo' => $costoComponente
+        ];
+
+        $consumoTotalKg += $consumoKg;
+        $costoTotal += $costoComponente;
+    }
+
+    return [
+        'componentes' => $componentes,
+        'consumo_total_kg' => round($consumoTotalKg, 4),
+        'costo_total' => round($costoTotal, 4),
+        'costo_unitario' => $cantidadBase > 0 ? round($costoTotal / $cantidadBase, 6) : 0.0
+    ];
+}
+
+function obtenerCppComponente($detalleBom)
+{
+    if (isset($detalleBom['costo_promedio']) && (float) $detalleBom['costo_promedio'] > 0) {
+        return (float) $detalleBom['costo_promedio'];
+    }
+
+    if (isset($detalleBom['costo_unitario']) && (float) $detalleBom['costo_unitario'] > 0) {
+        return (float) $detalleBom['costo_unitario'];
+    }
+
+    return 0.0;
+}
+
+function insertarLoteProduccionTejido($db, $datos)
+{
+    $intentos = 0;
+    $maxIntentos = 10;
+
+    while ($intentos < $maxIntentos) {
+        $codigoLote = generarCodigoLoteProduccionTejido($db, $datos['id_maquina'], $datos['fecha_produccion'], $intentos);
+
+        try {
+            $stmt = $db->prepare("
+                INSERT INTO lote_wip (
+                    codigo_lote, id_producto, id_maquina, id_turno, id_linea_produccion,
+                    cantidad_docenas, cantidad_unidades, cantidad_base_unidades,
+                    id_area_actual, estado_lote, costo_mp_acumulado, costo_unitario_promedio,
+                    id_documento_consumo, id_documento_salida, referencia_externa, fecha_inicio, creado_por
+                ) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, 'ACTIVO', ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->execute([
+                $codigoLote,
+                $datos['id_producto'],
+                $datos['id_maquina'],
+                $datos['id_turno'],
+                $datos['cantidad_docenas'],
+                $datos['cantidad_unidades'],
+                $datos['cantidad_base_unidades'],
+                $datos['id_area_actual'],
+                $datos['costo_mp_acumulado'],
+                $datos['costo_unitario_promedio'],
+                $datos['id_documento_salida'],
+                $datos['id_documento_salida'],
+                $codigoLote,
+                $datos['fecha_produccion'] . ' 00:00:00',
+                $_SESSION['user_id'] ?? null
+            ]);
+
+            return [
+                'id_lote_wip' => (int) $db->lastInsertId(),
+                'codigo_lote' => $codigoLote
+            ];
+        } catch (PDOException $e) {
+            if (($e->errorInfo[1] ?? 0) === 1062) {
+                $intentos++;
+                continue;
+            }
+
+            throw $e;
+        }
+    }
+
+    throw new RuntimeException('No se pudo generar un codigo OP-TEJ unico para la maquina seleccionada');
+}
+
+function generarCodigoLoteProduccionTejido($db, $idMaquina, $fechaProduccion, $offset = 0)
+{
+    $fecha = new DateTime($fechaProduccion);
+    $periodo = $fecha->format('Ym');
+    $maquina = 'M' . str_pad((string) $idMaquina, 2, '0', STR_PAD_LEFT);
+    $prefijo = 'OP-TEJ-' . $periodo . '-' . $maquina . '-';
+
+    $stmt = $db->prepare("
+        SELECT codigo_lote
+        FROM lote_wip
+        WHERE codigo_lote LIKE ?
+        ORDER BY codigo_lote DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$prefijo . '%']);
+    $ultimoCodigo = $stmt->fetchColumn();
+
+    $siguiente = 1;
+    if ($ultimoCodigo) {
+        $siguiente = (int) substr((string) $ultimoCodigo, -3) + 1;
+    }
+
+    $siguiente += (int) $offset;
+
+    return $prefijo . str_pad((string) $siguiente, 3, '0', STR_PAD_LEFT);
+}
+
+function obtenerSalidaDocumentoKg($db, $idDocumentoSalida)
+{
+    $stmt = $db->prepare("
+        SELECT
+            i.nombre,
+            dd.cantidad,
+            um.codigo AS unidad_codigo,
+            um.abreviatura AS unidad_abreviatura
+        FROM documentos_inventario_detalle dd
+        INNER JOIN inventarios i ON i.id_inventario = dd.id_inventario
+        LEFT JOIN unidades_medida um ON um.id_unidad = dd.id_unidad
+        WHERE dd.id_documento = ?
+    ");
+    $stmt->execute([$idDocumentoSalida]);
+
+    $salida = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $fila) {
+        $kg = convertirCantidadAKilos((float) $fila['cantidad'], $fila['unidad_codigo'], $fila['unidad_abreviatura']);
+        if (!isset($salida[$fila['nombre']])) {
+            $salida[$fila['nombre']] = 0.0;
+        }
+        $salida[$fila['nombre']] += $kg;
+    }
+
+    return array_map(function ($valor) {
+        return round($valor, 4);
+    }, $salida);
+}
+
+function convertirCantidadAKilos($cantidad, $unidadCodigo, $unidadAbreviatura)
+{
+    $unidadCodigo = strtoupper((string) $unidadCodigo);
+    $unidadAbreviatura = strtolower((string) $unidadAbreviatura);
+
+    if ($unidadCodigo === 'KG' || $unidadAbreviatura === 'kg') {
+        return $cantidad;
+    }
+
+    if ($unidadCodigo === 'GR' || $unidadAbreviatura === 'g') {
+        return $cantidad / 1000;
+    }
+
+    return $cantidad;
+}
+
+function construirAnalisisDiferencia($salidaDocumento, $consumoTeoricoTotal)
+{
+    $nombres = array_unique(array_merge(array_keys($salidaDocumento), array_keys($consumoTeoricoTotal)));
+    sort($nombres);
+    $analisis = [];
+
+    foreach ($nombres as $nombre) {
+        $salidaKg = (float) ($salidaDocumento[$nombre] ?? 0);
+        $teoricoKg = (float) ($consumoTeoricoTotal[$nombre] ?? 0);
+        $diferenciaKg = round($salidaKg - $teoricoKg, 4);
+        $porcentaje = $salidaKg > 0 ? round(($diferenciaKg / $salidaKg) * 100, 2) : 0.0;
+
+        $analisis[$nombre] = [
+            'salida_kg' => round($salidaKg, 4),
+            'teorico_kg' => round($teoricoKg, 4),
+            'diferencia_kg' => $diferenciaKg,
+            'porcentaje' => $porcentaje,
+            'concepto' => 'Residuo/desperdicio en tejido'
+        ];
+    }
+
+    return $analisis;
+}
+
+function formatearCantidadBase($cantidadBase)
+{
+    $cantidadBase = max(0, (int) $cantidadBase);
+    $docenas = (int) floor($cantidadBase / 12);
+    $unidades = $cantidadBase % 12;
+    return $docenas . '|' . str_pad((string) $unidades, 2, '0', STR_PAD_LEFT);
 }
 
 function generarCodigoLoteDerivado($db, $codigoPadre)

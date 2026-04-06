@@ -24,7 +24,7 @@ try {
             if (isset($_GET['ultimo']) && $_GET['ultimo'] === 'true') {
                 $stmt = $db->query("
                     SELECT p.*, 
-                           t.nombre_turno,
+                           t.nombre AS nombre_turno,
                            u.nombre_completo as nombre_tejedor
                     FROM produccion_tejeduria p
                     LEFT JOIN turnos t ON p.id_turno = t.id_turno
@@ -78,7 +78,7 @@ try {
                         p.id_tejedor,
                         p.observaciones,
                         p.fecha_creacion,
-                        t.nombre_turno,
+                        t.nombre AS nombre_turno,
                         t.hora_inicio,
                         t.hora_fin,
                         u.nombre_completo as nombre_tejedor
@@ -139,7 +139,7 @@ try {
                     p.codigo_lote,
                     p.fecha_produccion,
                     p.observaciones,
-                    t.nombre_turno,
+                    t.nombre AS nombre_turno,
                     t.hora_inicio,
                     t.hora_fin,
                     u.nombre_completo as nombre_tejedor,
@@ -172,7 +172,7 @@ try {
             }
             
             $sql .= " GROUP BY p.id_produccion, p.codigo_lote, p.fecha_produccion, 
-                      p.observaciones, t.nombre_turno, t.hora_inicio, t.hora_fin, u.nombre_completo
+                      p.observaciones, t.nombre, t.hora_inicio, t.hora_fin, u.nombre_completo
                       ORDER BY p.fecha_produccion DESC, p.id_produccion DESC
                       LIMIT 100";
             

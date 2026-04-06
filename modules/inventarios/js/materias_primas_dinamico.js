@@ -288,58 +288,128 @@ async function abrirModalIngreso() {
 }
 
 async function obtenerSiguienteNumero(tipo = null) {
+    // Si no se proporciona tipo, intentar obtenerlo del select
+    if (!tipo) {
+        const selectTipo = document.getElementById('ingresoTipoIngreso');
+        if (selectTipo && selectTipo.value) {
+            const tipoConfig = tiposIngresoConfig[selectTipo.value];
+            tipo = tipoConfig ? tipoConfig.codigo : null;
+        }
+    }
+
+    if (!tipo) return;
+
+    const docInput = document.getElementById('ingresoDocumento');
+
+    // ⭐ VERIFICAR CACHÉ: Si ya tenemos un número para este tipo, usarlo
+    if (numerosDocumentoCache[tipo]) {
+        if (docInput) {
+            docInput.value = numerosDocumentoCache[tipo];
+            docInput.disabled = false;
+        }
+        return;
+    }
+
+    // 🛡️ IMPLEMENTACIÓN ROBUSTA CON AbortController Y GESTIÓN DE SESIÓN
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 seg de timeout
+
     try {
-        // Si no se proporciona tipo, intentar obtenerlo del select
-        if (!tipo) {
-            const selectTipo = document.getElementById('ingresoTipoIngreso');
-            if (selectTipo && selectTipo.value) {
-                const tipoConfig = tiposIngresoConfig[selectTipo.value];
-                tipo = tipoConfig ? tipoConfig.codigo : null;
-            }
-        }
-
-        // Si aún no hay tipo, no hacer nada
-        if (!tipo) {
-            return;
-        }
-
-        // ⭐ VERIFICAR CACHÉ: Si ya tenemos un número para este tipo, usarlo
-        if (numerosDocumentoCache[tipo]) {
-            const docInput = document.getElementById('ingresoDocumento');
-            if (docInput) {
-                docInput.value = numerosDocumentoCache[tipo];
-                docInput.disabled = false;
-            }
-            console.log(`📋 Usando número en caché para ${tipo}:`, numerosDocumentoCache[tipo]);
-            return;
-        }
-
-        // Mostrar indicador de carga
-        const docInput = document.getElementById('ingresoDocumento');
         if (docInput) {
             docInput.value = '⏳ Generando...';
             docInput.disabled = true;
         }
 
         const url = `${BASE_URL_API}/ingresos_mp.php?action=siguiente_numero&tipo=${tipo}`;
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
+        
+        clearTimeout(timeoutId);
+
+        // 1. Manejar error de autorización HTTP
+        if (response.status === 401) {
+            throw new Error('SESIÓN_EXPIRADA');
+        }
+
         const data = await response.json();
 
+        // 2. Manejar éxito
         if (data.success && docInput) {
-            // ⭐ GUARDAR EN CACHÉ
             numerosDocumentoCache[tipo] = data.numero;
             docInput.value = data.numero;
             docInput.disabled = false;
-            console.log(`✅ Número generado y cacheado para ${tipo}:`, data.numero);
+            console.log(`✅ Número generado:`, data.numero);
+        } else {
+            // 3. Manejar error lógico del servidor (ej. No autorizado en JSON)
+            if (data.message && (data.message.includes('autorizado') || data.message.includes('Sesión'))) {
+                throw new Error('SESIÓN_EXPIRADA');
+            }
+            throw new Error(data.message || 'Error desconocido del servidor');
         }
     } catch (error) {
-        logError('obtenerSiguienteNumero', error);
-        const docInput = document.getElementById('ingresoDocumento');
-        if (docInput) {
+        clearTimeout(timeoutId);
+
+        if (error.name === 'AbortError') {
+            console.error('❌ Timeout al generar número de ingreso (8s)');
+            ejecutarFallbackLocalIngreso(tipo, 'Timeout de red');
+        } else if (error.message === 'SESIÓN_EXPIRADA') {
+            console.error('❌ Sesión expirada al intentar generar número');
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Sesión Expirada',
+                    text: 'Su sesión ha terminado. Por favor, reingrese al sistema.',
+                    icon: 'warning',
+                    confirmButtonText: 'Ir al Login'
+                }).then(() => {
+                    window.location.href = `${window.baseUrl || baseUrl || '/mes_hermen'}/index.php`;
+                });
+            }
+            
+            if (docInput) {
+                docInput.value = '';
+                docInput.placeholder = 'SESIÓN EXPIRADA';
+                docInput.disabled = true;
+            }
+        } else {
+            console.error('❌ Error técnico en obtenerSiguienteNumero:', error.message);
+            ejecutarFallbackLocalIngreso(tipo, error.message);
+        }
+    } finally {
+        // Asegurar estado consistente
+        if (docInput && docInput.value === '⏳ Generando...') {
             docInput.value = '';
-            docInput.disabled = true;
+            docInput.placeholder = 'Error al generar';
+            docInput.disabled = false;
         }
     }
+}
+
+/**
+ * Fallback local para ingresos cuando falla el servidor
+ */
+function ejecutarFallbackLocalIngreso(tipo, motivo) {
+    const docInput = document.getElementById('ingresoDocumento');
+    if (!docInput) return;
+
+    // Prefijo según el tipo de inventario (MP) y el tipo de movimiento
+    const codigosMovimiento = {
+        'COMPRA': 'C',
+        'INICIAL': 'I',
+        'DEVOLUCION_PROD': 'R',
+        'AJUSTE_POS': 'A'
+    };
+
+    const hoy = new Date();
+    const fechaStr = hoy.toISOString().split('T')[0].replace(/-/g, '');
+    const rand = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+    const movCode = codigosMovimiento[tipo] || 'X';
+    
+    // Formato aproximado: IN-MP-C-20240325-01
+    const numero = `IN-MP-${movCode}-${fechaStr}-${rand}`;
+    
+    numerosDocumentoCache[tipo] = numero;
+    docInput.value = numero;
+    docInput.disabled = false;
+    console.warn(`⚠️ Generado fallback local de ingreso (${motivo}):`, numero);
 }
 
 function resetearFormularioIngreso() {

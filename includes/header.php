@@ -796,6 +796,24 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                     <i class="fas fa-chevron-right menu-arrow"></i>
                                 </a>
                                 <ul class="submenu">
+                                    <!-- Tejido -->
+                                    <li class="menu-item">
+                                        <a class="menu-link" onclick="toggleSubmenu(this)">
+                                            <i class="fas fa-industry"></i>
+                                            <span class="menu-text">TEJIDO</span>
+                                            <i class="fas fa-chevron-right menu-arrow"></i>
+                                        </a>
+                                        <ul class="submenu">
+                                            <?php if (hasRole(['admin', 'gerencia', 'coordinador'])): ?>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/dashboard_wip.php"
+                                                    class="menu-link <?php echo $currentPage === 'dashboard_wip' ? 'active' : ''; ?>">
+                                                    <i class="fas fa-chart-pie"></i><span class="menu-text">Dashboard WIP</span></a></li>
+                                            <?php endif; ?>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/produccion.php"
+                                                    class="menu-link <?php echo $currentPage === 'produccion' ? 'active' : ''; ?>">
+                                                    <i class="fas fa-edit"></i><span class="menu-text">Reg. Producción</span></a></li>
+                                        </ul>
+                                    </li>
                                     <!-- Poliamida -->
                                     <li class="menu-item">
                                         <a class="menu-link" onclick="toggleSubmenu(this)">
@@ -814,26 +832,6 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                             <li><a href="#" class="menu-link"><i class="fas fa-clock"></i><span
                                                         class="menu-text">Por Turno</span><span
                                                         class="menu-badge badge-soon">Pronto</span></a></li>
-                                            <li><a href="#" class="menu-link"><i class="fas fa-route"></i><span
-                                                        class="menu-text">Control</span><span
-                                                        class="menu-badge badge-soon">Pronto</span></a></li>
-                                            <li><a href="#" class="menu-link"><i class="fas fa-chart-line"></i><span
-                                                        class="menu-text">Reportes</span><span
-                                                        class="menu-badge badge-soon">Pronto</span></a></li>
-                                        </ul>
-                                    </li>
-                                    <!-- Algodón -->
-                                    <li class="menu-item">
-                                        <a class="menu-link" onclick="toggleSubmenu(this)">
-                                            <i class="fas fa-tshirt"></i>
-                                            <span class="menu-text">ALGODÓN</span>
-                                            <i class="fas fa-chevron-right menu-arrow"></i>
-                                        </a>
-                                        <ul class="submenu">
-                                            <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
-                                                        class="menu-text">Órdenes</span><span
-                                                        class="menu-badge badge-soon">Pronto</span></a></li>
-                                            <li><a href="#" class="menu-link"><i class="fas fa-clock"></i><span
                                                         class="menu-text">Por Turno</span><span
                                                         class="menu-badge badge-soon">Pronto</span></a></li>
                                         </ul>

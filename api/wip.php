@@ -52,6 +52,11 @@ function manejarGet($db)
         return;
     }
 
+    if ($action === 'get_ultimo_registro_tejido') {
+        obtenerUltimoRegistroTejido($db);
+        return;
+    }
+
     if ($action === 'historial') {
         $idLote = (int) ($_GET['id_lote_wip'] ?? 0);
         if ($idLote <= 0) {
@@ -251,23 +256,80 @@ function obtenerDocumentosSalidaTejido($db)
     ]);
 }
 
+function obtenerUltimoRegistroTejido($db)
+{
+    $stmt = $db->query("
+        SELECT id_planilla, detalles_json, fecha_registro
+        FROM planillas_tejido
+        WHERE activo = 1
+        ORDER BY id_planilla DESC
+        LIMIT 1
+    ");
+
+    $registro = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$registro) {
+        jsonResponse([
+            'success' => true,
+            'ultimo_registro' => null
+        ]);
+        return;
+    }
+
+    $detalles = json_decode($registro['detalles_json'], true);
+
+    jsonResponse([
+        'success' => true,
+        'ultimo_registro' => [
+            'id_planilla' => (int) $registro['id_planilla'],
+            'fecha_registro' => $registro['fecha_registro'],
+            'id_tecnico' => $detalles['id_tecnico'] ?? null,
+            'id_tejedor' => $detalles['id_tejedor'] ?? null,
+            'id_asistente' => $detalles['id_asistente'] ?? null,
+            'lineas_produccion' => $detalles['lineas_produccion'] ?? []
+        ]
+    ]);
+}
+
 function registrarProduccionTejido($db, $data)
 {
     $idDocumentoSalida = (int) ($data['id_documento_salida'] ?? 0);
     $observaciones = trim((string) ($data['observaciones'] ?? ''));
     $lineas = $data['lineas_produccion'] ?? [];
-
-    if ($idDocumentoSalida <= 0) {
-        jsonResponse(['success' => false, 'message' => 'Documento SAL-TEJ requerido'], 400);
-    }
+    
+    // Nuevos campos de personal (Selectores)
+    $idTecnico = (int) ($data['id_tecnico'] ?? 0);
+    $idTejedor = (int) ($data['id_tejedor'] ?? 0);
+    $idAsistente = (int) ($data['id_asistente'] ?? 0);
+    $desperdicio = $data['desperdicio'] ?? []; // [{familia, kg, pct}]
 
     if (!is_array($lineas) || empty($lineas)) {
         jsonResponse(['success' => false, 'message' => 'Debe registrar al menos una linea de produccion'], 400);
     }
 
+    // --- LÓGICA DE RESOLUCIÓN AUTOMÁTICA SAL-TEJ (Fase 1 Mejorada) ---
+    // Si no hay idDocumentoSalida manual, intentamos resolver el mejor candidato
+    // La producción puede enviarnos opcionalmente una entidad (ORDEN/PEDIDO)
+    $entidadTipo = $data['referencia_entidad_tipo'] ?? null;
+    $entidadId = $data['referencia_entidad_id'] ?? null;
+
+    try {
+        $idDocumentoResuelto = resolverMejorDocumentoSalidaTejido(
+            $db,
+            $idDocumentoSalida,
+            $lineas[0]['fecha'] ?? date('Y-m-d'), // Usamos la fecha de la primera linea de referencia
+            $entidadTipo,
+            $entidadId
+        );
+        $idDocumentoSalida = $idDocumentoResuelto;
+    } catch (InvalidArgumentException $e) {
+        jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
+    }
+
     $documentoSalida = obtenerDocumentoSalidaTejidoPorId($db, $idDocumentoSalida);
+    // El documento SAL-TEJ ya no es opcional en la BD, se obliga vínculo automático o manual
     if (!$documentoSalida) {
-        jsonResponse(['success' => false, 'message' => 'El documento indicado no existe o no es una salida a tejido'], 400);
+        jsonResponse(['success' => false, 'message' => 'No se encontró un documento de salida válido para vincular este registro.'], 400);
     }
 
     $idAreaTejeduria = obtenerAreaTejeduriaId($db);
@@ -281,10 +343,18 @@ function registrarProduccionTejido($db, $data)
         $lotesCreados = [];
         $consumoTeoricoTotal = [];
         $costoMpTotal = 0.0;
-        $totalBase = 0;
+        $totalBaseUnidadesGlobal = 0;
         $fechasProduccion = [];
 
         foreach ($lineas as $indice => $linea) {
+            // Conversión automática: 12 unidades = 1 docena adicional
+            $docIn = (int) ($linea['cantidad_docenas'] ?? 0);
+            $uniIn = (int) ($linea['cantidad_unidades'] ?? 0);
+            $totalBaseFila = ($docIn * 12) + $uniIn;
+            
+            $linea['cantidad_docenas'] = (int) floor($totalBaseFila / 12);
+            $linea['cantidad_unidades'] = (int) ($totalBaseFila % 12);
+
             $lineaNormalizada = validarLineaProduccionTejido($db, $linea, $indice + 1);
             $fechasProduccion[] = $lineaNormalizada['fecha'];
 
@@ -312,7 +382,7 @@ function registrarProduccionTejido($db, $data)
                 'id_maquina' => $lineaNormalizada['id_maquina'],
                 'id_turno' => $lineaNormalizada['id_turno'],
                 'id_area_actual' => $idAreaTejeduria,
-                'id_documento_salida' => $idDocumentoSalida,
+                'id_documento_salida' => $idDocumentoSalida > 0 ? $idDocumentoSalida : null,
                 'cantidad_docenas' => $lineaNormalizada['cantidad_docenas'],
                 'cantidad_unidades' => $lineaNormalizada['cantidad_unidades'],
                 'cantidad_base_unidades' => $cantidadBase,
@@ -332,11 +402,11 @@ function registrarProduccionTejido($db, $data)
                 $loteInsertado['id_lote_wip'],
                 $lineaNormalizada['cantidad_docenas'],
                 $lineaNormalizada['cantidad_unidades'],
-                $idDocumentoSalida,
+                $idDocumentoSalida > 0 ? $idDocumentoSalida : null,
                 $loteInsertado['codigo_lote'],
                 $lineaNormalizada['fecha'] . ' 00:00:00',
                 $_SESSION['user_id'] ?? null,
-                'Produccion registrada desde documento ' . $documentoSalida['numero_documento']
+                'Produccion registrada' . ($documentoSalida ? ' desde documento ' . $documentoSalida['numero_documento'] : '')
             ]);
 
             $lotesCreados[] = [
@@ -352,12 +422,12 @@ function registrarProduccionTejido($db, $data)
                 'consumo_teorico_kg' => round($resumenBom['consumo_total_kg'], 4),
                 'costo_mp' => round($resumenBom['costo_total'], 4),
                 'estado' => 'ACTIVO',
-                'id_documento_salida' => $idDocumentoSalida,
-                'documento_referencia' => $documentoSalida['numero_documento']
+                'id_documento_salida' => $idDocumentoSalida > 0 ? $idDocumentoSalida : null,
+                'documento_referencia' => $documentoSalida ? $documentoSalida['numero_documento'] : 'S/D'
             ];
 
             $costoMpTotal += $resumenBom['costo_total'];
-            $totalBase += $cantidadBase;
+            $totalBaseUnidadesGlobal += $cantidadBase;
         }
 
         sort($fechasProduccion);
@@ -368,36 +438,45 @@ function registrarProduccionTejido($db, $data)
                 registrado_por, observaciones, activo
             ) VALUES (?, ?, ?, ?, ?, ?, 1)
         ");
+        
+        $jsonPayload = [
+            'id_tecnico' => $idTecnico,
+            'id_tejedor' => $idTejedor,
+            'id_asistente' => $idAsistente,
+            'lineas_produccion' => $lineas,
+            'lotes_creados' => $lotesCreados,
+            'desperdicio' => $desperdicio
+        ];
+        if ($documentoSalida) {
+            $jsonPayload['documento_salida'] = $documentoSalida['numero_documento'];
+        }
+
         $stmtPlanilla->execute([
-            $idDocumentoSalida,
+            $idDocumentoSalida > 0 ? $idDocumentoSalida : null,
             $fechasProduccion[0] ?? null,
             $fechasProduccion[count($fechasProduccion) - 1] ?? null,
-            json_encode([
-                'documento_salida' => $documentoSalida['numero_documento'],
-                'lineas_produccion' => $lineas,
-                'lotes_creados' => $lotesCreados
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            json_encode($jsonPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             $_SESSION['user_id'] ?? null,
             $observaciones !== '' ? $observaciones : null
         ]);
 
-        $salidaDocumento = obtenerSalidaDocumentoKg($db, $idDocumentoSalida);
-        $analisisDiferencia = construirAnalisisDiferencia($salidaDocumento, $consumoTeoricoTotal);
+        $salidaDocumentoKg = ($idDocumentoSalida > 0) ? obtenerSalidaDocumentoKg($db, $idDocumentoSalida) : [];
+        $analisisDiferencia = !empty($salidaDocumentoKg) ? construirAnalisisDiferencia($salidaDocumentoKg, $consumoTeoricoTotal) : [];
 
         $db->commit();
 
         jsonResponse([
             'success' => true,
             'message' => 'Produccion de tejido registrada exitosamente',
-            'documento_salida' => [
+            'documento_salida' => $documentoSalida ? [
                 'id' => (int) $documentoSalida['id_documento'],
                 'numero' => $documentoSalida['numero_documento'],
                 'fecha' => $documentoSalida['fecha_documento'],
                 'tipo_consumo' => $documentoSalida['tipo_consumo']
-            ],
+            ] : null,
             'lotes_creados' => $lotesCreados,
             'analisis' => [
-                'documento_salida' => $salidaDocumento,
+                'documento_salida' => $salidaDocumentoKg,
                 'consumo_teorico_total' => array_map(function ($valor) {
                     return round($valor, 4);
                 }, $consumoTeoricoTotal),
@@ -405,7 +484,7 @@ function registrarProduccionTejido($db, $data)
             ],
             'resumen' => [
                 'total_lotes_creados' => count($lotesCreados),
-                'cantidad_total_producida' => formatearCantidadBase($totalBase),
+                'cantidad_total_producida' => formatearCantidadBase($totalBaseUnidadesGlobal),
                 'costo_mp_total' => round($costoMpTotal, 4),
                 'periodo' => !empty($fechasProduccion)
                     ? ($fechasProduccion[0] . ' a ' . $fechasProduccion[count($fechasProduccion) - 1])
@@ -413,7 +492,9 @@ function registrarProduccionTejido($db, $data)
             ]
         ]);
     } catch (Exception $e) {
-        $db->rollBack();
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         throw $e;
     }
 }
@@ -1160,7 +1241,8 @@ function obtenerMovimientosHistorialLote($db, $idLoteWip)
 function obtenerDocumentoSalidaTejidoPorId($db, $idDocumentoSalida)
 {
     $stmt = $db->prepare("
-        SELECT id_documento, numero_documento, fecha_documento, estado, tipo_consumo
+        SELECT id_documento, numero_documento, fecha_documento, estado, tipo_consumo,
+               modo_asignacion, referencia_entidad_tipo, referencia_entidad_id
         FROM documentos_inventario
         WHERE id_documento = ?
           AND tipo_documento = 'SALIDA'
@@ -1297,6 +1379,11 @@ function insertarLoteProduccionTejido($db, $datos)
 {
     $intentos = 0;
     $maxIntentos = 10;
+    $idDocumento = (int) ($datos['id_documento_salida'] ?? 0);
+
+    if ($idDocumento <= 0) {
+        throw new InvalidArgumentException('Error interno: Intento de insertar lote sin documento de salida resuelto');
+    }
 
     while ($intentos < $maxIntentos) {
         $codigoLote = generarCodigoLoteProduccionTejido($db, $datos['id_maquina'], $datos['fecha_produccion'], $intentos);
@@ -1321,8 +1408,8 @@ function insertarLoteProduccionTejido($db, $datos)
                 $datos['id_area_actual'],
                 $datos['costo_mp_acumulado'],
                 $datos['costo_unitario_promedio'],
-                $datos['id_documento_salida'],
-                $datos['id_documento_salida'],
+                $idDocumento,
+                $idDocumento,
                 $codigoLote,
                 $datos['fecha_produccion'] . ' 00:00:00',
                 $_SESSION['user_id'] ?? null
@@ -1343,6 +1430,100 @@ function insertarLoteProduccionTejido($db, $datos)
     }
 
     throw new RuntimeException('No se pudo generar un codigo OP-TEJ unico para la maquina seleccionada');
+}
+
+/**
+ * Motor de resolución inteligente de documentos SAL-TEJ
+ * Aplica jerarquía: Manual -> Exclusivo -> Genérico
+ */
+function resolverMejorDocumentoSalidaTejido($db, $idManual, $fechaProduccion, $entidadTipo = null, $entidadId = null)
+{
+    // PRIO 1: Selección Manual
+    if ($idManual > 0) {
+        $doc = obtenerDocumentoSalidaTejidoPorId($db, $idManual);
+        if (!$doc) {
+            throw new InvalidArgumentException('El documento seleccionado no existe o no es de tipo TEJIDO.');
+        }
+
+        if ($doc['estado'] !== 'CONFIRMADO') {
+            throw new InvalidArgumentException('El documento seleccionado no ha sido CONFIRMADO en Inventarios. No puede utilizarse para producción.');
+        }
+
+        // Si es exclusivo, validar compatibilidad
+        if ($doc['modo_asignacion'] === 'EXCLUSIVO') {
+            if (!$entidadTipo || !$entidadId || 
+                $doc['referencia_entidad_tipo'] !== $entidadTipo || 
+                (int)$doc['referencia_entidad_id'] !== (int)$entidadId) {
+                throw new InvalidArgumentException('La salida seleccionada está reservada para una orden o pedido específico y no coincide con este registro.');
+            }
+        }
+        return (int) $idManual;
+    }
+
+    // PRIO 2: Resolución Automática Exclusiva
+    if ($entidadTipo && $entidadId) {
+        $stmt = $db->prepare("
+            SELECT id_documento 
+            FROM documentos_inventario 
+            WHERE tipo_documento = 'SALIDA' 
+              AND tipo_consumo = 'TEJIDO' 
+              AND estado = 'CONFIRMADO' 
+              AND modo_asignacion = 'EXCLUSIVO'
+              AND referencia_entidad_tipo = ?
+              AND referencia_entidad_id = ?
+            ORDER BY fecha_documento DESC, id_documento DESC
+            LIMIT 2
+        ");
+        $stmt->execute([$entidadTipo, $entidadId]);
+        $candidatos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($candidatos) === 1) {
+            return (int) $candidatos[0]['id_documento'];
+        }
+        if (count($candidatos) > 1) {
+            throw new InvalidArgumentException('Existen múltiples salidas EXCLUSIVAS válidas para este registro. Seleccione manualmente la correcta.');
+        }
+        
+        // Si no se encuentra exclusiva y se esperaba una, cortamos el flujo (no permitimos genérico para pedidos especiales)
+        throw new InvalidArgumentException('No se encontró una salida EXCLUSIVA para ' . $entidadTipo . ' #' . $entidadId . '. Registre primero la salida en Inventarios.');
+    }
+
+    // PRIO 3: Resolución Automática Genérica (Bolsa WIP)
+    // 1. Misma fecha
+    $candidatos = buscarCandidatosGenericosTejido($db, $fechaProduccion, $fechaProduccion);
+    
+    if (empty($candidatos)) {
+        // 2. Ventana de 3 días hacia atrás
+        $fechaInicio = date('Y-m-d', strtotime($fechaProduccion . ' -3 days'));
+        $candidatos = buscarCandidatosGenericosTejido($db, $fechaInicio, $fechaProduccion);
+    }
+
+    if (count($candidatos) === 1) {
+        return (int) $candidatos[0]['id_documento'];
+    }
+
+    if (count($candidatos) > 1) {
+        throw new InvalidArgumentException('Existen múltiples salidas genéricas válidas para este periodo. Seleccione manualmente la correcta.');
+    }
+
+    // FALLO ESTRICTO
+    throw new InvalidArgumentException('No existe una salida a producción TEJIDO disponible para vincular este registro. Realice primero la salida de almacén Genérica.');
+}
+
+function buscarCandidatosGenericosTejido($db, $fechaDesde, $fechaHasta)
+{
+    $stmt = $db->prepare("
+        SELECT id_documento 
+        FROM documentos_inventario 
+        WHERE tipo_documento = 'SALIDA' 
+          AND tipo_consumo = 'TEJIDO' 
+          AND estado = 'CONFIRMADO' 
+          AND modo_asignacion = 'GENERICO'
+          AND fecha_documento BETWEEN ? AND ?
+        ORDER BY fecha_documento DESC, id_documento DESC
+    ");
+    $stmt->execute([$fechaDesde, $fechaHasta]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 function generarCodigoLoteProduccionTejido($db, $idMaquina, $fechaProduccion, $offset = 0)

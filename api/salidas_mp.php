@@ -413,17 +413,18 @@ try {
                                 id_doc_tipo, id_doc_subtipo, id_doc_estado,
                                 tipo_documento, tipo_salida, tipo_consumo, numero_documento, fecha_documento,
                                 id_tipo_inventario, id_proveedor, id_documento_origen,
-                                referencia_externa, subtotal, iva, total,
+                                referencia_externa, modo_asignacion, referencia_entidad_tipo, referencia_entidad_id,
+                                subtotal, iva, total,
                                 observaciones, estado, creado_por
                             ) VALUES (
                                 2, ?, 2,
-                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
+                                'SALIDA', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMADO', ?
                             )
                         ");
 
                         $referencia = $tipoSalida;
                         if (!empty($data['referencia'])) {
-                            $referencia .= ' - ' . $data['referencia'];
+                            $referencia .= ' - ' . $data['referencia'] ;
                         }
 
                         $stmt->execute([
@@ -436,6 +437,9 @@ try {
                             $data['id_proveedor'] ?? null,
                             $data['id_documento_origen'] ?? null,
                             $referencia,
+                            $data['modo_asignacion'] ?? 'GENERICO',
+                            $data['referencia_entidad_tipo'] ?? null,
+                            $data['referencia_entidad_id'] ?? null,
                             $totalNeto,
                             $totalIVA,
                             $totalDocumento,

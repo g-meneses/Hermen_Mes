@@ -1603,6 +1603,19 @@ function abrirModalSalida() {
     document.getElementById('salidaReferencia').value = '';
     document.getElementById('salidaObservaciones').value = '';
 
+    // Reset campos de Modo Asignación (Trazabilidad)
+    const grupoModo = document.getElementById('grupoModoAsignacion');
+    if (grupoModo) grupoModo.style.display = 'none';
+
+    const modoAsig = document.getElementById('salidaModoAsignacion');
+    if (modoAsig) modoAsig.value = 'GENERICO';
+
+    const seccionEntidad = document.getElementById('seccionReferenciaEntidad');
+    if (seccionEntidad) seccionEntidad.style.display = 'none';
+
+    const entidadId = document.getElementById('salidaEntidadId');
+    if (entidadId) entidadId.value = '';
+
     // Poblar filtros de categorías
     poblarFiltrosCategoriasSalida();
 
@@ -1676,16 +1689,45 @@ async function filtrarProductosSalida() {
 
 function cambioTipoSalida() {
     const tipo = document.getElementById('salidaTipo').value;
+    const destino = document.getElementById('salidaDestino') ? document.getElementById('salidaDestino').value : '';
     const seccionDestino = document.getElementById('seccionDestinoProduccion');
-    const selectDestino = document.getElementById('salidaDestino');
+    const grupoModo = document.getElementById('grupoModoAsignacion');
 
     if (tipo === 'PRODUCCION') {
         if (seccionDestino) seccionDestino.style.display = 'block';
-        // No limpiar destino aquí para permitir que actualizarNumeroSalida use el valor si ya está seleccionado
+        
+        // Mostrar Modo Asignación solo para TEJIDO por ahora (Fase 1)
+        if (destino === 'TEJIDO') {
+            if (grupoModo) grupoModo.style.display = 'block';
+        } else {
+            if (grupoModo) grupoModo.style.display = 'none';
+            ocultarSeccionReferencia();
+        }
     } else {
         if (seccionDestino) seccionDestino.style.display = 'none';
-        if (selectDestino) selectDestino.value = '';
-        actualizarNumeroSalida(); // Actualizar número inmediatamente para tipos no-PRODUCCION
+        if (grupoModo) grupoModo.style.display = 'none';
+        ocultarSeccionReferencia();
+        actualizarNumeroSalida();
+    }
+}
+
+function toggleReferenciaEntidad() {
+    const modo = document.getElementById('salidaModoAsignacion').value;
+    const seccionRef = document.getElementById('seccionReferenciaEntidad');
+    
+    if (modo === 'EXCLUSIVO') {
+        if (seccionRef) seccionRef.style.display = 'block';
+    } else {
+        ocultarSeccionReferencia();
+    }
+}
+
+function ocultarSeccionReferencia() {
+    const seccionRef = document.getElementById('seccionReferenciaEntidad');
+    if (seccionRef) {
+        seccionRef.style.display = 'none';
+        // Limpiar valores
+        document.getElementById('salidaEntidadId').value = '';
     }
 }
 
@@ -1717,6 +1759,17 @@ async function actualizarNumeroSalida() {
 
     // Identificador de caché único por tipo + destino
     const cacheKey = destino ? `${tipo}_${destino}` : tipo;
+
+    // Actualizar visibilidad de modo asignación si es producción
+    if (tipo === 'PRODUCCION') {
+        const grupoModo = document.getElementById('grupoModoAsignacion');
+        if (destino === 'TEJIDO') {
+            if (grupoModo) grupoModo.style.display = 'block';
+        } else {
+            if (grupoModo) grupoModo.style.display = 'none';
+            ocultarSeccionReferencia();
+        }
+    }
 
     // ⭐ VERIFICAR CACHÉ
     if (window.numerosSalidaCache[cacheKey]) {
@@ -2011,6 +2064,11 @@ async function guardarSalida() {
         fecha: document.getElementById('salidaFecha').value,
         tipo_salida: tipo,
         tipo_consumo: destino,
+        modo_asignacion: (destino === 'TEJIDO') ? document.getElementById('salidaModoAsignacion').value : 'GENERICO',
+        referencia_entidad_tipo: (destino === 'TEJIDO' && document.getElementById('salidaModoAsignacion').value === 'EXCLUSIVO') 
+                                 ? document.getElementById('salidaEntidadTipo').value : null,
+        referencia_entidad_id: (destino === 'TEJIDO' && document.getElementById('salidaModoAsignacion').value === 'EXCLUSIVO') 
+                                 ? document.getElementById('salidaEntidadId').value : null,
         referencia: document.getElementById('salidaReferencia').value,
         observaciones: document.getElementById('salidaObservaciones').value,
         lineas: lineasSalida.map(l => ({

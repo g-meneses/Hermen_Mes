@@ -1778,9 +1778,33 @@ require_once '../../includes/permisos_inventario.php';
                         <option value="TENIDO">🧪 TEÑIDO (SAL-TEN)</option>
                     </select>
                 </div>
+                <div class="form-group" id="grupoModoAsignacion" style="display:none;">
+                    <label>📍 Modo de Asignación <span style="color:red;">*</span></label>
+                    <select id="salidaModoAsignacion" onchange="toggleReferenciaEntidad()">
+                        <option value="GENERICO" selected>📦 Bolsa Genérica WIP</option>
+                        <option value="EXCLUSIVO">🎯 Asignación Exclusiva (Reserva)</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Referencia</label>
                     <input type="text" id="salidaReferencia" placeholder="Ej: OF-123, Cliente XYZ">
+                </div>
+            </div>
+
+            <!-- Fila Nueva: Referencia de Entidad (condicional) -->
+            <div class="form-row" id="seccionReferenciaEntidad" style="display:none; background:#f0f7ff; padding:15px; border-radius:10px; border:1px dashed #007bff; margin-bottom:15px;">
+                <div class="form-group">
+                    <label>Tipo de Referencia <span style="color:red;">*</span></label>
+                    <select id="salidaEntidadTipo">
+                        <option value="PEDIDO">📄 PEDIDO</option>
+                        <option value="ORDEN_PRODUCCION">⚙️ ORDEN PRODUCCIÓN</option>
+                        <option value="LOTE_PLANIFICADO">📅 LOTE PLANIFICADO</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>ID / Número de Referencia <span style="color:red;">*</span></label>
+                    <input type="number" id="salidaEntidadId" placeholder="Ej: 900010">
+                    <small class="text-muted">Este ID debe coincidir con el registro en Tejido.</small>
                 </div>
             </div>
 

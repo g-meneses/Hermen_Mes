@@ -40,7 +40,6 @@ require_once '../../includes/header.php';
             <div class="stat-label">Cobertura</div>
         </div>
     </div>
-
     <div class="table-container">
         <table id="tablaProductos">
             <thead>
@@ -50,7 +49,7 @@ require_once '../../includes/header.php';
                     <th>Línea</th>
                     <th>Tipo</th>
                     <th>Talla</th>
-                    <th>Insumos</th>
+                    <th>Materiales</th>
                     <th>Costo Receta</th>
                     <th>Estado</th>
                     <th>Acciones</th>
@@ -79,21 +78,21 @@ require_once '../../includes/header.php';
                 <p id="detalleProducto" style="margin: 0; color: #7f8c8d; font-size: 14px;"></p>
             </div>
 
-            <!-- Botón para agregar insumo -->
+            <!-- Botón para agregar material -->
             <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-                <h4 style="margin: 0;">Insumos de la Receta</h4>
-                <button onclick="abrirModalInsumo()" class="btn-primary">
-                    <i class="fas fa-plus"></i> Agregar Insumo
+                <h4 style="margin: 0;">Materiales de la Receta</h4>
+                <button onclick="abrirModalMaterial()" class="btn-primary">
+                    <i class="fas fa-plus"></i> Agregar Material
                 </button>
             </div>
 
-            <!-- Tabla de insumos de la receta -->
+            <!-- Tabla de materiales de la receta -->
             <div class="table-container" style="max-height: 400px; overflow-y: auto;">
                 <table id="tablaReceta">
                     <thead>
                         <tr>
                             <th>Código</th>
-                            <th>Insumo</th>
+                            <th>Material</th>
                             <th>Cantidad (g)</th>
                             <th>Costo Unit. (Bs/kg)</th>
                             <th>Costo Total (Bs)</th>
@@ -103,7 +102,7 @@ require_once '../../includes/header.php';
                     </thead>
                     <tbody id="bodyReceta">
                         <tr>
-                            <td colspan="7" class="text-center">No hay insumos en esta receta</td>
+                            <td colspan="7" class="text-center">No hay materiales en esta receta</td>
                         </tr>
                     </tbody>
                     <tfoot>
@@ -122,22 +121,22 @@ require_once '../../includes/header.php';
     </div>
 </div>
 
-<!-- Modal para agregar/editar insumo -->
-<div id="modalInsumo" class="modal">
+<!-- Modal para agregar/editar material -->
+<div id="modalMaterial" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="tituloModalInsumo"><i class="fas fa-plus"></i> Agregar Insumo a la Receta</h3>
-            <button class="close-modal" onclick="cerrarModalInsumo()">&times;</button>
+            <h3 id="tituloModalMaterial"><i class="fas fa-plus"></i> Agregar Material a la Receta</h3>
+            <button class="close-modal" onclick="cerrarModalMaterial()">&times;</button>
         </div>
         <div class="modal-body">
-            <form id="formInsumo">
+            <form id="formMaterial">
                 <input type="hidden" id="id_producto_insumo" name="id_producto_insumo">
                 <input type="hidden" id="id_producto" name="id_producto">
                 
                 <div class="form-group">
-                    <label for="id_insumo">Insumo: <span class="required">*</span></label>
-                    <select id="id_insumo" name="id_insumo" required>
-                        <option value="">Seleccione un insumo</option>
+                    <label for="id_inventario">Material: <span class="required">*</span></label>
+                    <select id="id_inventario" name="id_inventario" required>
+                        <option value="">Seleccione un material</option>
                     </select>
                 </div>
 
@@ -151,22 +150,22 @@ require_once '../../includes/header.php';
                 <div class="form-group">
                     <label>
                         <input type="checkbox" id="es_principal" name="es_principal" value="1">
-                        Marcar como insumo principal
+                        Marcar como material principal
                     </label>
-                    <small>El insumo principal es el hilo o material más importante del producto</small>
+                    <small>El material principal es el hilo o material más importante del producto</small>
                 </div>
 
                 <div class="form-group">
                     <label for="observaciones">Observaciones:</label>
                     <textarea id="observaciones" name="observaciones" rows="3" 
-                              placeholder="Comentarios adicionales sobre este insumo"></textarea>
+                               placeholder="Comentarios adicionales sobre este material"></textarea>
                 </div>
             </form>
         </div>
         <div class="modal-footer">
-            <button onclick="cerrarModalInsumo()" class="btn-secondary">Cancelar</button>
-            <button onclick="guardarInsumo()" class="btn-primary">
-                <i class="fas fa-save"></i> Guardar Insumo
+            <button onclick="cerrarModalMaterial()" class="btn-secondary">Cancelar</button>
+            <button onclick="guardarMaterial()" class="btn-primary">
+                <i class="fas fa-save"></i> Guardar Material
             </button>
         </div>
     </div>
@@ -244,11 +243,11 @@ const baseUrl = window.location.origin + '/mes_hermen';
 let productos = [];
 let productoActual = null;
 let recetaActual = [];
-let insumos = [];
+let materiales = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     cargarLineas();
-    cargarInsumos();
+    cargarMateriales();
     cargarProductos();
     
     // Event listeners para filtros
@@ -276,16 +275,17 @@ async function cargarLineas() {
     }
 }
 
-async function cargarInsumos() {
+async function cargarMateriales() {
     try {
-        const response = await fetch(baseUrl + '/api/insumos.php');
+        // Cargar desde inventarios, tipo 1 (Materias Primas)
+        const response = await fetch(baseUrl + '/api/centro_inventarios.php?action=list&tipo_id=1');
         const data = await response.json();
         
         if (data.success) {
-            insumos = data.insumos;
+            materiales = data.inventarios;
         }
     } catch (error) {
-        console.error('Error al cargar insumos:', error);
+        console.error('Error al cargar materiales:', error);
     }
 }
 
@@ -335,7 +335,7 @@ function renderProductos(lista) {
             ? 'Bs. ' + parseFloat(producto.costo_receta).toFixed(2)
             : '-';
         
-        const numInsumos = tieneReceta ? producto.num_insumos + ' insumos' : '-';
+        const numMateriales = tieneReceta ? producto.num_insumos + ' materiales' : '-';
         
         return `
             <tr>
@@ -344,7 +344,7 @@ function renderProductos(lista) {
                 <td><span class="badge-linea badge-${producto.codigo_linea}">${producto.nombre_linea}</span></td>
                 <td>${producto.nombre_tipo}</td>
                 <td>${producto.talla}</td>
-                <td>${numInsumos}</td>
+                <td>${numMateriales}</td>
                 <td>${costoReceta}</td>
                 <td>${badgeReceta}</td>
                 <td>
@@ -365,13 +365,6 @@ function filtrarProductos() {
     
     let productosFiltrados = [...productos]; // Crear copia del array
     
-    console.log('Filtrando productos:', {
-        total: productos.length,
-        lineaId: lineaId,
-        filtroReceta: filtroReceta,
-        busqueda: busqueda
-    });
-    
     // Filtrar por búsqueda
     if (busqueda) {
         productosFiltrados = productosFiltrados.filter(p => 
@@ -385,7 +378,6 @@ function filtrarProductos() {
         const lineaIdNum = parseInt(lineaId);
         productosFiltrados = productosFiltrados.filter(p => {
             const productoLineaId = parseInt(p.id_linea);
-            console.log('Comparando:', productoLineaId, '==', lineaIdNum, '?', productoLineaId === lineaIdNum);
             return productoLineaId === lineaIdNum;
         });
     }
@@ -397,7 +389,6 @@ function filtrarProductos() {
         productosFiltrados = productosFiltrados.filter(p => parseInt(p.num_insumos) == 0);
     }
     
-    console.log('Productos filtrados:', productosFiltrados.length);
     renderProductos(productosFiltrados);
 }
 
@@ -450,7 +441,7 @@ function renderReceta() {
     const tbody = document.getElementById('bodyReceta');
     
     if (recetaActual.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No hay insumos en esta receta</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">No hay materiales en esta receta</td></tr>';
         return;
     }
     
@@ -461,15 +452,15 @@ function renderReceta() {
         
         return `
             <tr>
-                <td>${item.codigo_insumo}</td>
-                <td>${item.nombre_insumo}</td>
+                <td>${item.codigo}</td>
+                <td>${item.nombre}</td>
                 <td>${parseFloat(item.cantidad_por_docena).toFixed(3)} g</td>
                 <td>Bs. ${parseFloat(item.costo_unitario).toFixed(2)}</td>
                 <td><strong>Bs. ${parseFloat(item.costo_total).toFixed(4)}</strong></td>
                 <td>${principal}</td>
                 <td>
-                    <button onclick="eliminarInsumo(${item.id_producto_insumo})" 
-                            class="btn-icon btn-danger" title="Eliminar insumo">
+                    <button onclick="eliminarMaterial(${item.id_producto_insumo})" 
+                            class="btn-icon btn-danger" title="Eliminar material">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -478,37 +469,37 @@ function renderReceta() {
     }).join('');
 }
 
-function abrirModalInsumo() {
+function abrirModalMaterial() {
     // Limpiar formulario
-    document.getElementById('formInsumo').reset();
+    document.getElementById('formMaterial').reset();
     document.getElementById('id_producto_insumo').value = '';
-    document.getElementById('tituloModalInsumo').innerHTML = '<i class="fas fa-plus"></i> Agregar Insumo a la Receta';
+    document.getElementById('tituloModalMaterial').innerHTML = '<i class="fas fa-plus"></i> Agregar Material a la Receta';
     
-    // Poblar select de insumos
-    const select = document.getElementById('id_insumo');
-    select.innerHTML = '<option value="">Seleccione un insumo</option>';
-    insumos.forEach(insumo => {
+    // Poblar select de materiales
+    const select = document.getElementById('id_inventario');
+    select.innerHTML = '<option value="">Seleccione un material</option>';
+    materiales.forEach(mat => {
         const option = document.createElement('option');
-        option.value = insumo.id_insumo;
-        option.textContent = `${insumo.codigo_insumo} - ${insumo.nombre_insumo}`;
+        option.value = mat.id_inventario;
+        option.textContent = `${mat.codigo} - ${mat.nombre}`;
         select.appendChild(option);
     });
     
     // Mostrar modal
-    document.getElementById('modalInsumo').classList.add('show');
+    document.getElementById('modalMaterial').classList.add('show');
 }
 
-async function guardarInsumo() {
+async function guardarMaterial() {
     const formData = {
         id_producto_insumo: document.getElementById('id_producto_insumo').value,
         id_producto: document.getElementById('id_producto').value,
-        id_insumo: document.getElementById('id_insumo').value,
+        id_inventario: document.getElementById('id_inventario').value,
         cantidad_por_docena: document.getElementById('cantidad_por_docena').value,
         es_principal: document.getElementById('es_principal').checked ? 1 : 0,
         observaciones: document.getElementById('observaciones').value
     };
     
-    if (!formData.id_insumo || !formData.cantidad_por_docena) {
+    if (!formData.id_inventario || !formData.cantidad_por_docena) {
         showNotification('Complete todos los campos requeridos', 'warning');
         return;
     }
@@ -526,20 +517,20 @@ async function guardarInsumo() {
         
         if (data.success) {
             showNotification(data.message, 'success');
-            cerrarModalInsumo();
+            cerrarModalMaterial();
             await cargarReceta(formData.id_producto);
             await cargarProductos(); // Actualizar lista principal
         } else {
             showNotification(data.message, 'error');
         }
     } catch (error) {
-        console.error('Error al guardar insumo:', error);
-        showNotification('Error al guardar el insumo', 'error');
+        console.error('Error al guardar material:', error);
+        showNotification('Error al guardar el material', 'error');
     }
 }
 
-async function eliminarInsumo(idProductoInsumo) {
-    if (!confirm('¿Está seguro de eliminar este insumo de la receta?')) {
+async function eliminarMaterial(idProductoInsumo) {
+    if (!confirm('¿Está seguro de eliminar este material de la receta?')) {
         return;
     }
     
@@ -562,8 +553,8 @@ async function eliminarInsumo(idProductoInsumo) {
             showNotification(data.message, 'error');
         }
     } catch (error) {
-        console.error('Error al eliminar insumo:', error);
-        showNotification('Error al eliminar el insumo', 'error');
+        console.error('Error al eliminar material:', error);
+        showNotification('Error al eliminar el material', 'error');
     }
 }
 
@@ -573,20 +564,20 @@ function cerrarModal() {
     recetaActual = [];
 }
 
-function cerrarModalInsumo() {
-    document.getElementById('modalInsumo').classList.remove('show');
+function cerrarModalMaterial() {
+    document.getElementById('modalMaterial').classList.remove('show');
 }
 
 // Cerrar modales al hacer clic fuera
 window.onclick = function(event) {
     const modalReceta = document.getElementById('modalReceta');
-    const modalInsumo = document.getElementById('modalInsumo');
+    const modalMaterial = document.getElementById('modalMaterial');
     
     if (event.target == modalReceta) {
         cerrarModal();
     }
-    if (event.target == modalInsumo) {
-        cerrarModalInsumo();
+    if (event.target == modalMaterial) {
+        cerrarModalMaterial();
     }
 }
 

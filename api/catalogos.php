@@ -67,6 +67,18 @@ try {
             ]);
             break;
             
+        case 'tallas':
+            // Solo tallas
+            $stmt = $db->query("SELECT id_talla, nombre_talla, descripcion FROM tallas_tejido WHERE activo = 1 ORDER BY nombre_talla");
+            $tallas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            ob_clean();
+            echo json_encode([
+                'success' => true,
+                'tallas' => $tallas
+            ]);
+            break;
+            
         case 'turnos':
             // Turnos de trabajo
             $stmt = $db->query("
@@ -136,13 +148,18 @@ try {
             // Obtener diseños
             $stmtDisenos = $db->query("SELECT id_diseno, nombre_diseno, descripcion FROM disenos WHERE activo = 1 ORDER BY nombre_diseno");
             $disenos = $stmtDisenos->fetchAll(PDO::FETCH_ASSOC);
+
+            // Obtener tallas
+            $stmtTallas = $db->query("SELECT id_talla, nombre_talla, descripcion FROM tallas_tejido WHERE activo = 1 ORDER BY nombre_talla");
+            $tallas = $stmtTallas->fetchAll(PDO::FETCH_ASSOC);
             
             // Preparar respuesta
             $response = [
                 'success' => true,
                 'lineas' => $lineas,
                 'tipos' => $tipos,
-                'disenos' => $disenos
+                'disenos' => $disenos,
+                'tallas' => $tallas
             ];
             
             // Limpiar cualquier output previo

@@ -168,6 +168,16 @@ function manejarGet($db)
         ]);
     }
 
+    if ($action === 'get_incidencias_consumo') {
+        getIncidenciasConsumo($db);
+        return;
+    }
+
+    if ($action === 'get_estado_auditoria_hilos') {
+        getEstadoAuditoriaHilos($db);
+        return;
+    }
+
     $stmt = $db->query("
         SELECT
             l.id_lote_wip,
@@ -225,6 +235,11 @@ function manejarPost($db)
 
     if ($action === 'transferir_parcial') {
         transferirParcialLoteWip($db, $data);
+        return;
+    }
+
+    if ($action === 'registrar_auditoria_hilos') {
+        registrarAuditoriaHilos($db, $data);
         return;
     }
 
@@ -293,7 +308,6 @@ function obtenerUltimoRegistroTejido($db)
 
 function registrarProduccionTejido($db, $data)
 {
-    $idDocumentoSalida = (int) ($data['id_documento_salida'] ?? 0);
     $observaciones = trim((string) ($data['observaciones'] ?? ''));
     $lineas = $data['lineas_produccion'] ?? [];
     
@@ -304,37 +318,12 @@ function registrarProduccionTejido($db, $data)
     $desperdicio = $data['desperdicio'] ?? []; // [{familia, kg, pct}]
 
     if (!is_array($lineas) || empty($lineas)) {
-        jsonResponse(['success' => false, 'message' => 'Debe registrar al menos una linea de produccion'], 400);
-    }
-
-    // --- LÓGICA DE RESOLUCIÓN AUTOMÁTICA SAL-TEJ (Fase 1 Mejorada) ---
-    // Si no hay idDocumentoSalida manual, intentamos resolver el mejor candidato
-    // La producción puede enviarnos opcionalmente una entidad (ORDEN/PEDIDO)
-    $entidadTipo = $data['referencia_entidad_tipo'] ?? null;
-    $entidadId = $data['referencia_entidad_id'] ?? null;
-
-    try {
-        $idDocumentoResuelto = resolverMejorDocumentoSalidaTejido(
-            $db,
-            $idDocumentoSalida,
-            $lineas[0]['fecha'] ?? date('Y-m-d'), // Usamos la fecha de la primera linea de referencia
-            $entidadTipo,
-            $entidadId
-        );
-        $idDocumentoSalida = $idDocumentoResuelto;
-    } catch (InvalidArgumentException $e) {
-        jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
-    }
-
-    $documentoSalida = obtenerDocumentoSalidaTejidoPorId($db, $idDocumentoSalida);
-    // El documento SAL-TEJ ya no es opcional en la BD, se obliga vínculo automático o manual
-    if (!$documentoSalida) {
-        jsonResponse(['success' => false, 'message' => 'No se encontró un documento de salida válido para vincular este registro.'], 400);
+        jsonResponse(['success' => false, 'message' => 'Debe registrar al menos una línea de producción'], 400);
     }
 
     $idAreaTejeduria = obtenerAreaTejeduriaId($db);
     if (!$idAreaTejeduria) {
-        jsonResponse(['success' => false, 'message' => 'No se encontro el area TEJEDURIA'], 500);
+        jsonResponse(['success' => false, 'message' => 'No se encontró el Área de TEJEDURÍA'], 500);
     }
 
     $db->beginTransaction();
@@ -345,6 +334,7 @@ function registrarProduccionTejido($db, $data)
         $costoMpTotal = 0.0;
         $totalBaseUnidadesGlobal = 0;
         $fechasProduccion = [];
+        $pendientesCount = 0;
 
         foreach ($lineas as $indice => $linea) {
             // Conversión automática: 12 unidades = 1 docena adicional
@@ -360,73 +350,90 @@ function registrarProduccionTejido($db, $data)
 
             $bom = obtenerBomActivo($db, $lineaNormalizada['id_producto']);
             if (!$bom || empty($bom['detalles'])) {
-                throw new InvalidArgumentException('El producto de la linea ' . ($indice + 1) . ' no tiene BOM activo');
+                throw new InvalidArgumentException('El producto de la línea ' . ($indice + 1) . ' no tiene BOM activo');
             }
 
             $cantidadBase = $lineaNormalizada['cantidad_docenas'] * 12 + $lineaNormalizada['cantidad_unidades'];
             if ($cantidadBase <= 0) {
-                throw new InvalidArgumentException('La linea ' . ($indice + 1) . ' debe registrar una cantidad mayor a cero');
+                throw new InvalidArgumentException('La línea ' . ($indice + 1) . ' debe registrar una cantidad mayor a cero');
             }
 
-            $resumenBom = calcularConsumoTeoricoYCosto($bom, $cantidadBase);
-            foreach ($resumenBom['componentes'] as $componente) {
-                $nombreComponente = $componente['nombre'];
-                if (!isset($consumoTeoricoTotal[$nombreComponente])) {
-                    $consumoTeoricoTotal[$nombreComponente] = 0.0;
+            // A. Calcular requerimientos para FIFO
+            $factorDocena = $cantidadBase / 12;
+            $reqsFIFO = [];
+            foreach ($bom['detalles'] as $detalle) {
+                $gramosBase = (float) $detalle['gramos_por_docena'] * $factorDocena;
+                $mermaTotalPct = (float) $bom['merma_pct'] + (float) $detalle['merma_pct'];
+                $gramosConMerma = $gramosBase * (1 + ($mermaTotalPct / 100));
+                $consumoKg = round($gramosConMerma / 1000, 4);
+
+                $reqsFIFO[] = [
+                    'id_inventario' => (int)$detalle['id_inventario'],
+                    'cantidad_requerida' => $consumoKg,
+                    'nombre' => $detalle['nombre']
+                ];
+
+                if (!isset($consumoTeoricoTotal[$detalle['nombre']])) {
+                    $consumoTeoricoTotal[$detalle['nombre']] = 0.0;
                 }
-                $consumoTeoricoTotal[$nombreComponente] += $componente['consumo_kg'];
+                $consumoTeoricoTotal[$detalle['nombre']] += $consumoKg;
             }
 
+            // B. Insertar Lote (id_documento_salida ahora es NULL/Opcional)
             $loteInsertado = insertarLoteProduccionTejido($db, [
                 'id_producto' => $lineaNormalizada['id_producto'],
                 'id_maquina' => $lineaNormalizada['id_maquina'],
                 'id_turno' => $lineaNormalizada['id_turno'],
                 'id_area_actual' => $idAreaTejeduria,
-                'id_documento_salida' => $idDocumentoSalida > 0 ? $idDocumentoSalida : null,
+                'id_documento_salida' => null, // Multi-lote manejado por consumos_wip_detalle
                 'cantidad_docenas' => $lineaNormalizada['cantidad_docenas'],
                 'cantidad_unidades' => $lineaNormalizada['cantidad_unidades'],
                 'cantidad_base_unidades' => $cantidadBase,
-                'costo_mp_acumulado' => $resumenBom['costo_total'],
-                'costo_unitario_promedio' => $resumenBom['costo_unitario'],
+                'costo_mp_acumulado' => 0.0, // Se actualizará tras FIFO
+                'costo_unitario_promedio' => 0.0,
                 'fecha_produccion' => $lineaNormalizada['fecha']
             ]);
 
+            // C. EJECUTAR MOTOR FIFO
+            $costoRealAsignado = consumirMateriaPrimaFIFO($db, $loteInsertado['id_lote_wip'], $reqsFIFO);
+
+            // D. Actualizar Lote con el costo real obtenido de la materia prima consumida
+            $stmtUpdLote = $db->prepare("
+                UPDATE lote_wip 
+                SET costo_mp_acumulado = ?, 
+                    costo_unitario_promedio = ?
+                WHERE id_lote_wip = ?
+            ");
+            $costoUniProm = $cantidadBase > 0 ? round($costoRealAsignado / $cantidadBase, 6) : 0;
+            $stmtUpdLote->execute([$costoRealAsignado, $costoUniProm, $loteInsertado['id_lote_wip']]);
+
+            // E. Registrar Movimiento WIP
             $stmtMov = $db->prepare("
                 INSERT INTO movimientos_wip (
-                    id_lote_wip, id_lote_relacionado, tipo_movimiento, cantidad_docenas, cantidad_unidades,
-                    id_area_origen, id_area_destino, id_documento_inventario,
-                    referencia_externa, fecha, usuario, observaciones
-                ) VALUES (?, NULL, 'CREACION_EN_TEJIDO', ?, ?, NULL, NULL, ?, ?, ?, ?, ?)
+                    id_lote_wip, tipo_movimiento, cantidad_docenas, cantidad_unidades,
+                    id_area_destino, referencia_externa, fecha, usuario, observaciones
+                ) VALUES (?, 'CREACION_EN_TEJIDO', ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmtMov->execute([
                 $loteInsertado['id_lote_wip'],
                 $lineaNormalizada['cantidad_docenas'],
                 $lineaNormalizada['cantidad_unidades'],
-                $idDocumentoSalida > 0 ? $idDocumentoSalida : null,
+                $idAreaTejeduria,
                 $loteInsertado['codigo_lote'],
                 $lineaNormalizada['fecha'] . ' 00:00:00',
                 $_SESSION['user_id'] ?? null,
-                'Produccion registrada' . ($documentoSalida ? ' desde documento ' . $documentoSalida['numero_documento'] : '')
+                'Producción registrada (Consumo FIFO Automático)'
             ]);
 
             $lotesCreados[] = [
                 'id_lote_wip' => $loteInsertado['id_lote_wip'],
                 'codigo_lote' => $loteInsertado['codigo_lote'],
-                'fecha_produccion' => $lineaNormalizada['fecha'],
-                'turno' => $lineaNormalizada['turno_codigo'],
-                'maquina' => $lineaNormalizada['maquina_codigo'],
-                'tejedor' => $lineaNormalizada['nombre_tejedor'],
                 'producto' => $lineaNormalizada['producto_nombre'],
                 'cantidad' => $lineaNormalizada['cantidad_docenas'] . '|' . str_pad((string) $lineaNormalizada['cantidad_unidades'], 2, '0', STR_PAD_LEFT),
-                'cantidad_base' => $cantidadBase,
-                'consumo_teorico_kg' => round($resumenBom['consumo_total_kg'], 4),
-                'costo_mp' => round($resumenBom['costo_total'], 4),
-                'estado' => 'ACTIVO',
-                'id_documento_salida' => $idDocumentoSalida > 0 ? $idDocumentoSalida : null,
-                'documento_referencia' => $documentoSalida ? $documentoSalida['numero_documento'] : 'S/D'
+                'costo_mp' => round($costoRealAsignado, 4)
             ];
 
-            $costoMpTotal += $resumenBom['costo_total'];
+            $costoMpTotal += $costoRealAsignado;
             $totalBaseUnidadesGlobal += $cantidadBase;
         }
 
@@ -434,9 +441,8 @@ function registrarProduccionTejido($db, $data)
 
         $stmtPlanilla = $db->prepare("
             INSERT INTO planillas_tejido (
-                id_documento_salida, fecha_inicio, fecha_fin, detalles_json,
-                registrado_por, observaciones, activo
-            ) VALUES (?, ?, ?, ?, ?, ?, 1)
+                fecha_inicio, fecha_fin, detalles_json, registrado_por, observaciones, activo
+            ) VALUES (?, ?, ?, ?, ?, 1)
         ");
         
         $jsonPayload = [
@@ -447,54 +453,36 @@ function registrarProduccionTejido($db, $data)
             'lotes_creados' => $lotesCreados,
             'desperdicio' => $desperdicio
         ];
-        if ($documentoSalida) {
-            $jsonPayload['documento_salida'] = $documentoSalida['numero_documento'];
-        }
 
         $stmtPlanilla->execute([
-            $idDocumentoSalida > 0 ? $idDocumentoSalida : null,
             $fechasProduccion[0] ?? null,
             $fechasProduccion[count($fechasProduccion) - 1] ?? null,
             json_encode($jsonPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             $_SESSION['user_id'] ?? null,
-            $observaciones !== '' ? $observaciones : null
+            $observaciones
         ]);
 
-        $salidaDocumentoKg = ($idDocumentoSalida > 0) ? obtenerSalidaDocumentoKg($db, $idDocumentoSalida) : [];
-        $analisisDiferencia = !empty($salidaDocumentoKg) ? construirAnalisisDiferencia($salidaDocumentoKg, $consumoTeoricoTotal) : [];
+        // Contar incidencias generadas en esta transacción
+        $stmtPend = $db->prepare("SELECT COUNT(*) FROM consumos_wip_pendientes WHERE id_lote_wip IN (" . implode(',', array_column($lotesCreados, 'id_lote_wip')) . ")");
+        $stmtPend->execute();
+        $pendientesEncontrados = $stmtPend->fetchColumn();
 
         $db->commit();
 
         jsonResponse([
             'success' => true,
-            'message' => 'Produccion de tejido registrada exitosamente',
-            'documento_salida' => $documentoSalida ? [
-                'id' => (int) $documentoSalida['id_documento'],
-                'numero' => $documentoSalida['numero_documento'],
-                'fecha' => $documentoSalida['fecha_documento'],
-                'tipo_consumo' => $documentoSalida['tipo_consumo']
-            ] : null,
+            'message' => 'Producción de tejido registrada exitosamente (' . (count($lotesCreados)) . ' lotes)',
             'lotes_creados' => $lotesCreados,
-            'analisis' => [
-                'documento_salida' => $salidaDocumentoKg,
-                'consumo_teorico_total' => array_map(function ($valor) {
-                    return round($valor, 4);
-                }, $consumoTeoricoTotal),
-                'diferencia' => $analisisDiferencia
-            ],
+            'incidencias_generadas' => $pendientesEncontrados,
             'resumen' => [
-                'total_lotes_creados' => count($lotesCreados),
-                'cantidad_total_producida' => formatearCantidadBase($totalBaseUnidadesGlobal),
-                'costo_mp_total' => round($costoMpTotal, 4),
-                'periodo' => !empty($fechasProduccion)
-                    ? ($fechasProduccion[0] . ' a ' . $fechasProduccion[count($fechasProduccion) - 1])
-                    : null
+                'total_base' => $totalBaseUnidadesGlobal,
+                'costo_total' => round($costoMpTotal, 4),
+                'fecha_desde' => $fechasProduccion[0] ?? null,
+                'fecha_hasta' => end($fechasProduccion) ?: null
             ]
         ]);
     } catch (Exception $e) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
+        if ($db->inTransaction()) { $db->rollBack(); }
         throw $e;
     }
 }
@@ -1381,10 +1369,6 @@ function insertarLoteProduccionTejido($db, $datos)
     $maxIntentos = 10;
     $idDocumento = (int) ($datos['id_documento_salida'] ?? 0);
 
-    if ($idDocumento <= 0) {
-        throw new InvalidArgumentException('Error interno: Intento de insertar lote sin documento de salida resuelto');
-    }
-
     while ($intentos < $maxIntentos) {
         $codigoLote = generarCodigoLoteProduccionTejido($db, $datos['id_maquina'], $datos['fecha_produccion'], $intentos);
 
@@ -1408,8 +1392,8 @@ function insertarLoteProduccionTejido($db, $datos)
                 $datos['id_area_actual'],
                 $datos['costo_mp_acumulado'],
                 $datos['costo_unitario_promedio'],
-                $idDocumento,
-                $idDocumento,
+                $idDocumento > 0 ? $idDocumento : null,
+                $idDocumento > 0 ? $idDocumento : null,
                 $codigoLote,
                 $datos['fecha_produccion'] . ' 00:00:00',
                 $_SESSION['user_id'] ?? null
@@ -1795,4 +1779,233 @@ function generarCodigoLoteWip($db)
     }
 
     return $prefijo . '-' . $anio . $mes . '-' . str_pad((string) $siguiente, 4, '0', STR_PAD_LEFT);
+}
+
+/**
+ * MOTOR FIFO: Consume materia prima automáticamente de documentos SAL-TEJ
+ * Si no alcanza el stock, registra el faltante como PENDIENTE.
+ */
+function consumirMateriaPrimaFIFO($db, $idLoteWip, $consumosRequeridos)
+{
+    $costoTotalAcumulado = 0.0;
+
+    foreach ($consumosRequeridos as $req) {
+        $idInventario = (int) $req['id_inventario'];
+        $cantidadPendiente = (float) $req['cantidad_requerida'];
+        $cantidadConsumidaEfectiva = 0.0;
+
+        // 1. Buscar documentos con saldo disponible para este item (FIFO)
+        $stmtDocs = $db->prepare("
+            SELECT dd.id_detalle, dd.id_documento, dd.saldo_disponible, dd.costo_unitario
+            FROM documentos_inventario_detalle dd
+            JOIN documentos_inventario d ON d.id_documento = dd.id_documento
+            WHERE dd.id_inventario = ?
+              AND d.tipo_documento = 'SALIDA'
+              AND (d.tipo_consumo = 'TEJIDO' OR d.numero_documento LIKE 'SAL-TEJ%')
+              AND d.estado = 'CONFIRMADO'
+              AND dd.saldo_disponible > 0
+            ORDER BY d.fecha_documento ASC, d.id_documento ASC
+            FOR UPDATE
+        ");
+        $stmtDocs->execute([$idInventario]);
+        $candidatos = $stmtDocs->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($candidatos as $docDetalle) {
+            if ($cantidadPendiente <= 0) break;
+
+            $disponible = (float) $docDetalle['saldo_disponible'];
+            $aConsumir = min($disponible, $cantidadPendiente);
+
+            // A. Registrar consumo granular
+            registrarConsumoGranular($db, $idLoteWip, $docDetalle, $aConsumir);
+
+            // B. Actualizar saldo en el documento
+            $nuevoSaldo = round($disponible - $aConsumir, 4);
+            $stmtUpd = $db->prepare("UPDATE documentos_inventario_detalle SET saldo_disponible = ? WHERE id_detalle = ?");
+            $stmtUpd->execute([$nuevoSaldo, $docDetalle['id_detalle']]);
+
+            // C. Acumular costos
+            $costoTotalAcumulado += round($aConsumir * (float)$docDetalle['costo_unitario'], 4);
+
+            $cantidadConsumidaEfectiva += $aConsumir;
+            $cantidadPendiente = round($cantidadPendiente - $aConsumir, 4);
+        }
+
+        // 2. Si todavía falta cantidad (Quiebre de Stock Teórico)
+        if ($cantidadPendiente > 0) {
+            registrarConsumoPendiente(
+                $db, 
+                $idLoteWip, 
+                $idInventario, 
+                (float)$req['cantidad_requerida'],
+                $cantidadConsumidaEfectiva,
+                $cantidadPendiente
+            );
+        }
+    }
+
+    return $costoTotalAcumulado;
+}
+
+/**
+ * Registra el vínculo exacto entre el lote WIP y el documento de origen
+ */
+function registrarConsumoGranular($db, $idLoteWip, $docDetalle, $cantidad)
+{
+    $stmt = $db->prepare("
+        INSERT INTO consumos_wip_detalle (
+            id_lote_wip, id_documento_inventario, id_documento_detalle, 
+            id_inventario, cantidad_consumida, costo_unitario_origen, usuario_registro
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ");
+    
+    $stmt->execute([
+        $idLoteWip,
+        $docDetalle['id_documento'],
+        $docDetalle['id_detalle'],
+        $docDetalle['id_inventario'],
+        $cantidad,
+        $docDetalle['costo_unitario'],
+        $_SESSION['user_id'] ?? null
+    ]);
+}
+
+/**
+ * Registra faltantes para seguimiento del supervisor
+ */
+function registrarConsumoPendiente($db, $idLoteWip, $idInventario, $requerido, $consumido, $pendiente)
+{
+    $stmt = $db->prepare("
+        INSERT INTO consumos_wip_pendientes (
+            id_lote_wip, id_inventario, cantidad_requerida,
+            cantidad_consumida, cantidad_pendiente, estado, usuario_registro
+        ) VALUES (?, ?, ?, ?, ?, 'PENDIENTE', ?)
+    ");
+    
+    $stmt->execute([
+        $idLoteWip,
+        $idInventario,
+        $requerido,
+        $consumido,
+        $pendiente,
+        $_SESSION['user_id'] ?? null
+    ]);
+}
+
+/**
+ * Obtiene el listado de incidencias (faltantes de stock) registradas por el motor FIFO
+ */
+function getIncidenciasConsumo($db)
+{
+    $stmt = $db->query("
+        SELECT 
+            p.id_incidencia,
+            p.fecha_registro,
+            p.cantidad_requerida,
+            p.cantidad_consumida,
+            p.cantidad_pendiente,
+            p.estado,
+            l.codigo_lote,
+            prod.codigo_producto,
+            prod.descripcion_completa AS producto_nombre,
+            inv.codigo AS item_codigo,
+            inv.nombre AS item_nombre
+        FROM consumos_wip_pendientes p
+        JOIN lote_wip l ON l.id_lote_wip = p.id_lote_wip
+        JOIN productos_tejidos prod ON prod.id_producto = l.id_producto
+        JOIN inv_items inv ON inv.id_inventario = p.id_inventario
+        WHERE p.estado = 'PENDIENTE'
+        ORDER BY p.fecha_registro DESC
+    ");
+    
+    jsonResponse([
+        'success' => true,
+        'incidencias' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ]);
+}
+
+/**
+ * Calcula el estado actual de los hilos en planta (Teórico WIP)
+ * basándose en los saldos disponibles de los documentos SAL-TEJ
+ */
+function getEstadoAuditoriaHilos($db)
+{
+    // Calculamos el stock actual en WIP como la suma de saldos disponibles
+    $stmt = $db->query("
+        SELECT 
+            inv.id_inventario,
+            inv.codigo,
+            inv.nombre,
+            inv.unidad,
+            SUM(dd.saldo_disponible) as stock_teorico_wip
+        FROM documentos_inventario_detalle dd
+        JOIN documentos_inventario d ON d.id_documento = dd.id_documento
+        JOIN inv_items inv ON inv.id_inventario = dd.id_inventario
+        WHERE d.tipo_documento = 'SALIDA'
+          AND (d.tipo_consumo = 'TEJIDO' OR d.numero_documento LIKE 'SAL-TEJ%')
+          AND d.estado = 'CONFIRMADO'
+          AND dd.saldo_disponible > 0
+        GROUP BY inv.id_inventario, inv.codigo, inv.nombre, inv.unidad
+        ORDER BY inv.nombre ASC
+    ");
+    
+    jsonResponse([
+        'success' => true,
+        'inventario_wip' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ]);
+}
+
+/**
+ * Registra una nueva auditoría física de hilos en planta
+ */
+function registrarAuditoriaHilos($db, $data)
+{
+    $observaciones = trim((string)($data['observaciones'] ?? ''));
+    $detalles = $data['detalles'] ?? [];
+
+    if (empty($detalles)) {
+        jsonResponse(['success' => false, 'message' => 'No se enviaron detalles para la auditoría'], 400);
+    }
+
+    $db->beginTransaction();
+    try {
+        $stmtAud = $db->prepare("
+            INSERT INTO auditorias_wip_tejido (fecha_auditoria, usuario, observaciones)
+            VALUES (NOW(), ?, ?)
+        ");
+        $stmtAud->execute([$_SESSION['user_id'] ?? null, $observaciones]);
+        $idAuditoria = $db->lastInsertId();
+
+        $stmtDet = $db->prepare("
+            INSERT INTO auditorias_wip_tejido_detalle (
+                id_auditoria, id_inventario, stock_teorico_wip, 
+                conteo_fisico, diferencia, estado_ajuste
+            ) VALUES (?, ?, ?, ?, ?, 'PENDIENTE')
+        ");
+
+        foreach ($detalles as $det) {
+            $idInv = (int)$det['id_inventario'];
+            $teorico = (float)$det['stock_teorico_wip'];
+            $fisico = (float)$det['conteo_fisico'];
+            $dif = round($fisico - $teorico, 4);
+
+            $stmtDet->execute([
+                $idAuditoria,
+                $idInv,
+                $teorico,
+                $fisico,
+                $dif
+            ]);
+        }
+
+        $db->commit();
+        jsonResponse([
+            'success' => true, 
+            'message' => 'Auditoría de hilos registrada correctamente. ID: ' . $idAuditoria,
+            'id_auditoria' => $idAuditoria
+        ]);
+    } catch (Exception $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
 }

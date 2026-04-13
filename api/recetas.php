@@ -35,19 +35,20 @@ try {
                     SELECT 
                         pi.id_producto_insumo,
                         pi.id_producto,
-                        pi.id_insumo,
+                        pi.id_inventario,
                         pi.cantidad_por_docena,
                         pi.es_principal,
                         pi.observaciones,
-                        i.codigo_insumo,
-                        i.nombre_insumo,
-                        i.costo_unitario,
-                        i.unidad_medida,
-                        (pi.cantidad_por_docena * i.costo_unitario / 1000) as costo_total
-                    FROM producto_insumos pi
-                    JOIN insumos i ON pi.id_insumo = i.id_insumo
+                        i.codigo,
+                        i.nombre,
+                        COALESCE(i.costo_promedio, i.costo_unitario, 0) as costo_unitario,
+                        um.abreviatura as unidad_medida,
+                        (pi.cantidad_por_docena * COALESCE(i.costo_promedio, i.costo_unitario, 0) / 1000) as costo_total
+                    FROM recetas_tejido_detalle pi
+                    JOIN inventarios i ON pi.id_inventario = i.id_inventario
+                    LEFT JOIN unidades_medida um ON i.id_unidad = um.id_unidad
                     WHERE pi.id_producto = ?
-                    ORDER BY pi.es_principal DESC, i.nombre_insumo
+                    ORDER BY pi.es_principal DESC, i.nombre
                 ");
                 $stmt->execute([$id_producto]);
                 $receta = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -79,12 +80,12 @@ try {
                         tp.nombre_tipo,
                         p.talla,
                         COUNT(pi.id_producto_insumo) as num_insumos,
-                        SUM(pi.cantidad_por_docena * i.costo_unitario / 1000) as costo_receta
+                        SUM(pi.cantidad_por_docena * COALESCE(i.costo_promedio, i.costo_unitario, 0) / 1000) as costo_receta
                     FROM productos_tejidos p
                     JOIN lineas_producto l ON p.id_linea = l.id_linea
                     JOIN tipos_producto tp ON p.id_tipo_producto = tp.id_tipo_producto
-                    LEFT JOIN producto_insumos pi ON p.id_producto = pi.id_producto
-                    LEFT JOIN insumos i ON pi.id_insumo = i.id_insumo
+                    LEFT JOIN recetas_tejido_detalle pi ON p.id_producto = pi.id_producto
+                    LEFT JOIN inventarios i ON pi.id_inventario = i.id_inventario
                     WHERE p.activo = 1
                     GROUP BY p.id_producto
                     ORDER BY l.nombre_linea, tp.nombre_tipo, p.talla
@@ -104,29 +105,29 @@ try {
             
             $id_producto_insumo = $data['id_producto_insumo'] ?? null;
             $id_producto = (int)($data['id_producto'] ?? 0);
-            $id_insumo = (int)($data['id_insumo'] ?? 0);
+            $id_inventario = (int)($data['id_inventario'] ?? $data['id_insumo'] ?? 0);
             $cantidad_por_docena = floatval($data['cantidad_por_docena'] ?? 0);
             $es_principal = isset($data['es_principal']) ? (int)$data['es_principal'] : 0;
             $observaciones = trim($data['observaciones'] ?? '');
             
-            if (!$id_producto || !$id_insumo || $cantidad_por_docena <= 0) {
+            if (!$id_producto || !$id_inventario || $cantidad_por_docena <= 0) {
                 ob_clean();
                 echo json_encode(['success' => false, 'message' => 'Datos incompletos o inválidos']);
                 exit();
             }
             
             if ($id_producto_insumo) {
-                // Actualizar insumo existente en la receta
+                // Actualizar material existente en la receta
                 $stmt = $db->prepare("
-                    UPDATE producto_insumos SET
-                        id_insumo = ?,
+                    UPDATE recetas_tejido_detalle SET
+                        id_inventario = ?,
                         cantidad_por_docena = ?,
                         es_principal = ?,
                         observaciones = ?
                     WHERE id_producto_insumo = ?
                 ");
                 $stmt->execute([
-                    $id_insumo, 
+                    $id_inventario, 
                     $cantidad_por_docena, 
                     $es_principal, 
                     $observaciones, 
@@ -134,43 +135,43 @@ try {
                 ]);
                 
                 ob_clean();
-                echo json_encode(['success' => true, 'message' => 'Insumo actualizado en la receta']);
+                echo json_encode(['success' => true, 'message' => 'Material actualizado en la receta']);
             } else {
-                // Verificar si ya existe este insumo en el producto
+                // Verificar si ya existe este material en el producto
                 $stmt = $db->prepare("
                     SELECT COUNT(*) as existe 
-                    FROM producto_insumos 
-                    WHERE id_producto = ? AND id_insumo = ?
+                    FROM recetas_tejido_detalle 
+                    WHERE id_producto = ? AND id_inventario = ?
                 ");
-                $stmt->execute([$id_producto, $id_insumo]);
+                $stmt->execute([$id_producto, $id_inventario]);
                 $existe = $stmt->fetch(PDO::FETCH_ASSOC)['existe'];
                 
                 if ($existe > 0) {
                     ob_clean();
-                    echo json_encode(['success' => false, 'message' => 'Este insumo ya está en la receta del producto']);
+                    echo json_encode(['success' => false, 'message' => 'Este material ya está en la receta del producto']);
                     exit();
                 }
                 
                 // Si se marca como principal, desmarcar otros
                 if ($es_principal == 1) {
                     $stmt = $db->prepare("
-                        UPDATE producto_insumos 
+                        UPDATE recetas_tejido_detalle 
                         SET es_principal = 0 
                         WHERE id_producto = ?
                     ");
                     $stmt->execute([$id_producto]);
                 }
                 
-                // Agregar nuevo insumo a la receta
+                // Agregar nuevo material a la receta
                 $stmt = $db->prepare("
-                    INSERT INTO producto_insumos (
-                        id_producto, id_insumo, cantidad_por_docena, 
+                    INSERT INTO recetas_tejido_detalle (
+                        id_producto, id_inventario, cantidad_por_docena, 
                         es_principal, observaciones
                     ) VALUES (?, ?, ?, ?, ?)
                 ");
                 $stmt->execute([
                     $id_producto, 
-                    $id_insumo, 
+                    $id_inventario, 
                     $cantidad_por_docena, 
                     $es_principal, 
                     $observaciones
@@ -179,7 +180,7 @@ try {
                 ob_clean();
                 echo json_encode([
                     'success' => true, 
-                    'message' => 'Insumo agregado a la receta',
+                    'message' => 'Material agregado a la receta',
                     'id_producto_insumo' => $db->lastInsertId()
                 ]);
             }
@@ -195,11 +196,11 @@ try {
                 exit();
             }
             
-            $stmt = $db->prepare("DELETE FROM producto_insumos WHERE id_producto_insumo = ?");
+            $stmt = $db->prepare("DELETE FROM recetas_tejido_detalle WHERE id_producto_insumo = ?");
             $stmt->execute([$id_producto_insumo]);
             
             ob_clean();
-            echo json_encode(['success' => true, 'message' => 'Insumo eliminado de la receta']);
+            echo json_encode(['success' => true, 'message' => 'Material eliminado de la receta']);
             break;
             
         default:

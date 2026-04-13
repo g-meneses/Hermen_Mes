@@ -13,6 +13,9 @@ require_once '../../includes/header.php';
         <button class="btn btn-primary" onclick="openModal()">
             <i class="fas fa-plus"></i> Nuevo Producto
         </button>
+        <a href="catalogos.php" class="btn btn-outline-secondary ml-2">
+            <i class="fas fa-list-ul"></i> Administrar Catálogos
+        </a>
     </div>
     
     <div class="filters-section">
@@ -88,8 +91,10 @@ require_once '../../includes/header.php';
                 </div>
                 
                 <div class="form-group">
-                    <label for="talla">Talla *</label>
-                    <input type="text" id="talla" class="form-control" required placeholder="S, M, L, XL, TU, etc.">
+                    <label for="id_talla">Talla *</label>
+                    <select id="id_talla" class="form-control" required>
+                        <option value="">Seleccione talla...</option>
+                    </select>
                 </div>
             </div>
             
@@ -301,7 +306,8 @@ let productos = [];
 let catalogos = {
     lineas: [],
     tipos: [],
-    disenos: []
+    disenos: [],
+    tallas: []
 };
 
 // Obtener la URL base del sitio
@@ -353,6 +359,14 @@ async function loadCatalogos() {
                 selectDiseno.innerHTML += `<option value="${diseno.id_diseno}">${diseno.nombre_diseno}</option>`;
                 filterDiseno.innerHTML += `<option value="${diseno.id_diseno}">${diseno.nombre_diseno}</option>`;
             });
+
+            // Llenar select de tallas
+            const selectTalla = document.getElementById('id_talla');
+            if (data.tallas) {
+                data.tallas.forEach(talla => {
+                    selectTalla.innerHTML += `<option value="${talla.id_talla}">${talla.nombre_talla}</option>`;
+                });
+            }
             
             console.log('Catálogos cargados correctamente');
         }
@@ -458,7 +472,7 @@ function openModal(id = null) {
             document.getElementById('id_linea').value = producto.id_linea;
             document.getElementById('id_tipo_producto').value = producto.id_tipo_producto;
             document.getElementById('id_diseno').value = producto.id_diseno;
-            document.getElementById('talla').value = producto.talla;
+            document.getElementById('id_talla').value = producto.id_talla || '';
             document.getElementById('descripcion_completa').value = producto.descripcion_completa || '';
             document.getElementById('peso_promedio_docena').value = producto.peso_promedio_docena || '';
             document.getElementById('tiempo_estimado_docena').value = producto.tiempo_estimado_docena || '';
@@ -486,7 +500,7 @@ async function saveProducto(e) {
         id_linea: document.getElementById('id_linea').value,
         id_tipo_producto: document.getElementById('id_tipo_producto').value,
         id_diseno: document.getElementById('id_diseno').value,
-        talla: document.getElementById('talla').value,
+        id_talla: document.getElementById('id_talla').value,
         descripcion_completa: document.getElementById('descripcion_completa').value,
         peso_promedio_docena: document.getElementById('peso_promedio_docena').value,
         tiempo_estimado_docena: document.getElementById('tiempo_estimado_docena').value

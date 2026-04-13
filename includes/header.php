@@ -809,31 +809,15 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                                     class="menu-link <?php echo $currentPage === 'dashboard_wip' ? 'active' : ''; ?>">
                                                     <i class="fas fa-chart-pie"></i><span class="menu-text">Dashboard WIP</span></a></li>
                                             <?php endif; ?>
-                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/produccion.php"
-                                                    class="menu-link <?php echo $currentPage === 'produccion' ? 'active' : ''; ?>">
-                                                    <i class="fas fa-edit"></i><span class="menu-text">Reg. Producción</span></a></li>
-                                        </ul>
-                                    </li>
-                                    <!-- Poliamida -->
-                                    <li class="menu-item">
-                                        <a class="menu-link" onclick="toggleSubmenu(this)">
-                                            <i class="fas fa-socks"></i>
-                                            <span class="menu-text">POLIAMIDA</span>
-                                            <i class="fas fa-chevron-right menu-arrow"></i>
-                                        </a>
-                                        <ul class="submenu">
-                                            <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
-                                                        class="menu-text">Órdenes</span><span
-                                                        class="menu-badge badge-soon">Pronto</span></a></li>
                                             <li><a href="<?php echo SITE_URL; ?>/produccion/registrar_produccion_tejido.php"
-                                                    class="menu-link <?php echo $currentPage === 'registrar_produccion_tejido' ? 'active' : ''; ?>"><i class="fas fa-industry"></i><span
-                                                        class="menu-text">Registrar Producción</span><span
-                                                        class="menu-badge badge-new">WIP</span></a></li>
-                                            <li><a href="#" class="menu-link"><i class="fas fa-clock"></i><span
-                                                        class="menu-text">Por Turno</span><span
-                                                        class="menu-badge badge-soon">Pronto</span></a></li>
-                                                        class="menu-text">Por Turno</span><span
-                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                                    class="menu-link <?php echo $currentPage === 'registrar_produccion_tejido' ? 'active' : ''; ?>">
+                                                    <i class="fas fa-industry"></i><span class="menu-text">Reg. Producción (WIP)</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/incidencias_consumo.php"
+                                                    class="menu-link <?php echo $currentPage === 'incidencias_consumo' ? 'active' : ''; ?>">
+                                                    <i class="fas fa-exclamation-triangle"></i><span class="menu-text">Incidencias Stock</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/auditoria_hilos.php"
+                                                    class="menu-link <?php echo $currentPage === 'auditoria_hilos' ? 'active' : ''; ?>">
+                                                    <i class="fas fa-clipboard-check"></i><span class="menu-text">Auditoría Hilos</span></a></li>
                                         </ul>
                                     </li>
                                     <!-- Confección -->
@@ -860,6 +844,9 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                     <i class="fas fa-chevron-right menu-arrow"></i>
                                 </a>
                                 <ul class="submenu">
+                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/catalogos.php"
+                                            class="menu-link <?php echo $currentPage === 'catalogos_tejido' ? 'active' : ''; ?>"><i
+                                                class="fas fa-list-ul"></i><span class="menu-text">Catálogos de Tejido</span></a></li>
                                     <li><a href="<?php echo SITE_URL; ?>/modules/tejido/maquinas.php"
                                             class="menu-link <?php echo $currentPage === 'maquinas' ? 'active' : ''; ?>"><i
                                                 class="fas fa-cog"></i><span class="menu-text">Máquinas</span></a></li>
@@ -867,9 +854,6 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                             class="menu-link <?php echo $currentPage === 'productos' ? 'active' : ''; ?>"><i
                                                 class="fas fa-box-open"></i><span class="menu-text">Productos</span></a>
                                     </li>
-                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/insumos.php"
-                                            class="menu-link <?php echo $currentPage === 'insumos' ? 'active' : ''; ?>"><i
-                                                class="fas fa-cube"></i><span class="menu-text">Insumos</span></a></li>
                                     <li><a href="#" class="menu-link"><i class="fas fa-users"></i><span
                                                 class="menu-text">Personal</span><span
                                                 class="menu-badge badge-soon">Pronto</span></a></li>
@@ -898,7 +882,6 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                         </a>
                     </li>
 
-                    <!-- COMPRAS -->
                     <!-- COMPRAS -->
                     <li class="menu-item">
                         <a class="menu-link" onclick="toggleSubmenu(this)">

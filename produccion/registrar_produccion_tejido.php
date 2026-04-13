@@ -144,6 +144,14 @@ require_once '../includes/header.php';
     font-size: 0.9rem !important;
 }
 
+.linea-unidades {
+    width: 60px !important;
+}
+
+.linea-docenas {
+    width: 80px !important;
+}
+
 .btn-tejido {
     border: none;
     border-radius: 10px;
@@ -264,12 +272,6 @@ require_once '../includes/header.php';
                     <option value="">Sin asistente</option>
                 </select>
             </div>
-            <div class="tejido-field">
-                <label for="idDocumentoSalida">Referencia SAL-TEJ (Opcional)</label>
-                <select id="idDocumentoSalida">
-                    <option value="">Sin vínculo directo</option>
-                </select>
-            </div>
             <div class="tejido-field" style="grid-column: 1 / -1;">
                 <label for="observaciones">Observaciones operativas</label>
                 <textarea id="observaciones" rows="2" placeholder="Incidencias, cambios de agujas, etc."></textarea>
@@ -295,8 +297,8 @@ require_once '../includes/header.php';
                         <th style="width: 150px;">Máquina</th>
                         <th style="width: 140px;">Familia</th>
                         <th>Producto</th>
-                        <th style="width: 100px;">Docenas</th>
-                        <th style="width: 100px;">Unidades</th>
+                        <th style="width: 80px;">Docenas</th>
+                        <th style="width: 60px;">Unidades</th>
                         <th style="width: 140px;">Calidad</th>
                         <th style="width: 60px;"></th>
                     </tr>
@@ -438,7 +440,6 @@ async function cargarCatalogos() {
         renderSelectOptions('idTecnico', state.usuarios, 'id_usuario', u => u.nombre_completo);
         renderSelectOptions('idTejedor', state.usuarios, 'id_usuario', u => u.nombre_completo);
         renderSelectOptions('idAsistente', state.usuarios, 'id_usuario', u => u.nombre_completo, 'Sin asistente');
-        renderSelectOptions('idDocumentoSalida', state.documentos, 'id_documento', d => `${d.numero_documento} (${d.fecha_documento})`, 'Sin vínculo directo');
 
     } catch (error) {
         mostrarEstado('Error cargando catálogos operativos.', 'error');
@@ -682,7 +683,6 @@ async function registrarProduccion() {
             id_tecnico: idTecnico,
             id_tejedor: idTejedor,
             id_asistente: document.getElementById('idAsistente').value,
-            id_documento_salida: document.getElementById('idDocumentoSalida').value,
             observaciones: document.getElementById('observaciones').value.trim(),
             lineas_produccion: lineas,
             desperdicio: desperdicios
@@ -697,16 +697,49 @@ async function registrarProduccion() {
         const data = await response.json();
         if (!data.success) throw new Error(data.message || 'Error en el servidor');
 
-        mostrarEstado('Producción registrada correctamente.', 'success');
+        mostrarEstado(data.message, 'success');
+        mostrarResultadosWIP(data);
         
-        // Bloquear para evitar doble click o redirección/limpieza
-        if(confirm("¡Registro Exitoso! ¿Desea limpiar el formulario para el siguiente turno?")) {
-            limpiarFormulario();
+        if(confirm("¡Registro Exitoso! ¿Desea observar los lotes e incidencias generadas?")) {
+            document.getElementById('resultadoCard').scrollIntoView({ behavior: 'smooth' });
         }
 
     } catch (e) {
         mostrarEstado(e.message, 'error');
     }
+}
+
+function mostrarResultadosWIP(data) {
+    const card = document.getElementById('resultadoCard');
+    const bodyLotes = document.getElementById('resultadoLotes');
+    const resumen = document.getElementById('resultadoResumen');
+    
+    card.style.display = 'block';
+    
+    // Resumen General
+    resumen.innerHTML = `
+        <div style="display:flex; gap:20px; margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:12px;">
+            <div><strong>Lotes Creados:</strong> ${data.lotes_creados.length}</div>
+            <div><strong>Costo MP Total:</strong> Bs. ${data.resumen.costo_total}</div>
+            <div style="color:${data.incidencias_generadas > 0 ? '#dc2626' : '#15803d'}">
+                <strong>Incidencias de Stock:</strong> ${data.incidencias_generadas} ${data.incidencias_generadas > 0 ? '(PENDIENTES)' : '(TODO CONSUMIDO)'}
+            </div>
+        </div>
+    `;
+
+    // Tabla de Lotes
+    bodyLotes.innerHTML = data.lotes_creados.map(l => `
+        <tr>
+            <td><strong>${l.codigo_lote}</strong></td>
+            <td>${l.producto}</td>
+            <td>${document.getElementById('idTurno').options[document.getElementById('idTurno').selectedIndex].text}</td>
+            <td>-</td>
+            <td>${document.getElementById('idTejedor').options[document.getElementById('idTejedor').selectedIndex].text}</td>
+            <td>${l.cantidad}</td>
+            <td>Calculado</td>
+            <td>Bs. ${l.costo_mp}</td>
+        </tr>
+    `).join('');
 }
 
 function limpiarFormulario() {

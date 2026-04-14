@@ -38,12 +38,69 @@ require_once '../../includes/header.php';
         </div>
     </div>
 
-    <div class="incidencias-grid" id="gridIncidencias">
-        <!-- Se carga dinámicamente -->
-        <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Analizando incidencias en planta...</p>
         </div>
+    </div>
+</div>
+
+<!-- Modal Detalle de Incidencia -->
+<div id="modalDetalleIncidencia" class="modal-wip">
+    <div class="modal-content-wip glassmorphism">
+        <header class="modal-header">
+            <h2><i class="fas fa-search-plus"></i> Detalles de Incidencia</h2>
+            <button class="close-btn" onclick="cerrarModal('modalDetalleIncidencia')">&times;</button>
+        </header>
+        <div class="modal-body" id="bodyDetalleIncidencia">
+             <!-- Se carga dinámicamente -->
+        </div>
+        <footer class="modal-footer">
+            <button class="btn-secondary" onclick="cerrarModal('modalDetalleIncidencia')">Cerrar</button>
+            <button class="btn-primary" id="btnIrAResolucion">Resolver Incidencia</button>
+        </footer>
+    </div>
+</div>
+
+<!-- Modal Resolución de Incidencia -->
+<div id="modalResolucionIncidencia" class="modal-wip">
+    <div class="modal-content-wip glassmorphism">
+        <header class="modal-header">
+            <h2><i class="fas fa-check-circle"></i> Resolución de Incidencia</h2>
+            <button class="close-btn" onclick="cerrarModal('modalResolucionIncidencia')">&times;</button>
+        </header>
+        <div class="modal-body">
+            <form id="formResolucion">
+                <input type="hidden" id="res_id_incidencia">
+                
+                <div class="form-group">
+                    <label>Tipo de Resolución</label>
+                    <select id="res_tipo" required>
+                        <option value="">Seleccione una acción...</option>
+                        <option value="REPROCESAR">REPROCESAR (Reintentar FIFO)</option>
+                        <option value="JUSTIFICAR">JUSTIFICAR (Cierre operativo)</option>
+                        <option value="AJUSTE_MANUAL">AJUSTE MANUAL</option>
+                        <option value="ANULAR">ANULAR</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Estado de Destino</label>
+                    <select id="res_estado" required>
+                        <option value="RESUELTA">RESUELTA</option>
+                        <option value="JUSTIFICADA">JUSTIFICADA</option>
+                        <option value="EN_REVISION">EN REVISIÓN</option>
+                        <option value="ANULADA">ANULADA</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Observación (Obligatoria)</label>
+                    <textarea id="res_observacion" rows="4" placeholder="Describa el motivo de la resolución..." required></textarea>
+                </div>
+            </form>
+        </div>
+        <footer class="modal-footer">
+            <button class="btn-secondary" onclick="cerrarModal('modalResolucionIncidencia')">Cancelar</button>
+            <button class="btn-success" onclick="guardarResolucion()">Guardar Resolución</button>
+        </footer>
     </div>
 </div>
 
@@ -241,35 +298,127 @@ require_once '../../includes/header.php';
 .bar-consumed { background: #10b981; }
 .bar-pending { background: #f59e0b; }
 
-.detail-row {
+/* Estilos Premium Modales */
+.modal-wip {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-wip.show { display: flex; }
+
+.modal-content-wip {
+    background: #fff;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    border-radius: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.glassmorphism {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f1f5f9;
     display: flex;
     justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #f8fafc;
-    font-size: 0.9rem;
+    align-items: center;
+    background: linear-gradient(to right, #f8fafc, #fff);
 }
 
-.detail-row:last-child { border-bottom: none; }
+.modal-header h2 { margin: 0; font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 10px; }
+.modal-header h2 i { color: #2563eb; }
 
-.detail-row .label { color: #64748b; }
-.detail-row .value { font-weight: 600; color: #334155; }
-.detail-row .value.alert { color: #dc2626; }
+.close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; }
 
-.loading-state {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 60px;
-    color: #64748b;
+.modal-body { padding: 24px; overflow-y: auto; }
+
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid #f1f5f9;
+    background: #f8fafc;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
 }
 
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f1f5f9;
-    border-top: 4px solid #2563eb;
-    border-radius: 50%;
-    margin: 0 auto 16px;
-    animation: spin 1s linear infinite;
+/* Secciones del detalle */
+.detalle-sec { margin-bottom: 24px; }
+.detalle-sec h4 { font-size: 0.85rem; text-transform: uppercase; color: #64748b; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.info-item { display: flex; flex-direction: column; }
+.info-item .label { font-size: 0.75rem; color: #94a3b8; }
+.info-item .value { font-weight: 600; color: #1e293b; }
+
+.fifo-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+.fifo-badge.parcial { background: #fef3c7; color: #92400e; }
+.fifo-badge.sin_stock { background: #fee2e2; color: #991b1b; }
+
+/* Botones */
+.btn-primary { background: #2563eb; color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+.btn-success { background: #10b981; color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+.btn-secondary { background: #f1f5f9; color: #475569; border: none; padding: 10px 18px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+
+.card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-card {
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-card:hover { background: #f8fafc; border-color: #cbd5e1; }
+.btn-card.primary { color: #2563eb; border-color: #dbeafe; background: #eff6ff; }
+.btn-card.primary:hover { background: #dbeafe; }
+
+.btn-card.warning { color: #d97706; border-color: #fef3c7; background: #fffbeb; }
+.btn-card.warning:hover { background: #fef3c7; }
+
+/* Formulario */
+.form-group { margin-bottom: 20px; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 8px; }
+.form-group select, .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    font-size: 0.95rem;
+}
+
+.res-historial {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px dashed #cbd5e1;
 }
 
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -353,12 +502,167 @@ function renderIncidencias() {
                     </div>
                     <div class="detail-row" style="margin-top:10px; border-top: 1px dashed #e2e8f0; padding-top:10px;">
                         <span class="label">Estado de Flujo</span>
-                        <span class="value" style="color:#f59e0b">${i.estado}</span>
+                        <span class="value" style="color:#f59e0b">${i.estado} ${i.accion_resolucion ? ' - ' + i.accion_resolucion : ''}</span>
                     </div>
+                </div>
+
+                <div class="card-actions">
+                    <button class="btn-card primary" onclick="verDetalle(${i.id_incidencia})">
+                        <i class="fas fa-search"></i> Detalle
+                    </button>
+                    ${i.estado === 'PENDIENTE' || i.estado === 'EN_REVISION' ? `
+                        <button class="btn-card warning" onclick="abrirModalResolucion(${i.id_incidencia})">
+                            <i class="fas fa-check"></i> Resolver
+                        </button>
+                    ` : `
+                        <button class="btn-card" disabled>
+                            <i class="fas fa-lock"></i> Cerrada
+                        </button>
+                    `}
                 </div>
             </div>
         `;
     }).join('');
+}
+
+async function verDetalle(id) {
+    const modal = document.getElementById('modalDetalleIncidencia');
+    const body = document.getElementById('bodyDetalleIncidencia');
+    const btnRes = document.getElementById('btnIrAResolucion');
+    
+    body.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Cargando contexto...</p></div>';
+    modal.classList.add('show');
+
+    try {
+        const response = await fetch(`${baseUrl}/api/wip.php?action=get_incidencia_detalle&id_incidencia=${id}`);
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message);
+
+        const inc = data.incidencia;
+        const plan = data.planilla;
+        const res = data.resolucion;
+
+        body.innerHTML = `
+            <div class="detalle-sec">
+                <h4><i class="fas fa-info-circle"></i> Información de Incidencia</h4>
+                <div class="grid-2">
+                    <div class="info-item"><span class="label">Código Lote</span><span class="value">${inc.codigo_lote}</span></div>
+                    <div class="info-item"><span class="label">Estado Actual</span><span class="value" style="color:#f59e0b">${inc.estado}</span></div>
+                    <div class="info-item"><span class="label">Hilo Faltante</span><span class="value">${inc.item_nombre}</span></div>
+                    <div class="info-item"><span class="label">Código Hilo</span><span class="value">${inc.item_codigo}</span></div>
+                </div>
+            </div>
+
+            <div class="detalle-sec">
+                <h4><i class="fas fa-industry"></i> Contexto de Producción</h4>
+                <div class="grid-2">
+                    <div class="info-item"><span class="label">Producto Fabricado</span><span class="value">${inc.producto_nombre}</span></div>
+                    <div class="info-item"><span class="label">Máquina</span><span class="value">${inc.numero_maquina || 'No especificada'}</span></div>
+                    <div class="info-item"><span class="label">Turno</span><span class="value">${inc.turno_nombre || 'No especificado'}</span></div>
+                    <div class="info-item"><span class="label">Responsable Registro</span><span class="value">${inc.responsable_nombre || 'SISTEMA'}</span></div>
+                    <div class="info-item"><span class="label">Fecha Producción</span><span class="value">${inc.fecha_registro}</span></div>
+                    <div class="info-item"><span class="label">Planilla MES</span><span class="value">${plan ? plan.id_planilla : 'No vinculada'}</span></div>
+                </div>
+            </div>
+
+            <div class="detalle-sec">
+                <h4><i class="fas fa-calculator"></i> Resultado Motor FIFO</h4>
+                <div class="grid-2" style="margin-bottom:15px">
+                    <div class="info-item"><span class="label">Análisis Stock</span><span class="value"><span class="fifo-badge ${data.fifo.tipo.toLowerCase()}">${data.fifo.tipo}</span></span></div>
+                    <div class="info-item"><span class="label">Déficit Teórico</span><span class="value" style="color:#dc2626">${Number(inc.cantidad_pendiente).toFixed(3)} ${inc.item_unidad}</span></div>
+                </div>
+                <h5>Documentos Vinculados (Consumo Parcial):</h5>
+                ${data.fifo.detalle.length > 0 ? `
+                    <table style="width:100%; font-size:0.8rem; border-collapse:collapse; margin-top:8px;">
+                        <tr style="background:#f8fafc; text-align:left">
+                            <th style="padding:6px">Doc. Origen</th>
+                            <th style="padding:6px">Fecha Doc.</th>
+                            <th style="padding:6px">Consumo</th>
+                        </tr>
+                        ${data.fifo.detalle.map(d => `
+                            <tr>
+                                <td style="padding:6px">${d.numero_documento}</td>
+                                <td style="padding:6px">${d.fecha_documento}</td>
+                                <td style="padding:6px; font-weight:bold">${Number(d.cantidad_consumida).toFixed(3)} ${inc.item_unidad}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                ` : '<p style="font-size:0.8rem; color:#94a3b8">No se encontró stock en ningún documento SAL-TEJ disponible.</p>'}
+            </div>
+
+            ${res ? `
+                <div class="detalle-sec">
+                    <h4><i class="fas fa-history"></i> Historial de Resolución</h4>
+                    <div class="res-historial">
+                        <div class="grid-2">
+                            <div class="info-item"><span class="label">Acción Tomada</span><span class="value">${res.accion}</span></div>
+                            <div class="info-item"><span class="label">Resuelto por</span><span class="value">${res.usuario_nombre}</span></div>
+                            <div class="info-item"><span class="label">Fecha Resolución</span><span class="value">${res.fecha}</span></div>
+                        </div>
+                        <div class="info-item" style="margin-top:10px">
+                            <span class="label">Observaciones</span>
+                            <span class="value" style="font-weight:normal; font-style:italic">"${res.observacion}"</span>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+        `;
+
+        if (inc.estado === 'PENDIENTE' || inc.estado === 'EN_REVISION') {
+            btnRes.style.display = 'block';
+            btnRes.onclick = () => { cerrarModal('modalDetalleIncidencia'); abrirModalResolucion(id); };
+        } else {
+            btnRes.style.display = 'none';
+        }
+
+    } catch (e) {
+        body.innerHTML = `<div class="loading-state"><p style="color:red">Error: ${e.message}</p></div>`;
+    }
+}
+
+function abrirModalResolucion(id) {
+    document.getElementById('res_id_incidencia').value = id;
+    document.getElementById('formResolucion').reset();
+    document.getElementById('modalResolucionIncidencia').classList.add('show');
+}
+
+function cerrarModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+async function guardarResolucion() {
+    const id = document.getElementById('res_id_incidencia').value;
+    const accion = document.getElementById('res_tipo').value;
+    const estado = document.getElementById('res_estado').value;
+    const observacion = document.getElementById('res_observacion').value;
+
+    if (!accion || !observacion) {
+        Swal.fire('Error', 'Debe seleccionar una acción y escribir una observación', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${baseUrl}/api/wip.php`, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'resolver_incidencia',
+                id_incidencia: id,
+                accion,
+                estado,
+                observacion
+            })
+        });
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data.message);
+
+        Swal.fire('Éxito', 'Incidencia resuelta correctamente', 'success');
+        cerrarModal('modalResolucionIncidencia');
+        cargarIncidencias();
+
+    } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+    }
 }
 
 function filtrarIncidencias() {

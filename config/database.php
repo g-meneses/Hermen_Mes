@@ -121,8 +121,13 @@ function sanitize($data)
 
 function jsonResponse($data, $status = 200)
 {
+    // Limpiar cualquier salida previa (warnings, notices, etc.)
+    if (ob_get_level()) {
+        ob_end_clean();
+    }
+    
     http_response_code($status);
-    header('Content-Type: application/json');
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data);
     exit();
 }

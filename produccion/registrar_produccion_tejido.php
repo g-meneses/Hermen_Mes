@@ -713,33 +713,63 @@ function mostrarResultadosWIP(data) {
     const card = document.getElementById('resultadoCard');
     const bodyLotes = document.getElementById('resultadoLotes');
     const resumen = document.getElementById('resultadoResumen');
+    const bodyAnalisis = document.getElementById('resultadoAnalisis');
     
     card.style.display = 'block';
     
-    // Resumen General
+    // Resumen General (Fix nulls)
+    const incidencias = data.incidencias_generadas || 0;
     resumen.innerHTML = `
-        <div style="display:flex; gap:20px; margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:12px;">
+        <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:12px; border: 1px solid #e2e8f0;">
             <div><strong>Lotes Creados:</strong> ${data.lotes_creados.length}</div>
             <div><strong>Costo MP Total:</strong> Bs. ${data.resumen.costo_total}</div>
-            <div style="color:${data.incidencias_generadas > 0 ? '#dc2626' : '#15803d'}">
-                <strong>Incidencias de Stock:</strong> ${data.incidencias_generadas} ${data.incidencias_generadas > 0 ? '(PENDIENTES)' : '(TODO CONSUMIDO)'}
+            <div style="color:${incidencias > 0 ? '#dc2626' : '#15803d'}">
+                <strong>Incidencias de Stock:</strong> ${incidencias} ${incidencias > 0 ? '(FALTANTES DETECTADOS)' : '(TODO CONSUMIDO)'}
             </div>
         </div>
     `;
 
-    // Tabla de Lotes
-    bodyLotes.innerHTML = data.lotes_creados.map(l => `
-        <tr>
-            <td><strong>${l.codigo_lote}</strong></td>
-            <td>${l.producto}</td>
-            <td>${document.getElementById('idTurno').options[document.getElementById('idTurno').selectedIndex].text}</td>
-            <td>-</td>
-            <td>${document.getElementById('idTejedor').options[document.getElementById('idTejedor').selectedIndex].text}</td>
-            <td>${l.cantidad}</td>
-            <td>Calculado</td>
-            <td>Bs. ${l.costo_mp}</td>
-        </tr>
-    `).join('');
+    // Tabla de Lotes con Alerta de Costo 0
+    bodyLotes.innerHTML = data.lotes_creados.map(l => {
+        const sinCosto = parseFloat(l.costo_mp) === 0;
+        return `
+            <tr style="${sinCosto ? 'background:#fff7ed;' : ''}">
+                <td><strong>${l.codigo_lote}</strong></td>
+                <td>${l.producto}</td>
+                <td>${document.getElementById('idTurno').options[document.getElementById('idTurno').selectedIndex].text}</td>
+                <td>-</td>
+                <td>${document.getElementById('idTejedor').options[document.getElementById('idTejedor').selectedIndex].text}</td>
+                <td>${l.cantidad}</td>
+                <td>Calculado</td>
+                <td>
+                    ${sinCosto 
+                        ? `<span style="color:#c2410c; font-weight:bold;"><i class="fas fa-exclamation-triangle"></i> Bs. 0.00*</span>
+                           <div style="font-size:10px; color:#9a3412;">Sin stock en planta</div>`
+                        : `Bs. ${l.costo_mp}`
+                    }
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Análisis Comparativo (NUEVO)
+    if (data.analisis_consumo && data.analisis_consumo.length > 0) {
+        bodyAnalisis.innerHTML = data.analisis_consumo.map(a => {
+            const lowPct = a.porcentaje < 90;
+            return `
+                <tr>
+                    <td><strong>${a.componente}</strong></td>
+                    <td style="color:${a.real_kg > 0 ? '#15803d' : '#dc2626'}">${a.real_kg}</td>
+                    <td>${a.teorico_kg}</td>
+                    <td style="color:${a.pendiente_kg > 0 ? '#dc2626' : ''}">${a.pendiente_kg}</td>
+                    <td style="color:${a.diferencia_kg < 0 ? '#dc2626' : ''}">${a.diferencia_kg}</td>
+                    <td style="font-weight:bold; color:${lowPct ? '#dc2626' : '#15803d'}">${a.porcentaje}%</td>
+                </tr>
+            `;
+        }).join('');
+    } else {
+        bodyAnalisis.innerHTML = '<tr><td colspan="5" class="text-center">No hay datos de consumo para analizar.</td></tr>';
+    }
 }
 
 function limpiarFormulario() {

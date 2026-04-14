@@ -812,6 +812,9 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                                             <li><a href="<?php echo SITE_URL; ?>/produccion/registrar_produccion_tejido.php"
                                                     class="menu-link <?php echo $currentPage === 'registrar_produccion_tejido' ? 'active' : ''; ?>">
                                                     <i class="fas fa-industry"></i><span class="menu-text">Reg. Producción (WIP)</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/historial_produccion.php"
+                                                    class="menu-link <?php echo $currentPage === 'historial_produccion_tejido' ? 'active' : ''; ?>">
+                                                    <i class="fas fa-book"></i><span class="menu-text">Historial de Producción</span></a></li>
                                             <li><a href="<?php echo SITE_URL; ?>/modules/tejido/incidencias_consumo.php"
                                                     class="menu-link <?php echo $currentPage === 'incidencias_consumo' ? 'active' : ''; ?>">
                                                     <i class="fas fa-exclamation-triangle"></i><span class="menu-text">Incidencias Stock</span></a></li>

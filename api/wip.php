@@ -1,5 +1,6 @@
 <?php
 ob_start();
+ini_set('display_errors', 0); // Previene que warnings ensucien el JSON
 header('Content-Type: application/json; charset=utf-8');
 require_once '../config/database.php';
 
@@ -24,9 +25,9 @@ try {
 } catch (InvalidArgumentException $e) {
     error_log('Validación en wip.php: ' . $e->getMessage());
     jsonResponse(['success' => false, 'message' => $e->getMessage()], 400);
-} catch (Exception $e) {
-    error_log('Error en wip.php: ' . $e->getMessage());
-    jsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
+} catch (Throwable $e) {
+    error_log('Error FATAL en wip.php: ' . $e->getMessage() . " in " . $e->getFile() . ":" . $e->getLine());
+    jsonResponse(['success' => false, 'message' => 'Error interno del servidor: ' . $e->getMessage()], 500);
 }
 
 function manejarGet($db)
@@ -54,6 +55,21 @@ function manejarGet($db)
 
     if ($action === 'get_ultimo_registro_tejido') {
         obtenerUltimoRegistroTejido($db);
+        return;
+    }
+
+    if ($action === 'get_incidencia_detalle') {
+        getIncidenciasDetalle($db);
+        return;
+    }
+
+    if ($action === 'get_historial_produccion_tejido') {
+        getHistorialProduccionTejido($db);
+        return;
+    }
+
+    if ($action === 'get_detalle_historial_produccion_tejido') {
+        getDetalleHistorialProduccionTejido($db);
         return;
     }
 
@@ -243,6 +259,11 @@ function manejarPost($db)
         return;
     }
 
+    if ($action === 'resolver_incidencia') {
+        resolverIncidencia($db, $data);
+        return;
+    }
+
     jsonResponse(['success' => false, 'message' => 'Acción no válida'], 400);
 }
 
@@ -335,6 +356,7 @@ function registrarProduccionTejido($db, $data)
         $totalBaseUnidadesGlobal = 0;
         $fechasProduccion = [];
         $pendientesCount = 0;
+        $consumoRealTotal = []; // Agregado para análisis
 
         foreach ($lineas as $indice => $linea) {
             // Conversión automática: 12 unidades = 1 docena adicional
@@ -435,6 +457,21 @@ function registrarProduccionTejido($db, $data)
 
             $costoMpTotal += $costoRealAsignado;
             $totalBaseUnidadesGlobal += $cantidadBase;
+
+            // F. Acumular consumo real por componente para el análisis final
+            $stmtReal = $db->prepare("
+                SELECT i.nombre, SUM(cd.cantidad_consumida) as suma_real
+                FROM consumos_wip_detalle cd
+                JOIN inventarios i ON i.id_inventario = cd.id_inventario
+                WHERE cd.id_lote_wip = ?
+                GROUP BY i.id_inventario
+            ");
+            $stmtReal->execute([$loteInsertado['id_lote_wip']]);
+            while ($cReal = $stmtReal->fetch(PDO::FETCH_ASSOC)) {
+                $nombre = $cReal['nombre'];
+                if (!isset($consumoRealTotal[$nombre])) $consumoRealTotal[$nombre] = 0.0;
+                $consumoRealTotal[$nombre] += (float)$cReal['suma_real'];
+            }
         }
 
         sort($fechasProduccion);
@@ -462,18 +499,57 @@ function registrarProduccionTejido($db, $data)
             $observaciones
         ]);
 
-        // Contar incidencias generadas en esta transacción
-        $stmtPend = $db->prepare("SELECT COUNT(*) FROM consumos_wip_pendientes WHERE id_lote_wip IN (" . implode(',', array_column($lotesCreados, 'id_lote_wip')) . ")");
-        $stmtPend->execute();
-        $pendientesEncontrados = $stmtPend->fetchColumn();
-
         $db->commit();
+
+        // Vincular incidencias a la planilla recién creada (Trazabilidad Fase 4)
+        try {
+            $idPlanilla = $db->lastInsertId();
+            if ($idPlanilla > 0 && !empty($lotesCreados)) {
+                $idsLotes = array_column($lotesCreados, 'id_lote_wip');
+                $placeholders = implode(',', array_fill(0, count($idsLotes), '?'));
+                $stmtLink = $db->prepare("UPDATE consumos_wip_pendientes SET id_planilla = ? WHERE id_lote_wip IN ($placeholders)");
+                $stmtLink->execute(array_merge([$idPlanilla], $idsLotes));
+            }
+        } catch (Throwable $e) {
+            error_log("Error vinculando id_planilla a incidencias: " . $e->getMessage());
+            // No revertimos transacción por esto, es secundario pero reportamos
+        }
+
+        // Contar incidencias totales de esta operación (Fase 4 FIX)
+        $idPlanilla = $db->lastInsertId();
+        $pendientesFinal = 0;
+        if ($idPlanilla > 0) {
+            $stmtCount = $db->prepare("SELECT COUNT(*) FROM consumos_wip_pendientes WHERE id_planilla = ?");
+            $stmtCount->execute([$idPlanilla]);
+            $pendientesFinal = (int)$stmtCount->fetchColumn();
+        }
+
+        // Generar Análisis Comparativo Consolidado
+        $tablaAnalisis = [];
+        foreach ($consumoTeoricoTotal as $componente => $teorico) {
+            $real = $consumoRealTotal[$componente] ?? 0.0;
+            $dif = round($real - $teorico, 4);
+            $pct = $teorico > 0 ? round(($real / $teorico) * 100, 2) : 100;
+            $pend = round($teorico - $real, 4);
+            if ($pend < 0) $pend = 0;
+
+            $tablaAnalisis[] = [
+                'componente' => $componente,
+                'teorico_kg' => round($teorico, 4),
+                'real_kg' => round($real, 4),
+                'pendiente_kg' => $pend,
+                'diferencia_kg' => $dif,
+                'porcentaje' => $pct
+            ];
+        }
 
         jsonResponse([
             'success' => true,
             'message' => 'Producción de tejido registrada exitosamente (' . (count($lotesCreados)) . ' lotes)',
+            'id_planilla' => $idPlanilla,
             'lotes_creados' => $lotesCreados,
-            'incidencias_generadas' => $pendientesEncontrados,
+            'incidencias_generadas' => $pendientesFinal,
+            'analisis_consumo' => $tablaAnalisis,
             'resumen' => [
                 'total_base' => $totalBaseUnidadesGlobal,
                 'costo_total' => round($costoMpTotal, 4),
@@ -1796,7 +1872,7 @@ function consumirMateriaPrimaFIFO($db, $idLoteWip, $consumosRequeridos)
 
         // 1. Buscar documentos con saldo disponible para este item (FIFO)
         $stmtDocs = $db->prepare("
-            SELECT dd.id_detalle, dd.id_documento, dd.saldo_disponible, dd.costo_unitario
+            SELECT dd.id_detalle, dd.id_documento, dd.id_inventario, dd.saldo_disponible, dd.costo_unitario
             FROM documentos_inventario_detalle dd
             JOIN documentos_inventario d ON d.id_documento = dd.id_documento
             WHERE dd.id_inventario = ?
@@ -1899,7 +1975,7 @@ function getIncidenciasConsumo($db)
 {
     $stmt = $db->query("
         SELECT 
-            p.id_incidencia,
+            p.id_pendiente as id_incidencia,
             p.fecha_registro,
             p.cantidad_requerida,
             p.cantidad_consumida,
@@ -1913,7 +1989,7 @@ function getIncidenciasConsumo($db)
         FROM consumos_wip_pendientes p
         JOIN lote_wip l ON l.id_lote_wip = p.id_lote_wip
         JOIN productos_tejidos prod ON prod.id_producto = l.id_producto
-        JOIN inv_items inv ON inv.id_inventario = p.id_inventario
+        JOIN inventarios inv ON inv.id_inventario = p.id_inventario
         WHERE p.estado = 'PENDIENTE'
         ORDER BY p.fecha_registro DESC
     ");
@@ -1936,16 +2012,17 @@ function getEstadoAuditoriaHilos($db)
             inv.id_inventario,
             inv.codigo,
             inv.nombre,
-            inv.unidad,
+            u.abreviatura as unidad,
             SUM(dd.saldo_disponible) as stock_teorico_wip
         FROM documentos_inventario_detalle dd
         JOIN documentos_inventario d ON d.id_documento = dd.id_documento
-        JOIN inv_items inv ON inv.id_inventario = dd.id_inventario
+        JOIN inventarios inv ON inv.id_inventario = dd.id_inventario
+        JOIN unidades_medida u ON u.id_unidad = inv.id_unidad
         WHERE d.tipo_documento = 'SALIDA'
           AND (d.tipo_consumo = 'TEJIDO' OR d.numero_documento LIKE 'SAL-TEJ%')
           AND d.estado = 'CONFIRMADO'
           AND dd.saldo_disponible > 0
-        GROUP BY inv.id_inventario, inv.codigo, inv.nombre, inv.unidad
+        GROUP BY inv.id_inventario, inv.codigo, inv.nombre, u.abreviatura
         ORDER BY inv.nombre ASC
     ");
     
@@ -2004,8 +2081,458 @@ function registrarAuditoriaHilos($db, $data)
             'message' => 'Auditoría de hilos registrada correctamente. ID: ' . $idAuditoria,
             'id_auditoria' => $idAuditoria
         ]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
         throw $e;
     }
+}
+
+/**
+ * Obtiene el detalle completo de una incidencia incluyendo contexto de producción
+ */
+function getIncidenciasDetalle($db)
+{
+    $id = (int)($_GET['id_incidencia'] ?? 0);
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'ID de incidencia requerido'], 400);
+    }
+
+    // 1. Datos base de la incidencia
+    $stmt = $db->prepare("
+        SELECT 
+            p.*,
+            l.codigo_lote,
+            prod.codigo_producto,
+            prod.descripcion_completa AS producto_nombre,
+            inv.codigo AS item_codigo,
+            inv.nombre AS item_nombre,
+            u.abreviatura AS item_unidad,
+            m.numero_maquina,
+            t.nombre AS turno_nombre,
+            us.nombre AS responsable_nombre
+        FROM consumos_wip_pendientes p
+        JOIN lote_wip l ON l.id_lote_wip = p.id_lote_wip
+        JOIN productos_tejidos prod ON prod.id_producto = l.id_producto
+        JOIN inventarios inv ON inv.id_inventario = p.id_inventario
+        JOIN unidades_medida u ON u.id_unidad = inv.id_unidad
+        LEFT JOIN maquinas m ON m.id_maquina = l.id_maquina
+        LEFT JOIN turnos t ON t.id_turno = l.id_turno
+        LEFT JOIN usuarios us ON us.id_usuario = p.usuario_registro
+        WHERE p.id_pendiente = ?
+    ");
+    $stmt->execute([$id]);
+    $incidencia = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$incidencia) {
+        jsonResponse(['success' => false, 'message' => 'Incidencia no encontrada'], 404);
+    }
+
+    // 2. Datos de la planilla asociada (si existe)
+    $planilla = null;
+    if ($incidencia['id_planilla']) {
+        $stmtPlan = $db->prepare("
+            SELECT id_planilla, fecha_registro, fecha_inicio, fecha_fin, observaciones, registrado_por
+            FROM planillas_tejido
+            WHERE id_planilla = ?
+        ");
+        $stmtPlan->execute([$incidencia['id_planilla']]);
+        $planilla = $stmtPlan->fetch(PDO::FETCH_ASSOC);
+    }
+
+    // 3. Detalle de lo que SÍ se consumió vía FIFO (trazabilidad de origen)
+    $stmtCons = $db->prepare("
+        SELECT 
+            cd.cantidad_consumida,
+            cd.fecha_consumo,
+            di.numero_documento,
+            di.fecha_documento
+        FROM consumos_wip_detalle cd
+        JOIN documentos_inventario di ON di.id_documento = cd.id_documento_inventario
+        WHERE cd.id_lote_wip = ? AND cd.id_inventario = ?
+        ORDER BY cd.fecha_consumo ASC
+    ");
+    $stmtCons->execute([$incidencia['id_lote_wip'], $incidencia['id_inventario']]);
+    $detallesConsumo = $stmtCons->fetchAll(PDO::FETCH_ASSOC);
+
+    // 4. Datos de resolución (si existen)
+    $resolucion = null;
+    if ($incidencia['id_usuario_resolucion']) {
+        $stmtUser = $db->prepare("SELECT nombre FROM usuarios WHERE id_usuario = ?");
+        $stmtUser->execute([$incidencia['id_usuario_resolucion']]);
+        $resolucion = [
+            'usuario_nombre' => $stmtUser->fetchColumn(),
+            'fecha' => $incidencia['fecha_resolucion'],
+            'accion' => $incidencia['accion_resolucion'],
+            'observacion' => $incidencia['observacion_resolucion']
+        ];
+    }
+
+    jsonResponse([
+        'success' => true,
+        'incidencia' => $incidencia,
+        'planilla' => $planilla,
+        'fifo' => [
+            'detalle' => $detallesConsumo,
+            'tipo' => (float)$incidencia['cantidad_consumida'] > 0 ? 'PARCIAL' : 'SIN_STOCK'
+        ],
+        'resolucion' => $resolucion
+    ]);
+}
+
+/**
+ * Registra la resolución formal de una incidencia
+ */
+function resolverIncidencia($db, $data)
+{
+    $id = (int)($data['id_incidencia'] ?? 0);
+    $accion = trim((string)($data['accion'] ?? ''));
+    $observacion = trim((string)($data['observacion'] ?? ''));
+    $estado = trim((string)($data['estado'] ?? 'RESUELTA'));
+
+    if ($id <= 0 || empty($accion) || empty($observacion)) {
+        jsonResponse(['success' => false, 'message' => 'ID, Acción y Observación son obligatorios'], 400);
+    }
+
+    // Validar estado
+    $estadosValidos = ['PENDIENTE', 'EN_REVISION', 'RESUELTA', 'JUSTIFICADA', 'ANULADA'];
+    if (!in_array($estado, $estadosValidos)) {
+        jsonResponse(['success' => false, 'message' => 'Estado no válido'], 400);
+    }
+
+    $db->beginTransaction();
+    try {
+        $stmt = $db->prepare("
+            UPDATE consumos_wip_pendientes
+            SET 
+                estado = ?,
+                accion_resolucion = ?,
+                observacion_resolucion = ?,
+                id_usuario_resolucion = ?,
+                fecha_resolucion = NOW()
+            WHERE id_pendiente = ?
+        ");
+        
+        $stmt->execute([
+            $estado,
+            $accion,
+            $observacion,
+            $_SESSION['user_id'] ?? null,
+            $id
+        ]);
+
+        if ($stmt->rowCount() === 0) {
+            throw new Exception("No se pudo actualizar la incidencia (ID inexistente o sin cambios)");
+        }
+
+        $db->commit();
+        jsonResponse(['success' => true, 'message' => 'Incidencia actualizada correctamente']);
+
+    } catch (Throwable $e) {
+        $db->rollBack();
+        jsonResponse(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
+
+/**
+ * Obtiene el historial resumido de planillas de tejido con filtros y paginación
+ */
+function getHistorialProduccionTejido($db)
+{
+    $page = (int)($_GET['page'] ?? 1);
+    $perPage = (int)($_GET['per_page'] ?? 20);
+    $offset = ($page - 1) * $perPage;
+
+    $desde = $_GET['fecha_desde'] ?? null;
+    $hasta = $_GET['fecha_hasta'] ?? null;
+    $turno = $_GET['id_turno'] ?? null;
+    $responsable = $_GET['id_responsable'] ?? null;
+    $search = trim($_GET['search'] ?? '');
+
+    $where = ["p.activo = 1"];
+    $params = [];
+
+    if ($desde) {
+        $where[] = "p.fecha_inicio >= ?";
+        $params[] = $desde;
+    }
+    if ($hasta) {
+        $where[] = "p.fecha_inicio <= ?";
+        $params[] = $hasta;
+    }
+
+    if ($responsable) {
+        // Buscamos en el JSON si el ID de responsable coincide con técnico, tejedor o asistente
+        $where[] = "(JSON_EXTRACT(p.detalles_json, '$.id_tecnico') = ? OR JSON_EXTRACT(p.detalles_json, '$.id_tejedor') = ? OR JSON_EXTRACT(p.detalles_json, '$.id_asistente') = ?)";
+        $params[] = $responsable;
+        $params[] = $responsable;
+        $params[] = $responsable;
+    }
+
+    if ($search) {
+        $where[] = "(p.observaciones LIKE ? OR p.id_planilla LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+    }
+
+    $whereSql = implode(" AND ", $where);
+
+    // Contar total para paginación
+    $stmtCount = $db->prepare("SELECT COUNT(*) FROM planillas_tejido p WHERE $whereSql");
+    $stmtCount->execute($params);
+    $total = $stmtCount->fetchColumn();
+
+    // Obtener registros
+    $stmt = $db->prepare("
+        SELECT 
+            p.id_planilla,
+            p.fecha_inicio,
+            p.fecha_fin,
+            p.detalles_json,
+            p.registrado_por,
+            p.observaciones,
+            p.fecha_registro,
+            u.nombre_completo as usuario_registro_nombre,
+            (SELECT COUNT(*) FROM consumos_wip_pendientes cp WHERE cp.id_planilla = p.id_planilla) as cantidad_incidencias
+        FROM planillas_tejido p
+        LEFT JOIN usuarios u ON u.id_usuario = p.registrado_por
+        WHERE $whereSql
+        ORDER BY p.fecha_inicio DESC, p.id_planilla DESC
+        LIMIT $perPage OFFSET $offset
+    ");
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $data = [];
+    foreach ($rows as $row) {
+        $detalles = json_decode($row['detalles_json'], true);
+        
+        $totalDocenas = 0;
+        $totalUnidades = 0;
+        $maquinas = [];
+        $turnosEncontrados = [];
+        
+        foreach ($detalles['lineas_produccion'] ?? [] as $linea) {
+            $totalDocenas += (int)($linea['cantidad_docenas'] ?? 0);
+            $totalUnidades += (int)($linea['cantidad_unidades'] ?? 0);
+            if (!empty($linea['id_maquina'])) $maquinas[] = $linea['id_maquina'];
+            if (!empty($linea['id_turno'])) $turnosEncontrados[] = $linea['id_turno'];
+        }
+        
+        // Filtro por turno (se aplica en PHP si no se pudo por SQL)
+        if ($turno && !in_array($turno, $turnosEncontrados)) {
+            $total--; // Ajustamos el total si estamos filtrando en PHP (no ideal pero seguro)
+            continue;
+        }
+
+        $totalBase = ($totalDocenas * 12) + $totalUnidades;
+        $docenasFinal = floor($totalBase / 12);
+        $unidadesFinal = $totalBase % 12;
+
+        $data[] = [
+            'id_planilla' => $row['id_planilla'],
+            'fecha' => $row['fecha_inicio'],
+            'fecha_fin' => $row['fecha_fin'],
+            'total_docenas' => $docenasFinal,
+            'total_unidades' => $unidadesFinal,
+            'maquinas_activas' => count(array_unique($maquinas)),
+            'cantidad_incidencias' => (int)$row['cantidad_incidencias'],
+            'responsable_nombre' => $row['usuario_registro_nombre'] ?: 'SISTEMA',
+            'observaciones' => $row['observaciones'],
+            'fecha_registro' => $row['fecha_registro'],
+            'estado' => 'ACTIVO'
+        ];
+    }
+
+    jsonResponse([
+        'success' => true,
+        'data' => $data,
+        'pagination' => [
+            'page' => $page,
+            'per_page' => $perPage,
+            'total' => (int)$total,
+            'total_pages' => ceil($total / $perPage)
+        ]
+    ]);
+}
+
+/**
+ * Obtiene el detalle completo de una planilla con sus 6 bloques de información
+ */
+function getDetalleHistorialProduccionTejido($db)
+{
+    $id = (int)($_GET['id_planilla'] ?? 0);
+    if ($id <= 0) {
+        jsonResponse(['success' => false, 'message' => 'ID de planilla requerido'], 400);
+    }
+
+    $stmt = $db->prepare("
+        SELECT p.*, u.nombre_completo as registrado_por_nombre
+        FROM planillas_tejido p
+        LEFT JOIN usuarios u ON u.id_usuario = p.registrado_por
+        WHERE p.id_planilla = ?
+    ");
+    $stmt->execute([$id]);
+    $planilla = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$planilla) {
+        jsonResponse(['success' => false, 'message' => 'Planilla no encontrada'], 404);
+    }
+
+    $detalles = json_decode($planilla['detalles_json'], true);
+
+    // B. Resumen y C. Detalle Máquinas
+    $totalDocenas = 0;
+    $totalUnidades = 0;
+    $maquinasArr = [];
+    $lineasEnriquecidas = [];
+    
+    foreach ($detalles['lineas_produccion'] ?? [] as $linea) {
+        $totalDocenas += (int)($linea['cantidad_docenas'] ?? 0);
+        $totalUnidades += (int)($linea['cantidad_unidades'] ?? 0);
+        if (!empty($linea['id_maquina'])) $maquinasArr[] = $linea['id_maquina'];
+
+        // Enriquecer datos de máquina y producto
+        $stmtM = $db->prepare("SELECT numero_maquina FROM maquinas WHERE id_maquina = ?");
+        $stmtM->execute([$linea['id_maquina']]);
+        $maquinaNombre = $stmtM->fetchColumn() ?: "M-".$linea['id_maquina'];
+
+        $stmtP = $db->prepare("SELECT codigo_producto, descripcion_completa FROM productos_tejidos WHERE id_producto = ?");
+        $stmtP->execute([$linea['id_producto']]);
+        $prod = $stmtP->fetch(PDO::FETCH_ASSOC);
+
+        $lineasEnriquecidas[] = array_merge($linea, [
+            'maquina_nombre' => $maquinaNombre,
+            'producto_codigo' => $prod['codigo_producto'] ?? '?',
+            'producto_nombre' => $prod['descripcion_completa'] ?? '?'
+        ]);
+    }
+
+    $totalBase = ($totalDocenas * 12) + $totalUnidades;
+
+    // D. Incidencias
+    $stmtInc = $db->prepare("
+        SELECT cp.*, i.codigo as item_codigo, i.nombre as item_nombre, u.nombre_completo as usuario_nombre
+        FROM consumos_wip_pendientes cp
+        LEFT JOIN inventarios i ON i.id_inventario = cp.id_inventario
+        LEFT JOIN usuarios u ON u.id_usuario = cp.id_usuario_resolucion
+        WHERE cp.id_planilla = ?
+    ");
+    $stmtInc->execute([$id]);
+    $incidencias = $stmtInc->fetchAll(PDO::FETCH_ASSOC);
+
+    // E. Lotes WIP
+    $idsLotes = !empty($detalles['lotes_creados']) ? array_column($detalles['lotes_creados'], 'id_lote_wip') : [];
+    $lotesWip = [];
+    if (!empty($idsLotes)) {
+        $placeholders = implode(',', array_fill(0, count($idsLotes), '?'));
+        $stmtLotes = $db->prepare("
+            SELECT l.*, p.codigo_producto, p.descripcion_completa, a.nombre as area_nombre
+            FROM lote_wip l
+            JOIN productos_tejidos p ON p.id_producto = l.id_producto
+            LEFT JOIN areas_produccion a ON a.id_area = l.id_area_actual
+            WHERE l.id_lote_wip IN ($placeholders)
+        ");
+        $stmtLotes->execute($idsLotes);
+        $lotesWip = $stmtLotes->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // F. Movimientos posteriores (Trazabilidad)
+    $movimientos = [];
+    if (!empty($idsLotes)) {
+        $placeholders = implode(',', array_fill(0, count($idsLotes), '?'));
+        $stmtMovs = $db->prepare("
+            SELECT m.*, ao.nombre as area_origen_nombre, ad.nombre as area_destino_nombre, u.nombre_completo as usuario_nombre
+            FROM movimientos_wip m
+            LEFT JOIN areas_produccion ao ON ao.id_area = m.id_area_origen
+            LEFT JOIN areas_produccion ad ON ad.id_area = m.id_area_destino
+            LEFT JOIN usuarios u ON u.id_usuario = m.usuario
+            WHERE m.id_lote_wip IN ($placeholders)
+            AND m.tipo_movimiento != 'CREACION_EN_TEJIDO'
+            ORDER BY m.fecha ASC
+        ");
+        $stmtMovs->execute($idsLotes);
+        $movimientos = $stmtMovs->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // G. Análisis comparativo de consumo (NUEVO para Historial - Consistencia Bitácora)
+    $analisisConsumo = [];
+    if (!empty($idsLotes)) {
+        $placeholders = implode(',', array_fill(0, count($idsLotes), '?'));
+        
+        // 1. Obtener consumos reales (vía lotes)
+        $stmtReal = $db->prepare("
+            SELECT i.nombre as componente, SUM(cd.cantidad_consumida) as real_kg
+            FROM consumos_wip_detalle cd
+            JOIN inventarios i ON i.id_inventario = cd.id_inventario
+            WHERE cd.id_lote_wip IN ($placeholders)
+            GROUP BY i.id_inventario
+        ");
+        $stmtReal->execute($idsLotes);
+        $consumosReales = $stmtReal->fetchAll(PDO::FETCH_ASSOC);
+
+        // 2. Obtener consumos pendientes (vía id_planilla - más directo)
+        $stmtPend = $db->prepare("
+            SELECT i.nombre as componente, SUM(cp.cantidad_pendiente) as pend_kg, SUM(cp.cantidad_requerida) as req_kg
+            FROM consumos_wip_pendientes cp
+            JOIN inventarios i ON i.id_inventario = cp.id_inventario
+            WHERE cp.id_planilla = ?
+            GROUP BY i.id_inventario
+        ");
+        $stmtPend->execute([$id]);
+        $consumosPendientes = $stmtPend->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Consolidar mapeo
+        $mapeo = [];
+        foreach ($consumosReales as $r) {
+            $mapeo[$r['componente']] = ['real' => (float)$r['real_kg'], 'pend' => 0, 'req' => (float)$r['real_kg']];
+        }
+        foreach ($consumosPendientes as $p) {
+            $comp = $p['componente'];
+            if (!isset($mapeo[$comp])) {
+                $mapeo[$comp] = ['real' => 0, 'pend' => (float)$p['pend_kg'], 'req' => (float)$p['req_kg']];
+            } else {
+                $mapeo[$comp]['pend'] = (float)$p['pend_kg'];
+                // El teórico es lo realmente consumido + lo que quedó pendiente para esta planilla
+                $mapeo[$comp]['req'] = $mapeo[$comp]['real'] + (float)$p['pend_kg'];
+            }
+        }
+
+        foreach ($mapeo as $comp => $vals) {
+            $analisisConsumo[] = [
+                'componente' => $comp,
+                'teorico_kg' => round($vals['req'], 4),
+                'real_kg' => round($vals['real'], 4),
+                'pendiente_kg' => round($vals['pend'], 4),
+                'diferencia_kg' => round($vals['real'] - $vals['req'], 4),
+                'porcentaje' => $vals['req'] > 0 ? round(($vals['real'] / $vals['req']) * 100, 2) : 100
+            ];
+        }
+    }
+
+    jsonResponse([
+        'success' => true,
+        'data' => [
+            'cabecera' => [
+                'id_planilla' => $planilla['id_planilla'],
+                'fecha' => $planilla['fecha_inicio'],
+                'responsable_nombre' => $planilla['registrado_por_nombre'] ?: 'SISTEMA',
+                'observaciones' => $planilla['observaciones'],
+                'estado' => $planilla['activo'] ? 'CONFIRMADO' : 'ANULADO',
+                'fecha_registro' => $planilla['fecha_registro']
+            ],
+            'resumen' => [
+                'total_docenas' => floor($totalBase / 12),
+                'total_unidades' => $totalBase % 12,
+                'maquinas_activas' => count(array_unique($maquinasArr)),
+                'total_incidencias' => count($incidencias),
+                'total_lotes' => count($lotesWip),
+                'desperdicio' => $detalles['desperdicio'] ?? []
+            ],
+            'maquinas' => $lineasEnriquecidas,
+            'incidencias' => $incidencias,
+            'lotes_wip' => $lotesWip,
+            'movimientos' => $movimientos,
+            'analisis_consumo' => $analisisConsumo
+        ]
+    ]);
 }

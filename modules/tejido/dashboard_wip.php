@@ -199,7 +199,46 @@ require_once '../../includes/header.php';
         </div>
     </div>
 
-    <!-- Main Content Tabs/Cards -->
+    <!-- === PANEL: MP Disponible en Tejeduía (saldo FIFO real) === -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow border-left-success" style="border-radius:20px;">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7); border-radius:20px 20px 0 0;">
+                    <h6 class="m-0 font-weight-bold" style="color:#166534;">
+                        <i class="fas fa-warehouse mr-2"></i>
+                        MP Disponible en Tejeduía — Saldo Real FIFO
+                        <span class="badge ml-2" style="background:#bbf7d0;color:#166534;font-size:0.7rem;" id="badgeSaldoTotal">Cargando...</span>
+                    </h6>
+                    <div style="font-size:0.8rem;color:#15803d;">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Saldo acumulado de todos los documentos SAL-TEJ activos. Se descuenta automáticamente con cada producción registrada.
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0 text-sm" id="tablaSaldoMp">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Componente</th>
+                                    <th class="text-right">Enviado Almacén (Kg)</th>
+                                    <th class="text-right" style="color:#15803d;">Disponible (Kg)</th>
+                                    <th class="text-right" style="color:#dc2626;">Consumido (Kg)</th>
+                                    <th class="text-center">% Consumido</th>
+                                    <th class="text-center">Docs SAL-TEJ</th>
+                                    <th class="text-center">Ultimo SAL-TEJ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bodySaldoMp">
+                                <tr><td colspan="7" class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Cargando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div class="row">
         <!-- Production by Machine -->
         <div class="col-lg-7 mb-4">
@@ -533,6 +572,7 @@ async function loadDashboard() {
             renderTraceability(json.data.traceability);
             renderYarnControl(json.data.hilos_detalle, json.data.hilos_kardex);
             renderAlerts(json.data.alerts);
+            renderSaldoDisponibleMp(json.data.saldo_disponible_mp || []);  // NUEVO
         }
     } catch (e) { console.error('Error cargando dashboard', e); }
 }
@@ -550,6 +590,65 @@ function renderKPIs(kpis) {
     document.getElementById('kpiHiloSaldo').textContent = kpis.hilo_saldo_proceso.toFixed(2);
     document.getElementById('kpiHiloMaq').textContent = kpis.hilo_saldo_maquinas.toFixed(2) + ' Kg';
     document.getElementById('kpiHiloSala').textContent = kpis.hilo_saldo_sala.toFixed(2) + ' Kg';
+
+    // Badge del panel saldo real
+    const badge = document.getElementById('badgeSaldoTotal');
+    if (badge) {
+        const total = parseFloat(kpis.hilo_saldo_real_kg || 0);
+        const items = parseInt(kpis.hilo_items_con_saldo || 0);
+        badge.textContent = `${total.toFixed(2)} kg disponibles • ${items} componentes`;
+    }
+}
+
+/**
+ * Renderiza el panel principal de saldo disponible de MP en tejeduría.
+ * Fuente: saldo_disponible de documentos SAL-TEJ (model FIFO real).
+ */
+function renderSaldoDisponibleMp(data) {
+    const tbody = document.getElementById('bodySaldoMp');
+    if (!tbody) return;
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+            <i class="fas fa-inbox fa-2x mb-2 d-block"></i>
+            No hay documentos SAL-TEJ con saldo disponible.
+            <div class="mt-1 small">Emite un SAL-TEJ desde Inventarios → Salidas MP para abastecer la planta.</div>
+        </td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = data.map(r => {
+        const saldo = parseFloat(r.saldo_disponible_kg);
+        const total = parseFloat(r.cantidad_total_kg);
+        const cons  = parseFloat(r.consumido_kg);
+        const pct   = parseFloat(r.pct_consumido);
+        const sinSaldo = saldo <= 0;
+        const barColor = pct >= 90 ? '#dc2626' : pct >= 60 ? '#f59e0b' : '#22c55e';
+
+        return `
+        <tr style="${sinSaldo ? 'opacity:0.55;' : ''}">
+            <td>
+                <strong style="color:#1e293b;">${r.nombre}</strong>
+                <br><small class="text-muted">${r.codigo} &bull; ${r.unidad}</small>
+            </td>
+            <td class="text-right">${total.toFixed(4)}</td>
+            <td class="text-right" style="font-weight:700; color:${sinSaldo ? '#dc2626' : '#15803d'}; font-size:1.05rem;">
+                ${saldo.toFixed(4)}
+                ${sinSaldo ? '<br><small style="color:#dc2626;"><i class="fas fa-exclamation-circle"></i> AGOTADO</small>' : ''}
+            </td>
+            <td class="text-right" style="color:#64748b;">${cons.toFixed(4)}</td>
+            <td class="text-center" style="min-width:160px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="flex:1;height:8px;border-radius:4px;background:#e2e8f0;overflow:hidden;">
+                        <div style="height:100%;border-radius:4px;background:${barColor};width:${Math.min(pct,100)}%;transition:width 0.8s ease;"></div>
+                    </div>
+                    <span style="font-size:0.8rem;font-weight:600;color:${barColor};min-width:38px;">${pct}%</span>
+                </div>
+            </td>
+            <td class="text-center"><span class="badge badge-info">${r.num_documentos}</span></td>
+            <td class="text-center"><small class="text-muted">${r.ultimo_sal_tej || '-'}</small></td>
+        </tr>`;
+    }).join('');
 }
 
 function renderYarnControl(detalle, kardex) {

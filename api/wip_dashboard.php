@@ -32,23 +32,50 @@ try {
     // 6. Alertas / Inconsistencias
     $alerts = generarAlertas($db, $fechaDesde, $fechaHasta);
 
-    // 7. Hilos - Control basado en BOM (Ajustes Obligatorios)
-    $yarnData = obtenerControlHilos($db, $fechaDesde, $fechaHasta, $idProducto);
+    // 7. Hilos - Control basado en BOM (tablas legacy, puede no existir)
+    // Envuelto en try/catch propio: si las tablas fueron eliminadas,
+    // retornamos valores vacíos sin afectar el resto del dashboard.
+    try {
+        $yarnData = obtenerControlHilos($db, $fechaDesde, $fechaHasta, $idProducto);
+    } catch (Exception $e) {
+        error_log('wip_dashboard: obtenerControlHilos falló (tablas legacy): ' . $e->getMessage());
+        $yarnData = [
+            'kpis'   => [
+                'hilo_recibido'        => 0,
+                'hilo_consumo_teorico' => 0,
+                'hilo_saldo_proceso'   => 0,
+                'hilo_saldo_maquinas'  => 0,
+                'hilo_saldo_sala'      => 0
+            ],
+            'detalle' => [],
+            'kardex'  => [],
+            'alerts'  => []
+        ];
+    }
+
+    // 8. Saldo REAL disponible en Tejeduría (basado en saldo_disponible FIFO)
+    $saldoReal = obtenerSaldoDisponibleTejido($db);
 
     // Fusionar KPIs de hilos en el objeto principal
     $kpis = array_merge($kpis, $yarnData['kpis']);
 
+    // KPI adicional: total saldo real disponible
+    $kpis['hilo_saldo_real_kg']    = $saldoReal['total_kg'];
+    $kpis['hilo_items_con_saldo']  = $saldoReal['items_con_saldo'];
+
+
     jsonResponse([
         'success' => true,
         'data' => [
-            'kpis' => $kpis,
-            'production_by_machine' => $productionByMachine,
-            'wip_by_lot' => $wipByLot,
-            'wip_by_product' => $wipByProduct,
-            'traceability' => $traceability,
-            'alerts' => array_merge($alerts, $yarnData['alerts']),
-            'hilos_detalle' => $yarnData['detalle'],
-            'hilos_kardex' => $yarnData['kardex']
+            'kpis'                 => $kpis,
+            'production_by_machine'=> $productionByMachine,
+            'wip_by_lot'           => $wipByLot,
+            'wip_by_product'       => $wipByProduct,
+            'traceability'         => $traceability,
+            'alerts'               => array_merge($alerts, $yarnData['alerts']),
+            'hilos_detalle'        => $yarnData['detalle'],
+            'hilos_kardex'         => $yarnData['kardex'],
+            'saldo_disponible_mp'  => $saldoReal['detalle']  // <-- NUEVO: saldo real FIFO
         ],
         'filters' => [
             'fecha_desde' => $fechaDesde,
@@ -382,6 +409,61 @@ function obtenerControlHilos($db, $fechaDesde, $fechaHasta, $idProducto) {
         'detalle' => $detalle,
         'kardex' => $kardex,
         'alerts' => $yarnAlerts
+    ];
+}
+
+/**
+ * Saldo REAL de MP disponible en Tejeduría.
+ *
+ * Consulta el saldo_disponible de TODOS los documentos SAL-TEJ activos
+ * (modelo legádo). Esta es exactamente la misma fuente que usa el motor
+ * FIFO de consumo, por lo que refleja el estado real del inventario
+ * de materia prima disponible para producción en el piso de tejeduría.
+ *
+ * - Agrupa por componente (hilo/fibra)
+ * - Excluye documentos ya integrados al nuevo modelo (wip_stock_mp)
+ * - Incluye porcentaje consumido vs. cantidad total enviada
+ */
+function obtenerSaldoDisponibleTejido($db)
+{
+    $stmt = $db->query("
+        SELECT
+            i.id_inventario,
+            i.codigo,
+            i.nombre,
+            u.abreviatura                                AS unidad,
+            ROUND(SUM(dd.cantidad),           4)        AS cantidad_total_kg,
+            ROUND(SUM(dd.saldo_disponible),   4)        AS saldo_disponible_kg,
+            ROUND(SUM(dd.cantidad) - SUM(dd.saldo_disponible), 4) AS consumido_kg,
+            COUNT(DISTINCT d.id_documento)               AS num_documentos,
+            MAX(d.fecha_documento)                       AS ultimo_sal_tej,
+            CASE
+                WHEN SUM(dd.cantidad) > 0
+                THEN ROUND((1 - SUM(dd.saldo_disponible) / SUM(dd.cantidad)) * 100, 1)
+                ELSE 0
+            END AS pct_consumido
+        FROM documentos_inventario_detalle dd
+        JOIN documentos_inventario d ON d.id_documento = dd.id_documento
+        JOIN inventarios i ON i.id_inventario = dd.id_inventario
+        JOIN unidades_medida u ON u.id_unidad = i.id_unidad
+        WHERE d.tipo_documento = 'SALIDA'
+          AND (d.tipo_consumo = 'TEJIDO' OR d.numero_documento LIKE 'SAL-TEJ%')
+          AND d.estado = 'CONFIRMADO'
+          AND COALESCE(d.integrado_wip_nuevo_modelo, 0) = 0
+        GROUP BY dd.id_inventario, i.nombre, i.codigo, u.abreviatura
+        HAVING cantidad_total_kg > 0
+        ORDER BY i.nombre ASC
+    ");
+
+    $detalle = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $totalKg    = array_sum(array_column($detalle, 'saldo_disponible_kg'));
+    $itemsConSaldo = count(array_filter($detalle, fn($r) => (float)$r['saldo_disponible_kg'] > 0));
+
+    return [
+        'detalle'        => $detalle,
+        'total_kg'       => round($totalKg, 4),
+        'items_con_saldo' => $itemsConSaldo
     ];
 }
 ?>

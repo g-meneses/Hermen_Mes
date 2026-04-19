@@ -166,7 +166,7 @@ require_once '../../includes/header.php';
                                 <th>Máquina</th>
                                 <th>Producto</th>
                                 <th>Cantidad</th>
-                                <th>Observaciones</th>
+                                <th>Consumo Teórico</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
@@ -235,6 +235,19 @@ require_once '../../includes/header.php';
                     <!-- Timeline dinámico -->
                 </div>
             </section>
+        </div>
+    </div>
+</div>
+
+<!-- Modal BOM Teórico por Producto -->
+<div id="modalBomProducto" class="modal-mes">
+    <div class="modal-content-mes" style="max-width:650px;">
+        <header class="modal-header">
+            <h2><i class="fas fa-flask"></i> Consumo Teórico (BOM)</h2>
+            <button class="close-btn" onclick="cerrarModalBom()">&times;</button>
+        </header>
+        <div class="modal-body" id="bodyBomProducto">
+            <div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>
         </div>
     </div>
 </div>
@@ -340,6 +353,26 @@ require_once '../../includes/header.php';
     .kpi-grid { grid-template-columns: repeat(3, 1fr); }
     .info-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+.btn-bom {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    padding: 5px 12px;
+    border-radius: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.btn-bom:hover { background: #dbeafe; border-color: #93c5fd; transform: translateY(-1px); }
+
+.close-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: rgba(255,255,255,0.8); transition: color 0.2s; }
+.close-btn:hover { color: white; }
 </style>
 
 <script>
@@ -501,9 +534,14 @@ async function verDetalle(id) {
         tbodyM.innerHTML = maquinas.map(m => `
             <tr>
                 <td><strong>${m.maquina_nombre}</strong></td>
-                <td>${m.producto_codigo} - ${m.producto_nombre}</td>
-                <td>${m.cantidad_docenas} doz / ${m.cantidad_unidades} und</td>
-                <td>${m.observaciones || '-'}</td>
+                <td>${m.producto_nombre}</td>
+                <td>${m.cantidad_docenas} doc / ${m.cantidad_unidades} uni</td>
+                <td>
+                    <button class="btn-bom" onclick="abrirBomProducto(${m.id_producto}, '${(m.producto_nombre || '').replace(/'/g, '\\&apos;')}', ${m.cantidad_docenas}, ${m.cantidad_unidades})"
+                        title="Ver consumo teórico">
+                        <i class="fas fa-flask"></i> Ver BOM
+                    </button>
+                </td>
                 <td><span class="badge badge-success">OK</span></td>
             </tr>
         `).join('');
@@ -643,6 +681,87 @@ async function abrirHistorialLote(idLoteWip) {
 
 function cerrarModalLote() {
     document.getElementById('modalHistorialLote').classList.remove('show');
+}
+
+async function abrirBomProducto(idProducto, nombreProducto, docenas = 0, unidades = 0) {
+    const modal = document.getElementById('modalBomProducto');
+    const body = document.getElementById('bodyBomProducto');
+    // Cantidad total en docenas (fraccionadas)
+    const totalDocenas = parseFloat(docenas) + parseFloat(unidades) / 12;
+    modal.querySelector('h2').innerHTML = `<i class="fas fa-flask"></i> BOM: ${nombreProducto}`;
+    body.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando receta...</div>';
+    modal.classList.add('show');
+
+    try {
+        const resp = await fetch(`${window.location.origin}/mes_hermen/api/bom_wip.php?id_producto=${idProducto}`);
+        const data = await resp.json();
+
+        if (!data.success) throw new Error(data.message || 'Error al obtener BOM');
+        if (!data.bom) {
+            body.innerHTML = '<p style="color:#94a3b8; text-align:center; padding:20px;">Este producto no tiene BOM configurado.</p>';
+            return;
+        }
+
+        const bom = data.bom;
+        const detalles = data.detalles || [];
+
+        if (detalles.length === 0) {
+            body.innerHTML = '<p style="color:#94a3b8; text-align:center; padding:20px;">El BOM existe pero no tiene componentes registrados.</p>';
+            return;
+        }
+
+        body.innerHTML = `
+            <div style="background:#f0fdf4; padding:10px 16px; border-radius:8px; margin-bottom:12px; border-left:4px solid #10b981; font-size:13px;">
+                <strong>Producto:</strong> ${bom.descripcion_completa || nombreProducto}
+                &nbsp;|&nbsp; <strong>BOM:</strong> ${bom.codigo_bom}
+                &nbsp;|&nbsp; <strong>Merma:</strong> ${bom.merma_pct || 0}%
+            </div>
+            <div style="background:#eff6ff; padding:8px 16px; border-radius:8px; margin-bottom:14px; border-left:4px solid #3b82f6; font-size:13px;">
+                <i class="fas fa-ruler-combined" style="color:#3b82f6"></i>
+                <strong>Cantidad tejida en esta planilla:</strong>
+                ${docenas} doc + ${unidades} uni
+                &nbsp;&mdash;&nbsp;
+                <strong style="color:#1d4ed8">${totalDocenas.toFixed(4)} docenas efectivas</strong>
+            </div>
+            <table class="compact-table">
+                <thead>
+                    <tr>
+                        <th>Componente (Hilo)</th>
+                        <th>Principal</th>
+                        <th>g / doc</th>
+                        <th>Kg / doc</th>
+                        <th style="background:#dbeafe; color:#1e40af;">Consumo total planilla (Kg)</th>
+                        <th>Stock actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${detalles.map(d => {
+                        const gramos = Number(d.gramos_por_docena || 0);
+                        const kgPorDoc = gramos / 1000;
+                        const totalKg = kgPorDoc * totalDocenas;
+                        return `
+                            <tr>
+                                <td><strong>${d.nombre || d.codigo || 'N/A'}</strong></td>
+                                <td>${d.es_principal == 1 ? '<span class="badge badge-success">Sí</span>' : '<span class="badge" style="background:#f1f5f9;color:#64748b;">No</span>'}</td>
+                                <td>${gramos.toFixed(2)} g</td>
+                                <td>${kgPorDoc.toFixed(4)} Kg</td>
+                                <td style="font-weight:700; color:#1d4ed8; background:#f0f9ff;">${totalKg.toFixed(4)} Kg</td>
+                                <td style="color:${Number(d.stock_actual) > 0 ? '#10b981' : '#ef4444'}">
+                                    ${Number(d.stock_actual || 0).toFixed(3)} ${d.unidad_abreviatura || 'Kg'}
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (e) {
+        body.innerHTML = `<p style="color:#ef4444; padding:20px; text-align:center;"><i class="fas fa-exclamation-circle"></i> ${e.message}</p>`;
+    }
+}
+
+function cerrarModalBom() {
+    document.getElementById('modalBomProducto').classList.remove('show');
 }
 </script>
 

@@ -194,6 +194,12 @@ function manejarGet($db)
         return;
     }
 
+    // FASE 1: Stock físico de MP en planta
+    if ($action === 'get_stock_wip_planta') {
+        getStockWipPlanta($db);
+        return;
+    }
+
     $stmt = $db->query("
         SELECT
             l.id_lote_wip,
@@ -261,6 +267,12 @@ function manejarPost($db)
 
     if ($action === 'resolver_incidencia') {
         resolverIncidencia($db, $data);
+        return;
+    }
+
+    // FASE 1: Confirmar transferencia de SAL-TEJ al stock WIP de planta
+    if ($action === 'confirmar_transferencia_mp') {
+        confirmarTransferenciaMP($db, $data);
         return;
     }
 
@@ -447,12 +459,17 @@ function registrarProduccionTejido($db, $data)
                 'Producción registrada (Consumo FIFO Automático)'
             ]);
 
+            // Calcular total teórico para este lote específico (suma de todos los componentes exigidos)
+            $teoricoPorLote = round(array_sum(array_column($reqsFIFO, 'cantidad_requerida')), 4);
+
             $lotesCreados[] = [
-                'id_lote_wip' => $loteInsertado['id_lote_wip'],
-                'codigo_lote' => $loteInsertado['codigo_lote'],
-                'producto' => $lineaNormalizada['producto_nombre'],
-                'cantidad' => $lineaNormalizada['cantidad_docenas'] . '|' . str_pad((string) $lineaNormalizada['cantidad_unidades'], 2, '0', STR_PAD_LEFT),
-                'costo_mp' => round($costoRealAsignado, 4)
+                'id_lote_wip'    => $loteInsertado['id_lote_wip'],
+                'codigo_lote'    => $loteInsertado['codigo_lote'],
+                'producto'       => $lineaNormalizada['producto_nombre'],
+                'numero_maquina' => $lineaNormalizada['maquina_codigo'] ?? '',
+                'teorico_kg'     => $teoricoPorLote,
+                'cantidad'       => $lineaNormalizada['cantidad_docenas'] . '|' . str_pad((string) $lineaNormalizada['cantidad_unidades'], 2, '0', STR_PAD_LEFT),
+                'costo_mp'       => round($costoRealAsignado, 4)
             ];
 
             $costoMpTotal += $costoRealAsignado;
@@ -1870,7 +1887,9 @@ function consumirMateriaPrimaFIFO($db, $idLoteWip, $consumosRequeridos)
         $cantidadPendiente = (float) $req['cantidad_requerida'];
         $cantidadConsumidaEfectiva = 0.0;
 
-        // 1. Buscar documentos con saldo disponible para este item (FIFO)
+        // 1. Buscar documentos con saldo disponible para este item (FIFO — modelo LEGADO)
+        //    FASE 1: Se excluyen documentos ya integrados al nuevo modelo (wip_stock_mp)
+        //    via el flag integrado_wip_nuevo_modelo = 1, para evitar doble conteo.
         $stmtDocs = $db->prepare("
             SELECT dd.id_detalle, dd.id_documento, dd.id_inventario, dd.saldo_disponible, dd.costo_unitario
             FROM documentos_inventario_detalle dd
@@ -1880,6 +1899,7 @@ function consumirMateriaPrimaFIFO($db, $idLoteWip, $consumosRequeridos)
               AND (d.tipo_consumo = 'TEJIDO' OR d.numero_documento LIKE 'SAL-TEJ%')
               AND d.estado = 'CONFIRMADO'
               AND dd.saldo_disponible > 0
+              AND COALESCE(d.integrado_wip_nuevo_modelo, 0) = 0
             ORDER BY d.fecha_documento ASC, d.id_documento ASC
             FOR UPDATE
         ");
@@ -2380,6 +2400,26 @@ function getDetalleHistorialProduccionTejido($db)
 
     $detalles = json_decode($planilla['detalles_json'], true);
 
+    // Resolver nombre del turno desde el JSON (el id_turno se guarda en cada linea, no en la cabecera)
+    $turnoNombre = 'Sin turno';
+    $primeraLinea = $detalles['lineas_produccion'][0] ?? [];
+    $idTurnoJson = $primeraLinea['id_turno'] ?? null;
+    if ($idTurnoJson) {
+        $stmtT = $db->prepare("SELECT hora_inicio, hora_fin, nombre FROM turnos WHERE id_turno = ?");
+        $stmtT->execute([$idTurnoJson]);
+        $turnoRow = $stmtT->fetch(PDO::FETCH_ASSOC);
+        if ($turnoRow) {
+            // Priorizar formato de horas si existen, si no usar nombre
+            if (!empty($turnoRow['hora_inicio']) && !empty($turnoRow['hora_fin'])) {
+                $hi = substr($turnoRow['hora_inicio'], 0, 5); // HH:MM
+                $hf = substr($turnoRow['hora_fin'], 0, 5);
+                $turnoNombre = $hi . ' - ' . $hf;
+            } else {
+                $turnoNombre = $turnoRow['nombre'] ?: 'Sin turno';
+            }
+        }
+    }
+
     // B. Resumen y C. Detalle Máquinas
     $totalDocenas = 0;
     $totalUnidades = 0;
@@ -2401,6 +2441,7 @@ function getDetalleHistorialProduccionTejido($db)
         $prod = $stmtP->fetch(PDO::FETCH_ASSOC);
 
         $lineasEnriquecidas[] = array_merge($linea, [
+            'id_producto'    => $linea['id_producto'] ?? null,
             'maquina_nombre' => $maquinaNombre,
             'producto_codigo' => $prod['codigo_producto'] ?? '?',
             'producto_nombre' => $prod['descripcion_completa'] ?? '?'
@@ -2515,6 +2556,7 @@ function getDetalleHistorialProduccionTejido($db)
             'cabecera' => [
                 'id_planilla' => $planilla['id_planilla'],
                 'fecha' => $planilla['fecha_inicio'],
+                'turno' => $turnoNombre,
                 'responsable_nombre' => $planilla['registrado_por_nombre'] ?: 'SISTEMA',
                 'observaciones' => $planilla['observaciones'],
                 'estado' => $planilla['activo'] ? 'CONFIRMADO' : 'ANULADO',
@@ -2535,4 +2577,252 @@ function getDetalleHistorialProduccionTejido($db)
             'analisis_consumo' => $analisisConsumo
         ]
     ]);
+}
+
+// =============================================================================
+// FASE 1: Stock Físico de MP en Planta WIP
+// =============================================================================
+
+/**
+ * GET: Retorna el stock actual de materia prima disponible en planta.
+ * Incluye tanto el stock cargado por migración (documentos legado)
+ * como el confirmado vía confirmar_transferencia_mp (nuevo modelo).
+ *
+ * action=get_stock_wip_planta
+ */
+function getStockWipPlanta($db)
+{
+    $stmt = $db->query("
+        SELECT
+            ws.id_stock_wip,
+            ws.id_inventario,
+            i.codigo,
+            i.nombre,
+            u.abreviatura                                    AS unidad,
+            ROUND(ws.stock_disponible, 4)                    AS stock_disponible_kg,
+            ROUND(ws.stock_reservado, 4)                     AS stock_reservado_kg,
+            ROUND(ws.stock_disponible + ws.stock_reservado, 4) AS stock_total_kg,
+            ws.fecha_actualizacion
+        FROM wip_stock_mp ws
+        JOIN inventarios i ON i.id_inventario = ws.id_inventario
+        JOIN unidades_medida u ON u.id_unidad = i.id_unidad
+        ORDER BY i.nombre ASC
+    ");
+
+    $stock = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Agrupar totales
+    $totalDisponible = array_sum(array_column($stock, 'stock_disponible_kg'));
+    $totalReservado  = array_sum(array_column($stock, 'stock_reservado_kg'));
+
+    jsonResponse([
+        'success'              => true,
+        'stock_wip_planta'     => $stock,
+        'total_items'          => count($stock),
+        'totales' => [
+            'disponible_kg' => round($totalDisponible, 4),
+            'reservado_kg'  => round($totalReservado, 4),
+            'total_kg'      => round($totalDisponible + $totalReservado, 4)
+        ]
+    ]);
+}
+
+/**
+ * POST: Confirma la transferencia de un documento SAL-TEJ al stock WIP de planta.
+ *
+ * Recibe:
+ *   - id_documento  (int)    : ID del documento SAL-TEJ a confirmar
+ *   - observaciones (string) : opcional
+ *
+ * Efectos:
+ *   1. Valida el documento (tipo, estado, no duplicado)
+ *   2. Lee saldo_disponible de sus líneas de detalle
+ *   3. Upsert en wip_stock_mp (incrementa stock_disponible)
+ *   4. Inserta en wip_transferencias_mp (trazabilidad)
+ *   5. Marca el documento con integrado_wip_nuevo_modelo = 1
+ *      → El FIFO legado lo excluirá automáticamente
+ *
+ * action=confirmar_transferencia_mp
+ */
+function confirmarTransferenciaMP($db, $data)
+{
+    $idDocumento  = (int) ($data['id_documento'] ?? 0);
+    $observaciones = trim((string) ($data['observaciones'] ?? ''));
+
+    if ($idDocumento <= 0) {
+        jsonResponse(['success' => false, 'message' => 'El campo id_documento es requerido'], 400);
+    }
+
+    $db->beginTransaction();
+
+    try {
+        // ─── 1. Cargar y bloquear el documento ─────────────────────────────────
+        $stmtDoc = $db->prepare("
+            SELECT
+                d.id_documento,
+                d.numero_documento,
+                d.tipo_documento,
+                d.tipo_consumo,
+                d.estado,
+                d.fecha_documento,
+                COALESCE(d.integrado_wip_nuevo_modelo, 0) AS integrado_wip_nuevo_modelo
+            FROM documentos_inventario d
+            WHERE d.id_documento = ?
+            FOR UPDATE
+        ");
+        $stmtDoc->execute([$idDocumento]);
+        $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
+
+        // ─── 2. Validaciones ───────────────────────────────────────────────────
+        if (!$doc) {
+            throw new InvalidArgumentException('Documento no encontrado (ID: ' . $idDocumento . ')');
+        }
+
+        if ($doc['tipo_documento'] !== 'SALIDA') {
+            throw new InvalidArgumentException(
+                'El documento ' . $doc['numero_documento'] . ' no es de tipo SALIDA. '
+                . 'Solo se pueden confirmar documentos SAL-TEJ.'
+            );
+        }
+
+        $esSalTej = ($doc['tipo_consumo'] === 'TEJIDO')
+                 || (strpos($doc['numero_documento'], 'SAL-TEJ') === 0);
+        if (!$esSalTej) {
+            throw new InvalidArgumentException(
+                'El documento ' . $doc['numero_documento'] . ' no corresponde a una salida tipo TEJIDO. '
+                . 'Solo se permiten documentos SAL-TEJ o con tipo_consumo = TEJIDO.'
+            );
+        }
+
+        if ($doc['estado'] !== 'CONFIRMADO') {
+            throw new InvalidArgumentException(
+                'El documento ' . $doc['numero_documento'] . ' tiene estado "' . $doc['estado'] . '". '
+                . 'Solo se pueden confirmar documentos en estado CONFIRMADO.'
+            );
+        }
+
+        if ((int) $doc['integrado_wip_nuevo_modelo'] === 1) {
+            throw new InvalidArgumentException(
+                'El documento ' . $doc['numero_documento'] . ' ya fue integrado al stock WIP de planta. '
+                . 'No se puede confirmar dos veces (protección anti doble conteo).'
+            );
+        }
+
+        // ─── 3. Leer líneas con saldo disponible ───────────────────────────────
+        $stmtDet = $db->prepare("
+            SELECT
+                dd.id_detalle,
+                dd.id_inventario,
+                dd.saldo_disponible,
+                dd.cantidad,
+                i.nombre  AS item_nombre,
+                i.codigo  AS item_codigo
+            FROM documentos_inventario_detalle dd
+            JOIN inventarios i ON i.id_inventario = dd.id_inventario
+            WHERE dd.id_documento = ?
+              AND dd.saldo_disponible > 0
+            FOR UPDATE
+        ");
+        $stmtDet->execute([$idDocumento]);
+        $lineas = $stmtDet->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($lineas)) {
+            throw new InvalidArgumentException(
+                'El documento ' . $doc['numero_documento'] . ' no tiene saldo disponible para '
+                . 'transferir. Es probable que ya haya sido consumido completamente por el motor FIFO.'
+            );
+        }
+
+        // ─── 4. Validar consistencia de cantidades ────────────────────────────
+        foreach ($lineas as $linea) {
+            if ((float) $linea['saldo_disponible'] <= 0) {
+                throw new InvalidArgumentException(
+                    'Línea con saldo inválido para el ítem ' . $linea['item_codigo'] . '. '
+                    . 'Revisión de integridad requerida.'
+                );
+            }
+            if ((float) $linea['saldo_disponible'] > (float) $linea['cantidad']) {
+                throw new InvalidArgumentException(
+                    'El saldo_disponible (' . $linea['saldo_disponible'] . ') supera la cantidad '
+                    . 'original (' . $linea['cantidad'] . ') para el ítem ' . $linea['item_codigo'] . '. '
+                    . 'Existe una inconsistencia en los datos.'
+                );
+            }
+        }
+
+        // ─── 5. Procesar cada línea ────────────────────────────────────────────
+        $stmtUpsertStock = $db->prepare("
+            INSERT INTO wip_stock_mp (id_inventario, stock_disponible, stock_reservado)
+            VALUES (?, ?, 0.0000)
+            ON DUPLICATE KEY UPDATE
+                stock_disponible    = stock_disponible + VALUES(stock_disponible),
+                fecha_actualizacion = CURRENT_TIMESTAMP
+        ");
+
+        $stmtTransferencia = $db->prepare("
+            INSERT INTO wip_transferencias_mp (
+                id_documento_sal, id_inventario, cantidad_kg, tipo,
+                fecha_transferencia, usuario, observaciones
+            ) VALUES (?, ?, ?, 'ENTRADA_PLANTA', ?, ?, ?)
+        ");
+
+        $obsBase = $observaciones !== ''
+            ? $observaciones
+            : 'Confirmación desde SAL-TEJ ' . $doc['numero_documento'];
+
+        $itemsConfirmados = [];
+
+        foreach ($lineas as $linea) {
+            $cantidadKg = round((float) $linea['saldo_disponible'], 4);
+
+            // 5a. Actualizar stock WIP en planta
+            $stmtUpsertStock->execute([$linea['id_inventario'], $cantidadKg]);
+
+            // 5b. Registrar trazabilidad
+            $stmtTransferencia->execute([
+                $idDocumento,
+                $linea['id_inventario'],
+                $cantidadKg,
+                $doc['fecha_documento'],
+                $_SESSION['user_id'] ?? null,
+                $obsBase
+            ]);
+
+            $itemsConfirmados[] = [
+                'id_inventario' => (int) $linea['id_inventario'],
+                'codigo'        => $linea['item_codigo'],
+                'nombre'        => $linea['item_nombre'],
+                'cantidad_kg'   => $cantidadKg
+            ];
+        }
+
+        // ─── 6. Marcar documento como integrado (anti doble conteo) ───────────
+        $stmtFlag = $db->prepare("
+            UPDATE documentos_inventario
+            SET integrado_wip_nuevo_modelo = 1
+            WHERE id_documento = ?
+        ");
+        $stmtFlag->execute([$idDocumento]);
+
+        $db->commit();
+
+        jsonResponse([
+            'success'          => true,
+            'message'          => 'Documento ' . $doc['numero_documento']
+                                . ' integrado al stock WIP de planta correctamente.',
+            'numero_documento'  => $doc['numero_documento'],
+            'fecha_documento'   => $doc['fecha_documento'],
+            'items_confirmados' => $itemsConfirmados,
+            'total_items'       => count($itemsConfirmados),
+            'total_kg'          => round(array_sum(array_column($itemsConfirmados, 'cantidad_kg')), 4),
+            'nota'              => 'El motor FIFO legado ya no tomará saldo de este documento. '
+                                . 'El material está ahora en wip_stock_mp disponible para Fase 2.'
+        ]);
+
+    } catch (Exception $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        throw $e;
+    }
 }

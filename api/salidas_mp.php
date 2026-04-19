@@ -454,8 +454,9 @@ try {
                             INSERT INTO documentos_inventario_detalle (
                                 id_documento, id_inventario, id_detalle_origen,
                                 cantidad, cantidad_original, costo_unitario,
-                                costo_adquisicion, tenia_iva, subtotal
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                costo_adquisicion, tenia_iva, subtotal,
+                                saldo_disponible
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ");
 
                         $stmtStock = $db->prepare("
@@ -533,7 +534,9 @@ try {
                                 }
                             }
 
-                            // Insertar línea
+                            // Insertar línea con saldo_disponible = cantidad
+                            // El motor FIFO (wip.php) irá descontando saldo_disponible
+                            // conforme se registren producciones.
                             $stmtLinea->execute([
                                 $idDocumento,
                                 $linea['id_inventario'],
@@ -543,7 +546,8 @@ try {
                                 $costoUnit,
                                 $costoAdq,
                                 $teniaIva,
-                                $subtotal
+                                $subtotal,
+                                $cantidad  // saldo_disponible inicial = cantidad total enviada
                             ]);
 
                             // Actualizar stock

@@ -358,20 +358,31 @@ require_once '../includes/header.php';
             </table>
         </div>
 
-        <h3 style="margin-top:20px;">Análisis de salida vs consumo teórico</h3>
+        <h3 style="margin-top:20px;">Análisis de consumo: Real vs Teórico BOM</h3>
+        <p style="color:#64748b; font-size:0.88rem; margin-bottom:10px;">
+            <i class="fas fa-info-circle"></i>
+            <strong>Real (Kg)</strong>: material consumido del stock; 
+            <strong>Teórico (Kg)</strong>: lo que el BOM indica para la cantidad producida;
+            <strong>Pendiente</strong>: faltante no cubierto por stock (incidencia).
+        </p>
         <div class="table-wrap">
             <table class="analysis-table">
                 <thead>
                     <tr>
                         <th>Componente</th>
-                        <th>Salida almacén (kg)</th>
-                        <th>Teórico (kg)</th>
+                        <th>Real consumido (kg)</th>
+                        <th>Teórico BOM (kg)</th>
+                        <th>Pendiente (kg)</th>
                         <th>Diferencia (kg)</th>
-                        <th>Porcentaje</th>
+                        <th>% Cumplimiento</th>
                     </tr>
                 </thead>
                 <tbody id="resultadoAnalisis"></tbody>
             </table>
+        </div>
+        <div id="panelStockWip" style="margin-top:18px; padding:14px 18px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; display:none;">
+            <strong><i class="fas fa-warehouse"></i> Stock MP en Planta (Fase 1 WIP)</strong>
+            <div id="stockWipContenido" style="margin-top:10px;"></div>
         </div>
     </section>
 </div>
@@ -729,18 +740,19 @@ function mostrarResultadosWIP(data) {
         </div>
     `;
 
-    // Tabla de Lotes con Alerta de Costo 0
+    // Tabla de Lotes
     bodyLotes.innerHTML = data.lotes_creados.map(l => {
         const sinCosto = parseFloat(l.costo_mp) === 0;
+        const maquinaNombre = l.numero_maquina || '-';
         return `
             <tr style="${sinCosto ? 'background:#fff7ed;' : ''}">
                 <td><strong>${l.codigo_lote}</strong></td>
                 <td>${l.producto}</td>
                 <td>${document.getElementById('idTurno').options[document.getElementById('idTurno').selectedIndex].text}</td>
-                <td>-</td>
+                <td><strong>${maquinaNombre}</strong></td>
                 <td>${document.getElementById('idTejedor').options[document.getElementById('idTejedor').selectedIndex].text}</td>
                 <td>${l.cantidad}</td>
-                <td>Calculado</td>
+                <td style="color:#0369a1;">${l.teorico_kg !== undefined ? l.teorico_kg + ' kg' : 'Sin BOM'}</td>
                 <td>
                     ${sinCosto 
                         ? `<span style="color:#c2410c; font-weight:bold;"><i class="fas fa-exclamation-triangle"></i> Bs. 0.00*</span>
@@ -752,30 +764,102 @@ function mostrarResultadosWIP(data) {
         `;
     }).join('');
 
-    // Análisis Comparativo (NUEVO)
+    // Análisis Comparativo — columnas correctas del API:
+    // real_kg = consumido real, teorico_kg = BOM calculado,
+    // pendiente_kg = faltante (incidencia), diferencia_kg = real - teorico
     if (data.analisis_consumo && data.analisis_consumo.length > 0) {
         bodyAnalisis.innerHTML = data.analisis_consumo.map(a => {
-            const lowPct = a.porcentaje < 90;
+            const sinStock = parseFloat(a.real_kg) === 0;
+            const conPendiente = parseFloat(a.pendiente_kg) > 0;
             return `
                 <tr>
                     <td><strong>${a.componente}</strong></td>
-                    <td style="color:${a.real_kg > 0 ? '#15803d' : '#dc2626'}">${a.real_kg}</td>
-                    <td>${a.teorico_kg}</td>
-                    <td style="color:${a.pendiente_kg > 0 ? '#dc2626' : ''}">${a.pendiente_kg}</td>
-                    <td style="color:${a.diferencia_kg < 0 ? '#dc2626' : ''}">${a.diferencia_kg}</td>
-                    <td style="font-weight:bold; color:${lowPct ? '#dc2626' : '#15803d'}">${a.porcentaje}%</td>
+                    <td style="color:${sinStock ? '#dc2626' : '#15803d'}; font-weight:600;">${a.real_kg} kg</td>
+                    <td>${a.teorico_kg} kg</td>
+                    <td style="color:${conPendiente ? '#dc2626' : '#64748b'};">
+                        ${conPendiente ? '<i class="fas fa-exclamation-circle"></i> ' : ''}${a.pendiente_kg} kg
+                    </td>
+                    <td style="color:${parseFloat(a.diferencia_kg) < 0 ? '#dc2626' : '#64748b'}">${a.diferencia_kg} kg</td>
+                    <td style="font-weight:bold; color:${a.porcentaje < 90 ? '#dc2626' : '#15803d'}">${a.porcentaje}%</td>
                 </tr>
             `;
         }).join('');
     } else {
-        bodyAnalisis.innerHTML = '<tr><td colspan="5" class="text-center">No hay datos de consumo para analizar.</td></tr>';
+        bodyAnalisis.innerHTML = '<tr><td colspan="6" class="text-center" style="color:#64748b; padding:16px;">No hay datos de consumo BOM para esta producción.</td></tr>';
     }
+
+    // Panel Stock WIP Planta (Fase 1) — carga asíncrona
+    cargarStockWipPlanta();
 }
 
 function limpiarFormulario() {
     document.getElementById('observaciones').value = '';
     document.querySelectorAll('.waste-input').forEach(i => i.value = '0.00');
+    document.getElementById('resultadoCard').style.display = 'none';
+    const panel = document.getElementById('panelStockWip');
+    if (panel) panel.style.display = 'none';
     checkPrecarga();
+}
+
+/**
+ * Calcula el consumo teórico total de un lote dado su código.
+ * Busca en analisis_consumo el total sumado de teorico_kg.
+ * Para una aproximación rápida: muestra el total teórico de la sesión / cantidad de lotes.
+ */
+function calcularTeoricoLote(codigoLote, analisisConsumo) {
+    if (!analisisConsumo || analisisConsumo.length === 0) return 'Sin BOM';
+    // El análisis es agregado por componente (no por lote individual).
+    // Mostramos el total teórico global de la sesión.
+    const totalTeorico = analisisConsumo.reduce((sum, a) => sum + parseFloat(a.teorico_kg || 0), 0);
+    return totalTeorico > 0 ? `${totalTeorico.toFixed(4)} kg` : 'Sin BOM';
+}
+
+/**
+ * Carga y muestra el stock de materia prima en planta (Fase 1 WIP).
+ */
+async function cargarStockWipPlanta() {
+    try {
+        const resp = await fetch(`${baseUrl}/api/wip.php?action=get_stock_wip_planta`);
+        const data = await resp.json();
+        const panel = document.getElementById('panelStockWip');
+        const contenido = document.getElementById('stockWipContenido');
+        if (!data.success || !data.stock_wip_planta || data.stock_wip_planta.length === 0) {
+            panel.style.display = 'none';
+            return;
+        }
+        panel.style.display = 'block';
+        contenido.innerHTML = `
+            <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+                <thead>
+                    <tr style="background:#e0f2fe;">
+                        <th style="padding:6px 10px; text-align:left;">Componente</th>
+                        <th style="padding:6px 10px; text-align:right;">Disponible en planta</th>
+                        <th style="padding:6px 10px; text-align:right;">Reservado</th>
+                        <th style="padding:6px 10px; text-align:right;">Actualizado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ${data.stock_wip_planta.map(s => `
+                    <tr style="border-bottom:1px solid #e0f2fe;">
+                        <td style="padding:5px 10px;"><strong>${s.nombre}</strong> <small style="color:#64748b;">(${s.codigo})</small></td>
+                        <td style="padding:5px 10px; text-align:right; color:#0369a1; font-weight:600;">${s.stock_disponible_kg} ${s.unidad}</td>
+                        <td style="padding:5px 10px; text-align:right; color:#64748b;">${s.stock_reservado_kg} ${s.unidad}</td>
+                        <td style="padding:5px 10px; text-align:right; color:#64748b; font-size:0.83rem;">${s.fecha_actualizacion}</td>
+                    </tr>
+                `).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f0f9ff; font-weight:bold;">
+                        <td style="padding:6px 10px;">TOTAL EN PLANTA</td>
+                        <td style="padding:6px 10px; text-align:right; color:#0369a1;">${data.totales.disponible_kg} kg</td>
+                        <td colspan="2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+    } catch(e) {
+        console.warn('No se pudo cargar stock WIP planta:', e);
+    }
 }
 
 function mostrarEstado(msg, type) {

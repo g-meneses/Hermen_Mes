@@ -763,104 +763,130 @@ $pageTitle = $pageTitle ?? 'ERP Hermen';
                             <i class="fas fa-chevron-right menu-arrow"></i>
                         </a>
                         <ul class="submenu">
-                            <!-- Planificación -->
+                            <!-- Poliamida -->
                             <li class="menu-item">
                                 <a class="menu-link" onclick="toggleSubmenu(this)">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    <span class="menu-text">PLANIFICACIÓN</span>
+                                    <i class="fas fa-project-diagram"></i>
+                                    <span class="menu-text">Poliamida</span>
                                     <i class="fas fa-chevron-right menu-arrow"></i>
                                 </a>
                                 <ul class="submenu">
-                                    <li><a href="#" class="menu-link"><i class="fas fa-project-diagram"></i><span
-                                                class="menu-text">Config. Flujos</span><span
-                                                class="menu-badge badge-new">Nuevo</span></a></li>
-                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/wip_fase0.php"
-                                            class="menu-link <?php echo $currentPage === 'wip_fase0' ? 'active' : ''; ?>"><i class="fas fa-flask"></i><span
-                                                class="menu-text">Recetas (BOM)</span><span
-                                                class="menu-badge badge-new">WIP</span></a></li>
-                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/plan_generico.php"
-                                            class="menu-link <?php echo $currentPage === 'plan_generico' ? 'active' : ''; ?>"><i
-                                                class="fas fa-clipboard-list"></i><span class="menu-text">Plan
-                                                Genérico</span></a></li>
-                                    <li><a href="#" class="menu-link"><i class="fas fa-calendar-week"></i><span
-                                                class="menu-text">Plan Semanal</span><span
-                                                class="menu-badge badge-soon">Pronto</span></a></li>
-                                </ul>
-                            </li>
-
-                            <!-- Ejecución -->
-                            <li class="menu-item">
-                                <a class="menu-link" onclick="toggleSubmenu(this)">
-                                    <i class="fas fa-tasks"></i>
-                                    <span class="menu-text">EJECUCIÓN</span>
-                                    <i class="fas fa-chevron-right menu-arrow"></i>
-                                </a>
-                                <ul class="submenu">
-                                    <!-- Tejido -->
+                                    <!-- Planificación -->
                                     <li class="menu-item">
                                         <a class="menu-link" onclick="toggleSubmenu(this)">
-                                            <i class="fas fa-industry"></i>
-                                            <span class="menu-text">TEJIDO</span>
+                                            <i class="fas fa-calendar-alt"></i>
+                                            <span class="menu-text">Planificación</span>
                                             <i class="fas fa-chevron-right menu-arrow"></i>
                                         </a>
                                         <ul class="submenu">
-                                            <?php if (hasRole(['admin', 'gerencia', 'coordinador'])): ?>
-                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/dashboard_wip.php"
-                                                    class="menu-link <?php echo $currentPage === 'dashboard_wip' ? 'active' : ''; ?>">
-                                                    <i class="fas fa-chart-pie"></i><span class="menu-text">Dashboard WIP</span></a></li>
-                                            <?php endif; ?>
-                                            <li><a href="<?php echo SITE_URL; ?>/produccion/registrar_produccion_tejido.php"
-                                                    class="menu-link <?php echo $currentPage === 'registrar_produccion_tejido' ? 'active' : ''; ?>">
-                                                    <i class="fas fa-industry"></i><span class="menu-text">Reg. Producción (WIP)</span></a></li>
-                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/historial_produccion.php"
-                                                    class="menu-link <?php echo $currentPage === 'historial_produccion_tejido' ? 'active' : ''; ?>">
-                                                    <i class="fas fa-book"></i><span class="menu-text">Historial de Producción</span></a></li>
-                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/incidencias_consumo.php"
-                                                    class="menu-link <?php echo $currentPage === 'incidencias_consumo' ? 'active' : ''; ?>">
-                                                    <i class="fas fa-exclamation-triangle"></i><span class="menu-text">Incidencias Stock</span></a></li>
-                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/auditoria_hilos.php"
-                                                    class="menu-link <?php echo $currentPage === 'auditoria_hilos' ? 'active' : ''; ?>">
-                                                    <i class="fas fa-clipboard-check"></i><span class="menu-text">Auditoría Hilos</span></a></li>
+                                            <li><a href="#" class="menu-link"><i class="fas fa-project-diagram"></i><span class="menu-text">Config. Flujos</span><span class="menu-badge badge-new">Nuevo</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/wip_fase0.php" class="menu-link <?php echo $currentPage === 'wip_fase0' ? 'active' : ''; ?>"><i class="fas fa-flask"></i><span class="menu-text">Recetas (BOM)</span><span class="menu-badge badge-new">WIP</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/plan_generico.php" class="menu-link <?php echo $currentPage === 'plan_generico' ? 'active' : ''; ?>"><i class="fas fa-clipboard-list"></i><span class="menu-text">Plan Genérico</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/jornadas_revisado.php" class="menu-link <?php echo $currentPage === 'jornadas_revisado' ? 'active' : ''; ?>"><i class="fas fa-users-cog"></i><span class="menu-text">Turnos Revisado</span></a></li>
                                         </ul>
                                     </li>
-                                    <!-- Confección -->
+
+                                    <!-- Procesos -->
                                     <li class="menu-item">
                                         <a class="menu-link" onclick="toggleSubmenu(this)">
-                                            <i class="fas fa-cut"></i>
-                                            <span class="menu-text">CONFECCIÓN</span>
+                                            <i class="fas fa-cogs"></i>
+                                            <span class="menu-text">Procesos</span>
                                             <i class="fas fa-chevron-right menu-arrow"></i>
                                         </a>
                                         <ul class="submenu">
-                                            <li><a href="#" class="menu-link"><i class="fas fa-clipboard"></i><span
-                                                        class="menu-text">Órdenes</span><span
-                                                        class="menu-badge badge-soon">Pronto</span></a></li>
+                                            <!-- Tejido -->
+                                            <li class="menu-item">
+                                                <a class="menu-link" onclick="toggleSubmenu(this)">
+                                                    <i class="fas fa-industry"></i>
+                                                    <span class="menu-text">Tejido</span>
+                                                    <i class="fas fa-chevron-right menu-arrow"></i>
+                                                </a>
+                                                <ul class="submenu">
+                                                    <?php if (hasRole(['admin', 'gerencia', 'coordinador'])): ?>
+                                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/dashboard_wip.php" class="menu-link <?php echo $currentPage === 'dashboard_wip' ? 'active' : ''; ?>"><i class="fas fa-chart-pie"></i><span class="menu-text">Dashboard WIP</span></a></li>
+                                                    <?php endif; ?>
+                                                    <li><a href="<?php echo SITE_URL; ?>/produccion/registrar_produccion_tejido.php" class="menu-link <?php echo $currentPage === 'registrar_produccion_tejido' ? 'active' : ''; ?>"><i class="fas fa-industry"></i><span class="menu-text">Reg. Producción (WIP)</span></a></li>
+                                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/historial_produccion.php" class="menu-link <?php echo $currentPage === 'historial_produccion_tejido' ? 'active' : ''; ?>"><i class="fas fa-book"></i><span class="menu-text">Historial Producción</span></a></li>
+                                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/resumen_produccion.php" class="menu-link <?php echo $currentPage === 'resumen_produccion_tejido' ? 'active' : ''; ?>"><i class="fas fa-chart-bar"></i><span class="menu-text">Resumen Producción</span></a></li>
+                                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/incidencias_consumo.php" class="menu-link <?php echo $currentPage === 'incidencias_consumo' ? 'active' : ''; ?>"><i class="fas fa-exclamation-triangle"></i><span class="menu-text">Incidencias Stock</span></a></li>
+                                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/auditoria_hilos.php" class="menu-link <?php echo $currentPage === 'auditoria_hilos' ? 'active' : ''; ?>"><i class="fas fa-clipboard-check"></i><span class="menu-text">Auditoría Hilos</span></a></li>
+                                                </ul>
+                                            </li>
+
+                                            <!-- Revisado Crudo -->
+                                            <li class="menu-item">
+                                                <a class="menu-link" onclick="toggleSubmenu(this)">
+                                                    <i class="fas fa-search-plus"></i>
+                                                    <span class="menu-text">Revisado Crudo</span>
+                                                    <i class="fas fa-chevron-right menu-arrow"></i>
+                                                </a>
+                                                <ul class="submenu">
+                                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/registro_revisado.php" class="menu-link <?php echo $currentPage === 'registro_revisado' ? 'active' : ''; ?>"><i class="fas fa-box"></i><span class="menu-text">Registro de Revisado</span></a></li>
+                                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/jornadas_revisado.php" class="menu-link <?php echo $currentPage === 'jornadas_revisado' ? 'active' : ''; ?>"><i class="fas fa-calendar-alt"></i><span class="menu-text">Turnos Revisado</span></a></li>
+                                                </ul>
+                                            </li>
+
+                                            <!-- Vaporizado -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-cloud"></i><span class="menu-text">Vaporizado</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                            
+                                            <!-- Corte 1 -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-cut"></i><span class="menu-text">Corte 1</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                            
+                                            <!-- Corte 2 -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-cut"></i><span class="menu-text">Corte 2</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                            
+                                            <!-- Hermanado -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-random"></i><span class="menu-text">Hermanado</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                            
+                                            <!-- Costura -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-tape"></i><span class="menu-text">Costura</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                            
+                                            <!-- Recepción de Costura -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-check-double"></i><span class="menu-text">Recep. Costura</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                            
+                                            <!-- Teñido -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-tint"></i><span class="menu-text">Teñido</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                            
+                                            <!-- Revisado Teñido -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-search"></i><span class="menu-text">Revisado Teñido</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                            
+                                            <!-- Empaque -->
+                                            <li class="menu-item"><a href="#" class="menu-link"><i class="fas fa-box-open"></i><span class="menu-text">Empaque</span><span class="menu-badge badge-soon">Pronto</span></a></li>
+                                        </ul>
+                                    </li>
+
+                                    <!-- Recursos -->
+                                    <li class="menu-item">
+                                        <a class="menu-link" onclick="toggleSubmenu(this)">
+                                            <i class="fas fa-server"></i>
+                                            <span class="menu-text">Recursos</span>
+                                            <i class="fas fa-chevron-right menu-arrow"></i>
+                                        </a>
+                                        <ul class="submenu">
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/catalogos.php" class="menu-link <?php echo $currentPage === 'catalogos_tejido' ? 'active' : ''; ?>"><i class="fas fa-list-ul"></i><span class="menu-text">Catálogos Auxiliares</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/maquinas.php" class="menu-link <?php echo $currentPage === 'maquinas' ? 'active' : ''; ?>"><i class="fas fa-cog"></i><span class="menu-text">Máquinas</span></a></li>
+                                            <li><a href="<?php echo SITE_URL; ?>/modules/tejido/productos.php" class="menu-link <?php echo $currentPage === 'productos' ? 'active' : ''; ?>"><i class="fas fa-box-open"></i><span class="menu-text">Productos</span></a></li>
                                         </ul>
                                     </li>
                                 </ul>
                             </li>
-
-                            <!-- Recursos -->
+                            
+                            <!-- Calcetería -->
                             <li class="menu-item">
-                                <a class="menu-link" onclick="toggleSubmenu(this)">
-                                    <i class="fas fa-cogs"></i>
-                                    <span class="menu-text">RECURSOS</span>
-                                    <i class="fas fa-chevron-right menu-arrow"></i>
+                                <a class="menu-link">
+                                    <i class="fas fa-socks"></i>
+                                    <span class="menu-text">Calcetería</span>
+                                    <span class="menu-badge">Fase Futura</span>
                                 </a>
-                                <ul class="submenu">
-                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/catalogos.php"
-                                            class="menu-link <?php echo $currentPage === 'catalogos_tejido' ? 'active' : ''; ?>"><i
-                                                class="fas fa-list-ul"></i><span class="menu-text">Catálogos de Tejido</span></a></li>
-                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/maquinas.php"
-                                            class="menu-link <?php echo $currentPage === 'maquinas' ? 'active' : ''; ?>"><i
-                                                class="fas fa-cog"></i><span class="menu-text">Máquinas</span></a></li>
-                                    <li><a href="<?php echo SITE_URL; ?>/modules/tejido/productos.php"
-                                            class="menu-link <?php echo $currentPage === 'productos' ? 'active' : ''; ?>"><i
-                                                class="fas fa-box-open"></i><span class="menu-text">Productos</span></a>
-                                    </li>
-                                    <li><a href="#" class="menu-link"><i class="fas fa-users"></i><span
-                                                class="menu-text">Personal</span><span
-                                                class="menu-badge badge-soon">Pronto</span></a></li>
-                                </ul>
+                            </li>
+
+                            <!-- Confecciones -->
+                            <li class="menu-item">
+                                <a class="menu-link">
+                                    <i class="fas fa-tshirt"></i>
+                                    <span class="menu-text">Confecciones</span>
+                                    <span class="menu-badge">Fase Futura</span>
+                                </a>
                             </li>
                         </ul>
                     </li>

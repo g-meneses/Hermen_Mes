@@ -73,6 +73,43 @@ try {
                     $stmt = $db->query($sql);
                     $resumen = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+                    // Parche: Sobrescribir cálculos en caso del módulo WIP (Productos en Proceso)
+                    // para usar el registro real operativo y no las tarjetas de inventario.
+                    foreach ($resumen as &$tipo) {
+                        if (strtoupper($tipo['codigo']) === 'WIP') {
+                            $stmtLotes = $db->query("
+                                SELECT 
+                                    COUNT(id_lote_wip) AS activos,
+                                    COALESCE(SUM(costo_mp_acumulado), 0) AS valor,
+                                    SUM(CASE 
+                                        WHEN estado_lote = 'PAUSADO' THEN 1
+                                        WHEN estado_revision IN ('OBSERVADO', 'PARCIAL') THEN 1
+                                        WHEN DATEDIFF(CURRENT_DATE, COALESCE(fecha_actualizacion, fecha_inicio)) >= 7 THEN 1
+                                        ELSE 0 
+                                    END) AS alertas
+                                FROM lote_wip 
+                                WHERE estado_lote NOT IN ('CERRADO', 'ANULADO')
+                            ");
+                            $wipStats = $stmtLotes->fetch(PDO::FETCH_ASSOC);
+                            
+                            $tipo['total_items'] = (int)$wipStats['activos'];
+                            $tipo['valor_total'] = (float)$wipStats['valor'];
+                            
+                            // Reemplazamos stocks y estados de inventario con las alertas del WIP
+                            $tipo['sin_stock'] = 0;
+                            $tipo['stock_critico'] = (int)$wipStats['alertas'];
+                            $tipo['stock_ok'] = $tipo['total_items'] - $tipo['stock_critico'];
+                        }
+                    }
+                    unset($tipo);
+
+                    // Deduplicación por id_tipo_inventario (para evitar duplicados por SQL o lógica)
+                    $uniqueResumen = [];
+                    foreach ($resumen as $r) {
+                        $uniqueResumen[$r['id_tipo_inventario']] = $r;
+                    }
+                    $resumen = array_values($uniqueResumen);
+
                     // Calcular totales generales
                     $totalItems = 0;
                     $totalValor = 0;
@@ -435,6 +472,7 @@ try {
                         FROM movimientos_inventario m
                         JOIN inventarios i ON m.id_inventario = i.id_inventario
                         JOIN tipos_inventario ti ON i.id_tipo_inventario = ti.id_tipo_inventario
+                        WHERE ti.codigo != 'WIP'
                         GROUP BY m.documento_numero, m.tipo_movimiento
                         ORDER BY fecha DESC
                         LIMIT 10

@@ -200,6 +200,12 @@ function manejarGet($db)
         return;
     }
 
+    // Resumen gerencial de producción de tejido por producto
+    if ($action === 'get_resumen_produccion_tejido') {
+        getResumenProduccionTejido($db);
+        return;
+    }
+
     $stmt = $db->query("
         SELECT
             l.id_lote_wip,
@@ -2826,3 +2832,275 @@ function confirmarTransferenciaMP($db, $data)
         throw $e;
     }
 }
+
+// =============================================================================
+// RESUMEN GERENCIAL: Producción de Tejido — vista multi-dimensión
+// =============================================================================
+
+/**
+ * GET: Resumen agregado de producción de tejido.
+ * Devuelve tres agrupaciones en una sola respuesta (Opción A):
+ *   - por_producto : agrupado por producto
+ *   - por_dia      : agrupado por fecha
+ *   - por_turno    : agrupado por turno
+ *   - totales      : sumas globales
+ *   - metricas     : promedio diario, mejor día, turno top
+ *
+ * Fuente: lote_wip (tabla de hechos).  NO parsea planillas_tejido.
+ *
+ * Parámetros GET:
+ *   fecha_inicio (required) YYYY-MM-DD
+ *   fecha_fin    (required) YYYY-MM-DD
+ *   id_turno     (optional) int
+ *   id_producto  (optional) int
+ *
+ * action = get_resumen_produccion_tejido
+ */
+function getResumenProduccionTejido($db)
+{
+    // ── 1. Leer y validar parámetros ────────────────────────────────────────
+    $fechaInicio = trim($_GET['fecha_inicio'] ?? '');
+    $fechaFin    = trim($_GET['fecha_fin']    ?? '');
+    $idTurno     = !empty($_GET['id_turno'])    ? (int) $_GET['id_turno']    : null;
+    $idProducto  = !empty($_GET['id_producto']) ? (int) $_GET['id_producto'] : null;
+    $idFamilia   = !empty($_GET['id_familia'])  ? (int) $_GET['id_familia']  : null;
+
+    if (empty($fechaInicio) || empty($fechaFin)) {
+        jsonResponse(['success' => false, 'message' => 'fecha_inicio y fecha_fin son requeridos'], 400);
+        return;
+    }
+
+    $reFecha = '/^\d{4}-\d{2}-\d{2}$/';
+    if (!preg_match($reFecha, $fechaInicio) || !preg_match($reFecha, $fechaFin)) {
+        jsonResponse(['success' => false, 'message' => 'Formato de fecha inválido. Use YYYY-MM-DD'], 400);
+        return;
+    }
+
+    if ($fechaInicio > $fechaFin) {
+        jsonResponse(['success' => false, 'message' => 'fecha_inicio no puede ser posterior a fecha_fin'], 400);
+        return;
+    }
+
+    // ── 2. Cláusulas WHERE compartidas por las 3 consultas ─────────────────
+    $where  = ["DATE(lw.fecha_inicio) BETWEEN ? AND ?", "lw.estado_lote = 'ACTIVO'"];
+    $params = [$fechaInicio, $fechaFin];
+
+    if ($idTurno !== null) {
+        $where[]  = "lw.id_turno = ?";
+        $params[] = $idTurno;
+    }
+    if ($idProducto !== null) {
+        $where[]  = "lw.id_producto = ?";
+        $params[] = $idProducto;
+    }
+    if ($idFamilia !== null) {
+        $where[]  = "pt.id_linea = ?";
+        $params[] = $idFamilia;
+    }
+
+    $whereSql = implode(" AND ", $where);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSULTA A — Por producto
+    // ═══════════════════════════════════════════════════════════════════════
+    $sqlProducto = "
+        SELECT
+            pt.id_producto,
+            pt.codigo_producto                 AS codigo,
+            pt.descripcion_completa            AS producto,
+            SUM(lw.cantidad_base_unidades)     AS total_base_unidades,
+            COUNT(DISTINCT lw.id_lote_wip)     AS total_registros,
+            COUNT(DISTINCT lw.id_maquina)      AS total_maquinas,
+            COUNT(DISTINCT lw.id_turno)        AS total_turnos,
+            MIN(DATE(lw.fecha_inicio))         AS primera_fecha,
+            MAX(DATE(lw.fecha_inicio))         AS ultima_fecha
+        FROM lote_wip lw
+        INNER JOIN productos_tejidos pt ON pt.id_producto = lw.id_producto
+        WHERE $whereSql
+        GROUP BY pt.id_producto, pt.codigo_producto, pt.descripcion_completa
+        ORDER BY total_base_unidades DESC
+    ";
+    $stmtP = $db->prepare($sqlProducto);
+    $stmtP->execute($params);
+    $filasProducto = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSULTA B — Por día
+    // ═══════════════════════════════════════════════════════════════════════
+    $sqlDia = "
+        SELECT
+            DATE(lw.fecha_inicio)              AS fecha,
+            SUM(lw.cantidad_base_unidades)     AS total_base_unidades,
+            COUNT(DISTINCT lw.id_lote_wip)     AS total_registros,
+            COUNT(DISTINCT lw.id_producto)     AS productos_distintos,
+            COUNT(DISTINCT lw.id_maquina)      AS total_maquinas,
+            COUNT(DISTINCT lw.id_turno)        AS total_turnos
+        FROM lote_wip lw
+        INNER JOIN productos_tejidos pt ON pt.id_producto = lw.id_producto
+        WHERE $whereSql
+        GROUP BY DATE(lw.fecha_inicio)
+        ORDER BY fecha ASC
+    ";
+    $stmtD = $db->prepare($sqlDia);
+    $stmtD->execute($params);
+    $filasdia = $stmtD->fetchAll(PDO::FETCH_ASSOC);
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONSULTA C — Por turno
+    // ═══════════════════════════════════════════════════════════════════════
+    $sqlTurno = "
+        SELECT
+            COALESCE(t.id_turno, 0)            AS id_turno,
+            COALESCE(t.nombre, 'Sin turno')    AS turno_nombre,
+            COALESCE(t.hora_inicio, '')        AS hora_inicio,
+            COALESCE(t.hora_fin, '')           AS hora_fin,
+            SUM(lw.cantidad_base_unidades)     AS total_base_unidades,
+            COUNT(DISTINCT lw.id_lote_wip)     AS total_registros,
+            COUNT(DISTINCT lw.id_producto)     AS productos_distintos,
+            COUNT(DISTINCT lw.id_maquina)      AS total_maquinas,
+            MIN(DATE(lw.fecha_inicio))         AS primera_fecha,
+            MAX(DATE(lw.fecha_inicio))         AS ultima_fecha
+        FROM lote_wip lw
+        INNER JOIN productos_tejidos pt ON pt.id_producto = lw.id_producto
+        LEFT JOIN turnos t ON t.id_turno = lw.id_turno
+        WHERE $whereSql
+        GROUP BY t.id_turno, t.nombre, t.hora_inicio, t.hora_fin
+        ORDER BY total_base_unidades DESC
+    ";
+    $stmtT = $db->prepare($sqlTurno);
+    $stmtT->execute($params);
+    $filasturno = $stmtT->fetchAll(PDO::FETCH_ASSOC);
+
+    // ── 4. Totales globales (máquinas reales = subquery) ────────────────────
+    $sqlGlobal = "
+        SELECT COUNT(DISTINCT lw.id_maquina) AS maquinas_globales
+        FROM lote_wip lw
+        INNER JOIN productos_tejidos pt ON pt.id_producto = lw.id_producto
+        WHERE $whereSql
+    ";
+    $stmtG = $db->prepare($sqlGlobal);
+    $stmtG->execute($params);
+    $globalRow = $stmtG->fetch(PDO::FETCH_ASSOC);
+
+    // ── 5. Normalizar y mapear por_producto ─────────────────────────────────
+    $porProducto   = [];
+    $acumBase      = 0;
+    $acumRegistros = 0;
+
+    foreach ($filasProducto as $f) {
+        $base    = (int) $f['total_base_unidades'];
+        $acumBase      += $base;
+        $acumRegistros += (int) $f['total_registros'];
+        $porProducto[] = [
+            'id_producto'         => (int) $f['id_producto'],
+            'codigo'              => $f['codigo'],
+            'producto'            => $f['descripcion_completa'] ?? $f['producto'],
+            'docenas'             => (int) floor($base / 12),
+            'unidades'            => $base % 12,
+            'total_base_unidades' => $base,
+            'total_registros'     => (int) $f['total_registros'],
+            'total_maquinas'      => (int) $f['total_maquinas'],
+            'total_turnos'        => (int) $f['total_turnos'],
+            'primera_fecha'       => $f['primera_fecha'],
+            'ultima_fecha'        => $f['ultima_fecha'],
+        ];
+    }
+
+    // ── 6. Normalizar por_dia ───────────────────────────────────────────────
+    $porDia       = [];
+    $mejorDia     = null;
+    $mejorDiaBase = 0;
+
+    foreach ($filasdia as $f) {
+        $base = (int) $f['total_base_unidades'];
+        $porDia[] = [
+            'fecha'               => $f['fecha'],
+            'docenas'             => (int) floor($base / 12),
+            'unidades'            => $base % 12,
+            'total_base_unidades' => $base,
+            'total_registros'     => (int) $f['total_registros'],
+            'productos_distintos' => (int) $f['productos_distintos'],
+            'total_maquinas'      => (int) $f['total_maquinas'],
+            'total_turnos'        => (int) $f['total_turnos'],
+        ];
+        if ($base > $mejorDiaBase) {
+            $mejorDiaBase = $base;
+            $mejorDia     = $f['fecha'];
+        }
+    }
+
+    // ── 7. Normalizar por_turno ─────────────────────────────────────────────
+    $porTurno    = [];
+    $turnoTopNom = null;
+    $turnoTopBase = 0;
+
+    foreach ($filasturno as $f) {
+        $base = (int) $f['total_base_unidades'];
+        // Construir label amigable de turno
+        $label = $f['turno_nombre'];
+        if (!empty($f['hora_inicio']) && !empty($f['hora_fin'])) {
+            $hi = substr($f['hora_inicio'], 0, 5);
+            $hf = substr($f['hora_fin'],    0, 5);
+            $label = $f['turno_nombre'] . ' (' . $hi . '–' . $hf . ')';
+        }
+        $porTurno[] = [
+            'id_turno'            => (int) $f['id_turno'],
+            'turno_nombre'        => $label,
+            'docenas'             => (int) floor($base / 12),
+            'unidades'            => $base % 12,
+            'total_base_unidades' => $base,
+            'total_registros'     => (int) $f['total_registros'],
+            'productos_distintos' => (int) $f['productos_distintos'],
+            'total_maquinas'      => (int) $f['total_maquinas'],
+            'primera_fecha'       => $f['primera_fecha'],
+            'ultima_fecha'        => $f['ultima_fecha'],
+        ];
+        if ($base > $turnoTopBase) {
+            $turnoTopBase = $base;
+            $turnoTopNom  = $label;
+        }
+    }
+
+    // ── 8. Totales y métricas ────────────────────────────────────────────────
+    $diasConProduccion = count($porDia);
+    $promDiarioBase    = $diasConProduccion > 0 ? round($acumBase / $diasConProduccion) : 0;
+
+    $totales = [
+        'productos_distintos' => count($porProducto),
+        'docenas'             => (int) floor($acumBase / 12),
+        'unidades'            => $acumBase % 12,
+        'base_unidades'       => $acumBase,
+        'registros'           => $acumRegistros,
+        'maquinas'            => (int) ($globalRow['maquinas_globales'] ?? 0),
+        'dias_con_produccion' => $diasConProduccion,
+    ];
+
+    $metricas = [
+        'promedio_diario_base'     => $promDiarioBase,
+        'promedio_diario_docenas'  => (int) floor($promDiarioBase / 12),
+        'promedio_diario_unidades' => $promDiarioBase % 12,
+        'mejor_dia'                => $mejorDia,
+        'mejor_dia_base'           => $mejorDiaBase,
+        'mejor_dia_docenas'        => (int) floor($mejorDiaBase / 12),
+        'turno_top'                => $turnoTopNom,
+        'turno_top_base'           => $turnoTopBase,
+        'turno_top_docenas'        => (int) floor($turnoTopBase / 12),
+    ];
+
+    // ── 9. Respuesta ────────────────────────────────────────────────────────
+    jsonResponse([
+        'success'          => true,
+        'por_producto'     => $porProducto,
+        'por_dia'          => $porDia,
+        'por_turno'        => $porTurno,
+        'totales'          => $totales,
+        'metricas'         => $metricas,
+        'filtros_aplicados' => [
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin'    => $fechaFin,
+            'id_turno'     => $idTurno,
+            'id_producto'  => $idProducto,
+        ]
+    ]);
+}
+

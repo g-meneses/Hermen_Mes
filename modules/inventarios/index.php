@@ -3096,16 +3096,15 @@ require_once '../../includes/header.php';
         }
     }
 
+    // ========== CATÁLOGOS Y CONFIGURACIÓN ==========
     async function cargarCatalogos() {
         try {
-            // Cargar unidades de medida
             const resUnidades = await fetch(`${baseUrl}/api/centro_inventarios.php?action=unidades`);
             const dataUnidades = await resUnidades.json();
             if (dataUnidades.success) {
                 unidadesMedida = dataUnidades.unidades;
             }
 
-            // Cargar ubicaciones
             const resUbicaciones = await fetch(`${baseUrl}/api/centro_inventarios.php?action=ubicaciones`);
             const dataUbicaciones = await resUbicaciones.json();
             if (dataUbicaciones.success) {
@@ -3116,19 +3115,24 @@ require_once '../../includes/header.php';
         }
     }
 
-    // ========== RENDERIZADO DE TIPOS ==========
+    // ========== RENDERIZADO DE TIPOS (DASHBOARD) ==========
+    /* 
+       Regla: Renderizado defensivo para evitar NaN o undefined.
+       No mezclar lógica de navegación aquí.
+    */
     function renderTiposInventario(tipos) {
         const container = document.getElementById('tiposGrid');
 
-        if (tipos.length === 0) {
+        if (!tipos || tipos.length === 0) {
             container.innerHTML = '<p class="empty">No hay tipos de inventario configurados</p>';
             return;
         }
 
         container.innerHTML = tipos.map(tipo => {
             const color = tipo.color || '#007bff';
-            const tieneItems = parseInt(tipo.total_items) > 0;
-            const alertas = parseInt(tipo.sin_stock) + parseInt(tipo.stock_critico);
+            const alertas = parseInt(tipo.sin_stock || 0) + parseInt(tipo.stock_critico || 0);
+            const valorTotal = parseFloat(tipo.valor_total || 0);
+            const totalItems = parseInt(tipo.total_items || 0);
 
             return `
             <div class="tipo-card fade-in" 
@@ -3143,7 +3147,7 @@ require_once '../../includes/header.php';
                 </div>
                 <div class="tipo-stats">
                     <div class="tipo-stat">
-                        <div class="tipo-stat-value">${tipo.total_items}</div>
+                        <div class="tipo-stat-value">${totalItems}</div>
                         <div class="tipo-stat-label">Items</div>
                     </div>
                     <div class="tipo-stat">
@@ -3152,18 +3156,30 @@ require_once '../../includes/header.php';
                     </div>
                 </div>
                 <div class="tipo-valor-total">
-                    <div class="valor">Bs. ${parseFloat(tipo.valor_total).toLocaleString('es-BO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div class="valor">Bs. ${valorTotal.toLocaleString('es-BO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                     <div class="label">Valor Total</div>
                 </div>
             </div>
-        `;
+            `;
         }).join('');
     }
 
-    // ========== SELECCIÓN DE TIPO ==========
+    // ========== ROUTING Y NAVEGACIÓN ESPECIAL ==========
     async function seleccionarTipo(idTipo) {
-        // Mapeo de redireccionamiento por tipo de inventario
-        const rutas = {
+        const tipoObj = tiposInventario.find(t => parseInt(t.id_tipo_inventario) === parseInt(idTipo));
+        if (!tipoObj) return;
+        
+        const codigoTipo = (tipoObj && tipoObj.codigo) ? tipoObj.codigo.toUpperCase() : '';
+
+        // Redirección especial para WIP
+        if (codigoTipo === 'WIP') {
+            const card = document.getElementById(`tipoCard_${idTipo}`);
+            if (card) card.classList.add('active');
+            window.location.href = 'wip.php';
+            return;
+        }
+
+        const rutasLegacy = {
             1: 'materias_primas.php',
             2: 'colorantes_quimicos.php',
             3: 'empaque.php',
@@ -3171,23 +3187,26 @@ require_once '../../includes/header.php';
             7: 'repuestos.php'
         };
 
-        const destino = rutas[idTipo] || `materias_primas.php?id=${idTipo}`;
-
-        if (destino) {
-            // Animación de salida opcional
-            document.getElementById(`tipoCard_${idTipo}`).classList.add('active');
-
-            // Redirigir a la página (unificada)
-            window.location.href = destino;
+        if (rutasLegacy[idTipo]) {
+            window.location.href = rutasLegacy[idTipo];
+            return;
         }
+
+        tipoSeleccionado = tipoObj;
+        document.getElementById('dashView').style.display = 'none';
+        document.getElementById('tipoView').style.display = 'block';
+        document.getElementById('tipoTitulo').textContent = tipoObj.nombre;
+        document.getElementById('tipoBreadcrumb').textContent = tipoObj.nombre;
+
+        cargarCategoriasDelTipo(idTipo);
     }
 
+    // ========== CARGA DE CATEGORÍAS (INVENTARIO CLÁSICO) ==========
     async function cargarCategoriasDelTipo(idTipo) {
         const container = document.getElementById('categoriasGrid');
         container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner"></i><span>Cargando categorías...</span></div>';
 
         try {
-            // Obtener categorías con sus valores
             const response = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias_resumen&tipo_id=${idTipo}`);
             const data = await response.json();
 
@@ -3195,30 +3214,26 @@ require_once '../../includes/header.php';
                 categoriasInventario = data.categorias;
                 renderCategorias(data.categorias);
             } else {
-                // Si no hay endpoint especial, cargar categorías básicas
                 const resCat = await fetch(`${baseUrl}/api/centro_inventarios.php?action=categorias&tipo_id=${idTipo}`);
                 const dataCat = await resCat.json();
 
                 if (dataCat.success) {
-                    // Cargar productos para calcular totales por categoría
                     const resProd = await fetch(`${baseUrl}/api/centro_inventarios.php?action=list&tipo_id=${idTipo}`);
                     const dataProd = await resProd.json();
 
                     if (dataProd.success) {
                         productosInventario = dataProd.inventarios;
+                        const categoriasConTotales = dataCat.categorias.map(cat => {
+                            const productosCat = productosInventario.filter(p => parseInt(p.id_categoria) === parseInt(cat.id_categoria));
+                            const stockMinimoCount = productosCat.filter(p => parseFloat(p.stock_actual) <= parseFloat(p.stock_minimo)).length;
+                            const sinStockCount = productosCat.filter(p => parseFloat(p.stock_actual) <= 0).length;
 
-                        // Calcular totales por categoría
-                        const categoriasConTotales = dataCat.categorias.map(function (cat) {
-                            const productosCat = productosInventario.filter(function (p) { return p.id_categoria == cat.id_categoria; });
-                            return Object.assign({}, cat, {
+                            return {
+                                ...cat,
                                 total_items: productosCat.length,
-                                valor_total: productosCat.reduce(function (sum, p) { return sum + parseFloat(p.valor_total || 0); }, 0),
-                                alertas: productosCat.filter(function (p) {
-                                    const stock = parseFloat(p.stock_actual);
-                                    const minimo = parseFloat(p.stock_minimo);
-                                    return stock <= 0 || stock <= minimo;
-                                }).length
-                            });
+                                valor_total: productosCat.reduce((sum, p) => sum + parseFloat(p.valor_total || 0), 0),
+                                alertas: Math.max(stockMinimoCount, sinStockCount)
+                            };
                         });
 
                         categoriasInventario = categoriasConTotales;
